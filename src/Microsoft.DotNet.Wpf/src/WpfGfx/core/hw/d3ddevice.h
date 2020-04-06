@@ -36,9 +36,9 @@ MtExtern(CD3DDeviceLevel1);
 
 //------------------------------------------------------------------------------
 //
-// D3DPOOL_MANAGED is not allowed with IDirect3DDevice9Ex. This define is the back
+// D3DPOOL_MANAGED is not allowed with D3DDeviceContextEx. This define is the back
 // door for MilCore to use managed pool behavior until MilCore stops using
-// managed resources with IDirect3DDevice9Ex.
+// managed resources with D3DDeviceContextEx.
 //
 //------------------------------------------------------------------------------
 
@@ -68,7 +68,7 @@ class CGPUMarker;
 //  Synopsis:
 //      Abstracts the core D3D device to provide the following functionality:
 //          0. Assert on invalid input
-//          1. Restrict access to methods of IDirect3DDevice9 to those
+//          1. Restrict access to methods of D3DDeviceContext to those
 //             available on level 1 graphics cards. (Level1 is the base support
 //             we require to hw accelerate)
 //          2. Provide correct information for GetDeviceCaps
@@ -103,7 +103,7 @@ public:
     DECLARE_METERHEAP_CLEAR(ProcessHeap, Mt(CD3DDeviceLevel1));
 
     static HRESULT Create(
-        __inout_ecount(1) IDirect3DDevice9 *pID3DDevice,
+        __inout_ecount(1) D3DDeviceContext *pID3DDevice,
         __in_ecount(1) const CDisplay *pPrimaryDisplay,
         __in_ecount(1) IMILPoolManager *pManager,
         DWORD dwBehaviorFlags,
@@ -292,12 +292,12 @@ public:
         D3DMULTISAMPLE_TYPE d3dMultiSampleType,
         DWORD dwMultisampleQuality,
         bool fLockable,
-        __deref_out_ecount(1) IDirect3DSurface9 ** const ppD3DSurface
+        __deref_out_ecount(1) D3DSurface ** const ppD3DSurface
         );
 
     HRESULT GetRenderTargetData(
-        __in_ecount(1) IDirect3DSurface9 *pSourceSurface,
-        __in_ecount(1) IDirect3DSurface9 *pDestinationSurface
+        __in_ecount(1) D3DSurface *pSourceSurface,
+        __in_ecount(1) D3DSurface *pDestinationSurface
         );
 
     HRESULT CreateVertexBuffer(
@@ -305,7 +305,7 @@ public:
         DWORD Usage,
         DWORD FVF,
         D3DPOOL Pool,
-        __deref_out_ecount(1) IDirect3DVertexBuffer9 ** const ppVertexBuffer
+        __deref_out_ecount(1) D3DVertexBuffer ** const ppVertexBuffer
         );
 
     HRESULT CreateIndexBuffer(
@@ -313,7 +313,7 @@ public:
         DWORD Usage,
         D3DFORMAT Format,
         D3DPOOL Pool,
-        __deref_out_ecount(1) IDirect3DIndexBuffer9 ** const ppIndexBuffer
+        __deref_out_ecount(1) D3DIndexBuffer ** const ppIndexBuffer
         );
 
     HRESULT CreateStateBlock(
@@ -322,18 +322,18 @@ public:
         );
 
     HRESULT ComposeRects(
-        __in_ecount(1) IDirect3DSurface9* pSource,
-        __inout_ecount(1) IDirect3DSurface9* pDestination,
-        __in_ecount(1) IDirect3DVertexBuffer9* pSrcRectDescriptors,
+        __in_ecount(1) D3DSurface* pSource,
+        __inout_ecount(1) D3DSurface* pDestination,
+        __in_ecount(1) D3DVertexBuffer* pSrcRectDescriptors,
         UINT NumRects,
-        __in_ecount(1) IDirect3DVertexBuffer9* pDstRectDescriptors,
+        __in_ecount(1) D3DVertexBuffer* pDstRectDescriptors,
         D3DCOMPOSERECTSOP Operation
         );
 
     HRESULT CreateTexture(
         __in_ecount(1) const D3DSURFACE_DESC *pSurfDesc,
         UINT uLevels,
-        __deref_out_ecount(1) IDirect3DTexture9 ** const ppD3DTexture,
+        __deref_out_ecount(1) D3DTexture ** const ppD3DTexture,
         __deref_opt_inout_ecount(1) HANDLE * const pSharedHandle = NULL
         );
 
@@ -380,7 +380,7 @@ public:
         UINT uHeight,
         D3DFORMAT fmtTexture,
         __in_xcount_opt(uWidth * uHeight * D3DFormatSize(fmtTexture)) void *pvPixels,
-        __deref_out_ecount(1) IDirect3DSurface9 ** const ppD3DSysMemSurface
+        __deref_out_ecount(1) D3DSurface ** const ppD3DSysMemSurface
         );
 
     HRESULT CreateSysMemReferenceTexture(
@@ -389,19 +389,19 @@ public:
             pSurfDesc->Width * pSurfDesc->Height
             * D3DFormatSize(pSurfDesc->Format)
             ) void *pvPixels,
-        __deref_out_ecount(1) IDirect3DTexture9 ** const ppD3DSysMemTexture
+        __deref_out_ecount(1) D3DTexture ** const ppD3DSysMemTexture
         );
 
     HRESULT UpdateSurface(
-        __in_ecount(1) IDirect3DSurface9 *pD3DSysMemSrcSurface,
+        __in_ecount(1) D3DSurface *pD3DSysMemSrcSurface,
         __in_ecount_opt(1) const RECT *pSourceRect,
-        __inout_ecount(1) IDirect3DSurface9 *pD3DPoolDefaultDestSurface,
+        __inout_ecount(1) D3DSurface *pD3DPoolDefaultDestSurface,
         __in_ecount_opt(1) const POINT *pDestPoint
         );
 
     HRESULT UpdateTexture(
-        __in_ecount(1) IDirect3DTexture9 *pD3DSysMemSrcTexture,
-        __inout_ecount(1) IDirect3DTexture9 *pD3DPoolDefaultDestTexture
+        __in_ecount(1) D3DTexture *pD3DSysMemSrcTexture,
+        __inout_ecount(1) D3DTexture *pD3DPoolDefaultDestTexture
         );
 
     HRESULT StretchRect(
@@ -424,7 +424,7 @@ public:
     HRESULT StretchRect(
         __in_ecount(1) CD3DSurface *pSourceSurface,
         __in_ecount_opt(1) const RECT *pSourceRect,
-        __inout_ecount(1) IDirect3DSurface9 *pDestSurface,
+        __inout_ecount(1) D3DSurface *pDestSurface,
         __in_ecount_opt(1) const RECT *pDestRect,
         D3DTEXTUREFILTERTYPE Filter
         );
@@ -455,7 +455,7 @@ public:
     HRESULT
     SetD3DTexture(
         DWORD dwTextureStage,
-        __in_ecount_opt(1) IDirect3DTexture9 *pD3DTexture
+        __in_ecount_opt(1) D3DTexture *pD3DTexture
         );
 
     HRESULT DisableTextureTransform(DWORD dwTextureStage);
@@ -480,7 +480,7 @@ public:
         );
 
     HRESULT ColorFill(
-        __inout_ecount(1) IDirect3DSurface9 *pSurface,
+        __inout_ecount(1) D3DSurface *pSurface,
         __in_ecount_opt(1) const RECT *pRect,
         D3DCOLOR color
         );
@@ -497,8 +497,8 @@ public:
         );
 
     HRESULT CopyD3DTexture(
-        __in_ecount(1) IDirect3DTexture9 *pD3DSourceTexture,
-        __inout_ecount(1) IDirect3DTexture9 *pD3DDestinationTexture
+        __in_ecount(1) D3DTexture *pD3DSourceTexture,
+        __inout_ecount(1) D3DTexture *pD3DDestinationTexture
         );
 
     HRESULT GetMinimalTextureDesc(
@@ -757,7 +757,7 @@ public:
 
 #if DBG==1
     static void DbgTraceDeviceCreationFailure(UINT uAdapter, __in PCSTR szMessage, HRESULT hrError);
-    const IDirect3DDevice9* DbgGetID3DDevice9() const { return m_pD3DDevice; }
+    const D3DDeviceContext* DbgGetID3DDevice9() const { return m_pD3DDevice; }
 #endif
 
 private:
@@ -767,7 +767,7 @@ private:
         );
 
     HRESULT Init(
-        __inout_ecount(1) IDirect3DDevice9 *pID3DDevice,
+        __inout_ecount(1) D3DDeviceContext *pID3DDevice,
         __in_ecount(1) CDisplay const *pDisplay
         );
 
@@ -943,8 +943,8 @@ private:
     DWORD m_dwThreadId;
 
     // D3D objects
-    IDirect3DDevice9 *m_pD3DDevice;
-    IDirect3DDevice9Ex *m_pD3DDeviceEx;
+    D3DDeviceContext *m_pD3DDevice;
+    D3DDeviceContextEx *m_pD3DDeviceEx;
 
     TargetFormatTestStatus m_RenderTargetTestStatusX8R8G8B8;
     TargetFormatTestStatus m_RenderTargetTestStatusA8R8G8B8;
@@ -1035,7 +1035,7 @@ private:
     CD3DGlyphBank m_glyphBank;
 
     // Dummy back buffer for use when there is no current render target
-    IDirect3DSurface9 *m_pD3DDummyBackBuffer;
+    D3DSurface *m_pD3DDummyBackBuffer;
 
     // Per frame metrics
     DWORD m_dwMetricsVerticesPerFrame;
@@ -1127,7 +1127,7 @@ private:
 
     IDirect3DVertexShader9* m_pEffectPipelineVertexShader20; // Vertex shader 2.0 for shader effects pipeline.
     IDirect3DVertexShader9* m_pEffectPipelineVertexShader30; // Vertex shader 3.0 for shader effects pipeline.
-    IDirect3DVertexBuffer9* m_pEffectPipelineVertexBuffer; // Scratch buffer for the shader effects pipeline. 
+    D3DVertexBuffer* m_pEffectPipelineVertexBuffer; // Scratch buffer for the shader effects pipeline. 
     IDirect3DPixelShader9* m_pEffectPipelinePassThroughPixelShader; // Pass-through pixel shader for shader effects pipelines.
 };
 

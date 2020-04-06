@@ -90,7 +90,7 @@ private:
         __in    bool                        initializing
         );
 
-    IDirect3DSurface9       *m_pIBitmapSurface;
+    D3DSurface       *m_pIBitmapSurface;
     CClientMemoryBitmap     *m_pBitmap;
 };
 

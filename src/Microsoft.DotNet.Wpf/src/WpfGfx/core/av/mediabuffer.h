@@ -121,7 +121,7 @@ protected:
 
     HRESULT
     Init(
-        __in    IDirect3DSurface9       *pIDecodeSurface
+        __in    D3DSurface       *pIDecodeSurface
         );
 
     virtual

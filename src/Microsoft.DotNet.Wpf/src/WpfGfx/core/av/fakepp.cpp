@@ -1022,8 +1022,8 @@ CFakePP::BeginRender(
     TRACEF(&hr);
     CGuard<CCriticalSection> guard(m_csEntry);
 
-    IDirect3DDevice9      *pIDevice = NULL;
-    IDirect3DSurface9     *pSurface = NULL;
+    D3DDeviceContext      *pIDevice = NULL;
+    D3DSurface     *pSurface = NULL;
     IMFGetService         *pGetService = NULL;
     D3DCOLOR              color = D3DCOLOR_XRGB(0x00, 0x00, 0x00);
 

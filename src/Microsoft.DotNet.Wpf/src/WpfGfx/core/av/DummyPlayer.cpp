@@ -178,8 +178,8 @@ Cleanup:
 
 void
 DummySurfaceRenderer::
-SetIDirect3DDevice9(
-    __in IDirect3DDevice9 *pIDirect3DDevice9
+SetD3DDeviceContext(
+    __in D3DDeviceContext *pD3DDeviceContext
     )
 {
     //

@@ -179,7 +179,7 @@ Init(
     )
 {
     HRESULT hr = S_OK;
-    IDirect3DDevice9 *pIDevice = NULL;
+    D3DDeviceContext *pIDevice = NULL;
 
     TRACEF(&hr);
 

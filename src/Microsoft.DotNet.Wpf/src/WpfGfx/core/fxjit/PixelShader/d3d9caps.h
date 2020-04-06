@@ -96,10 +96,10 @@ typedef struct _D3DCAPS9
     DWORD   AlphaCmpCaps;
     DWORD   ShadeCaps;
     DWORD   TextureCaps;
-    DWORD   TextureFilterCaps;          // D3DPTFILTERCAPS for IDirect3DTexture9's
+    DWORD   TextureFilterCaps;          // D3DPTFILTERCAPS for D3DTexture's
     DWORD   CubeTextureFilterCaps;      // D3DPTFILTERCAPS for IDirect3DCubeTexture9's
     DWORD   VolumeTextureFilterCaps;    // D3DPTFILTERCAPS for IDirect3DVolumeTexture9's
-    DWORD   TextureAddressCaps;         // D3DPTADDRESSCAPS for IDirect3DTexture9's
+    DWORD   TextureAddressCaps;         // D3DPTADDRESSCAPS for D3DTexture's
     DWORD   VolumeTextureAddressCaps;   // D3DPTADDRESSCAPS for IDirect3DVolumeTexture9's
 
     DWORD   LineCaps;                   // D3DLINECAPS
@@ -158,7 +158,7 @@ typedef struct _D3DCAPS9
     DWORD   StretchRectFilterCaps;      // Filter caps supported by StretchRect
     D3DVSHADERCAPS2_0 VS20Caps;
     D3DPSHADERCAPS2_0 PS20Caps;
-    DWORD   VertexTextureFilterCaps;    // D3DPTFILTERCAPS for IDirect3DTexture9's for texture, used in vertex shaders
+    DWORD   VertexTextureFilterCaps;    // D3DPTFILTERCAPS for D3DTexture's for texture, used in vertex shaders
     DWORD   MaxVShaderInstructionsExecuted; // maximum number of vertex shader instructions that can be executed
     DWORD   MaxPShaderInstructionsExecuted; // maximum number of pixel shader instructions that can be executed
     DWORD   MaxVertexShader30InstructionSlots; 

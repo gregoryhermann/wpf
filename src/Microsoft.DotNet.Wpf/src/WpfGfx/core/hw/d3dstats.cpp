@@ -56,7 +56,7 @@ CD3DStats::CD3DStats()
 //------------------------------------------------------------------------------
 void 
 CD3DStats::QueryStats(
-    __inout_ecount(1) IDirect3DDevice9 *pD3DDevice
+    __inout_ecount(1) D3DDeviceContext *pD3DDevice
     )
 {
     HRESULT hr = S_OK;
@@ -138,7 +138,7 @@ CD3DStats::QueryStats(
 //------------------------------------------------------------------------------
 void
 CD3DStats::OnPresent(
-    __inout_ecount(1) IDirect3DDevice9 *pD3DDevice
+    __inout_ecount(1) D3DDeviceContext *pD3DDevice
     )
 {
     m_nFrames++;
@@ -160,7 +160,7 @@ CD3DStats::OnPresent(
 //------------------------------------------------------------------------------
 HRESULT 
 CD3DStats::QueryGetData(
-    __inout_ecount(1) IDirect3DDevice9 *pD3DDevice, 
+    __inout_ecount(1) D3DDeviceContext *pD3DDevice, 
     D3DQUERYTYPE d3dQueryType, 
     __out_bcount(dwDataSize) void* pData, 
     DWORD dwDataSize

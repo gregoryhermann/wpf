@@ -186,7 +186,7 @@ Init(
     )
 {
     HRESULT             hr = S_OK;
-    IDirect3DDevice9    *pIMixerDevice = NULL;
+    D3DDeviceContext    *pIMixerDevice = NULL;
     D3DSURFACE_DESC     ddsd;
 
     ZeroMemory(&ddsd, sizeof(ddsd));
@@ -272,7 +272,7 @@ CreateMixerTexture(
     )
 {
     HRESULT             hr = S_OK;
-    IDirect3DDevice9    *pIMixerDevice = NULL;
+    D3DDeviceContext    *pIMixerDevice = NULL;
     D3DSURFACE_DESC     ddsd;
     TRACEF(&hr);
 
@@ -425,7 +425,7 @@ CopyBitmap(
     )
 {
     HRESULT             hr = S_OK;
-    IDirect3DDevice9    *pIMixerDevice = NULL;
+    D3DDeviceContext    *pIMixerDevice = NULL;
     TRACEF(&hr);
 
     bool                surfaceLocked = false;

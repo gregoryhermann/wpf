@@ -185,7 +185,7 @@ Cleanup:
 //      buffer.
 //
 //      Requirements for surface sharing
-//        1) Created on IDirect3DDevice9Ex
+//        1) Created on D3DDeviceContextEx
 //        2) D3DDEVCAPS2_CAN_STRETCHRECT_FROM_TEXTURES as that's how we'll copy 
 //           across the two devices
 //        3) D3DCAPS2_CANSHARERESOURCE. This should always be true for 9Ex but
@@ -203,9 +203,9 @@ Cleanup:
 
 /* static */ CInteropDeviceBitmap::FrontBufferUpdateMethod 
 CInteropDeviceBitmap::GetUpdateMethod(
-    __in IDirect3DDevice9 *pID3DDevice,
-    __in_opt const IDirect3DDevice9Ex *pID3DDeviceEx,
-    __in IDirect3DSurface9 *pID3DSurface
+    __in D3DDeviceContext *pID3DDevice,
+    __in_opt const D3DDeviceContextEx *pID3DDeviceEx,
+    __in D3DSurface *pID3DSurface
     )
 {   
     HRESULT hr = S_OK;
@@ -260,15 +260,15 @@ CInteropDeviceBitmap::Create(
 {
     HRESULT hr = S_OK;
 
-    IDirect3DSurface9 *pID3DUserSurface = NULL;
-    IDirect3DDevice9 *pID3DUserDevice = NULL;
-    IDirect3DDevice9Ex *pID3DUserDeviceEx = NULL;
+    D3DSurface *pID3DUserSurface = NULL;
+    D3DDeviceContext *pID3DUserDevice = NULL;
+    D3DDeviceContextEx *pID3DUserDeviceEx = NULL;
     CD3DDeviceManager *pDeviceManager = CD3DDeviceManager::Get();
     D3DSURFACE_DESC desc;
     CInteropDeviceBitmap *pInteropDeviceBitmap = NULL;
         
     IFC(pIUserSurface->QueryInterface(
-        __uuidof(IDirect3DSurface9), 
+        __uuidof(D3DSurface), 
         reinterpret_cast<void **>(&pID3DUserSurface)
         ));
     IFC(pID3DUserSurface->GetDesc(&desc));
@@ -305,7 +305,7 @@ CInteropDeviceBitmap::Create(
     // Check to see if the user's device is dead. On 9Ex, TestCooperativeLevel always returns
     // S_OK so we must call CheckDeviceState instead
     if (SUCCEEDED(pID3DUserDevice->QueryInterface(
-        __uuidof(IDirect3DDevice9Ex),
+        __uuidof(D3DDeviceContextEx),
         reinterpret_cast<void **>(&pID3DUserDeviceEx)
         )))
     {    
@@ -406,7 +406,7 @@ CInteropDeviceBitmap::CInteropDeviceBitmap(
     MilPixelFormat::Enum fmtPixel,
     FrontBufferUpdateMethod oUpdateMethod,
     UINT uAdapter,
-    __in IDirect3DSurface9 *pUserSurface
+    __in D3DSurface *pUserSurface
     )
     : 
     CDeviceBitmap(uWidth, uHeight, fmtPixel),
@@ -837,7 +837,7 @@ CInteropDeviceBitmap::GetDisplayFromUserDevice(
     Assert(m_pIUserSurface);
 
     HRESULT hr = S_OK;
-    IDirect3DDevice9 *pID3DUserDevice = NULL;
+    D3DDeviceContext *pID3DUserDevice = NULL;
     IDirect3D9 *pID3DUserObject = NULL;
     const CDisplaySet *pDisplaySet = NULL; 
 

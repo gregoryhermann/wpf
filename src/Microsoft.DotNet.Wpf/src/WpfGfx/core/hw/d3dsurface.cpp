@@ -29,7 +29,7 @@ MtDefine(D3DResource_Surface, MILHwMetrics, "Approximate surface sizes");
 HRESULT 
 CD3DSurface::Create(
     __inout_ecount(1) CD3DResourceManager *pResourceManager,
-    __inout_ecount(1) IDirect3DSurface9 *pD3DSurface,
+    __inout_ecount(1) D3DSurface *pD3DSurface,
     __deref_out_ecount(1) CD3DSurface **ppSurface
     )
 {
@@ -69,7 +69,7 @@ Cleanup:
 //
 //-------------------------------------------------------------------------
 CD3DSurface::CD3DSurface(
-    __inout_ecount(1) IDirect3DSurface9 * const pD3DSurface
+    __inout_ecount(1) D3DSurface * const pD3DSurface
     )
     : m_pD3DSurface(pD3DSurface)
 {
@@ -167,7 +167,7 @@ CD3DSurface::ReleaseD3DResources()
     }
 
     // This context is protected so it is safe to release the D3D resource
-    ReleaseInterface((*const_cast<IDirect3DSurface9 **>(&m_pD3DSurface)));
+    ReleaseInterface((*const_cast<D3DSurface **>(&m_pD3DSurface)));
 
     return;
 }
@@ -286,8 +286,8 @@ CD3DSurface::ReadIntoSysMemBuffer(
     )
 {
     HRESULT hr = S_OK;
-    IDirect3DSurface9 *pD3DLockableSurface = NULL;
-    IDirect3DSurface9 *pTempSurface = NULL;
+    D3DSurface *pD3DLockableSurface = NULL;
+    D3DSurface *pTempSurface = NULL;
     
     bool fNeedToManuallyCopyBits = true;
     UINT nStrideCopy;
@@ -335,7 +335,7 @@ CD3DSurface::ReadIntoSysMemBuffer(
 #if DBG
         {
             // Double check that we have the right device
-            IDirect3DDevice9 *pID3DDevice = NULL;
+            D3DDeviceContext *pID3DDevice = NULL;
             if (SUCCEEDED(ID3DSurface()->GetDevice(&pID3DDevice)))
             {
                 Assert(pID3DDevice == Device().DbgGetID3DDevice9());

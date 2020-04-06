@@ -21,7 +21,7 @@
 
 //  Note: no classes derived from CD3DVertexXYZW should be used directly in primitive
 //        rendering code.
-//        The reason is the cost of IDirect3DDevice9::SetFVF() method.
+//        The reason is the cost of D3DDeviceContext::SetFVF() method.
 //        To improve performance, we need to avoid switching FVF whevener it is
 //        reasonable. This means that often we'll use the vertex class that
 //        contains the members that are not really needed for particular case.

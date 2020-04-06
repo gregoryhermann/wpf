@@ -767,7 +767,7 @@ typedef struct _D3DVERTEXELEMENT9
 #define D3DDP_MAXTEXCOORD   8
 
 //---------------------------------------------------------------------
-// Values for IDirect3DDevice9::SetStreamSourceFreq's Setting parameter
+// Values for D3DDeviceContext::SetStreamSourceFreq's Setting parameter
 //---------------------------------------------------------------------
 #define D3DSTREAMSOURCE_INDEXEDDATA  (1<<30)
 #define D3DSTREAMSOURCE_INSTANCEDATA (2<<30)

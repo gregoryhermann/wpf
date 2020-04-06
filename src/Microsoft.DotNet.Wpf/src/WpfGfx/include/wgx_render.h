@@ -330,7 +330,7 @@ DECLARE_INTERFACE_(IMILRenderTargetBitmap, IMILRenderTarget)
 
     A render target which can output to an HWND. This render target may or
     may not be hardware accelerated. This depends on being able to create
-    an IDirect3DDevice9 or other similar hardware accelerated device. If
+    an D3DDeviceContext or other similar hardware accelerated device. If
     the specific h/w acceleration device is not available, we will build
     a double-buffered system memory RT.
 

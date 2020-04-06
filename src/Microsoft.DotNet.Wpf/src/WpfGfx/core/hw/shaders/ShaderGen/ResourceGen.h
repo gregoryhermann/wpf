@@ -64,7 +64,7 @@ private:
 private:
     static char const sc_szTitle[];
 
-    IDirect3DDevice9 *m_pDevice;
+    D3DDeviceContext *m_pDevice;
     FILE *m_pFileRc;
     FILE *m_pFileHpp;
     ID3DXEffect *m_pEffect;

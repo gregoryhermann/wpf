@@ -14,7 +14,7 @@
 //
 //  $Description:
 //      Header for the CD3DDeviceWrapper class, which wraps an instance of the
-//      IDirect3DDevice9 interface. This wrapper was written for the purpose of
+//      D3DDeviceContext interface. This wrapper was written for the purpose of
 //      logging D3D calls, but it may also be used to restrict and/or redirect
 //      D3D calls.
 //
@@ -27,7 +27,7 @@
 MtExtern(CD3DDeviceWrapper);
 
 class CD3DDeviceWrapper :
-    public IDirect3DDevice9,
+    public D3DDeviceContext,
     public IDirect3DVideoDevice9
 {
 protected:
@@ -38,7 +38,7 @@ public:
     DECLARE_METERHEAP_CLEAR(ProcessHeap, Mt(CD3DDeviceWrapper));
 
     static HRESULT Create(
-        __in_ecount(1) IDirect3DDevice9 *pD3DDevice,
+        __in_ecount(1) D3DDeviceContext *pD3DDevice,
         __in_ecount(1) IDirect3D9 *pD3DWrapper,
         __deref_out_ecount(1) CD3DDeviceWrapper **ppD3DeviceWrapper
         );
@@ -59,7 +59,7 @@ public:
         );
 
     //
-    // IDirect3DDevice9
+    // D3DDeviceContext
     //
 
     STDMETHOD(TestCooperativeLevel)(
@@ -91,7 +91,7 @@ public:
     STDMETHOD(SetCursorProperties)(
         UINT XHotSpot,
         UINT YHotSpot,
-        IDirect3DSurface9* pCursorBitmap
+        D3DSurface* pCursorBitmap
         ) NOTIMPL_METHOD
 
     STDMETHOD_(void, SetCursorPosition)(
@@ -132,7 +132,7 @@ public:
         UINT iSwapChain,
         UINT iBackBuffer,
         D3DBACKBUFFER_TYPE Type,
-        IDirect3DSurface9** ppBackBuffer
+        D3DSurface** ppBackBuffer
         ) NOTIMPL_METHOD
 
     STDMETHOD(GetRasterStatus)(
@@ -162,7 +162,7 @@ public:
         DWORD Usage,
         D3DFORMAT Format,
         D3DPOOL Pool,
-        __deref_out_ecount(1) IDirect3DTexture9** ppTexture,
+        __deref_out_ecount(1) D3DTexture** ppTexture,
         __out_ecount(1) HANDLE* pSharedHandle
         );
 
@@ -193,7 +193,7 @@ public:
         DWORD Usage,
         DWORD FVF,
         D3DPOOL Pool,
-        IDirect3DVertexBuffer9** ppVertexBuffer,
+        D3DVertexBuffer** ppVertexBuffer,
         HANDLE* pSharedHandle
         ) NOTIMPL_METHOD
 
@@ -202,7 +202,7 @@ public:
         DWORD Usage,
         D3DFORMAT Format,
         D3DPOOL Pool,
-        IDirect3DIndexBuffer9** ppIndexBuffer,
+        D3DIndexBuffer** ppIndexBuffer,
         HANDLE* pSharedHandle
         ) NOTIMPL_METHOD
 
@@ -213,7 +213,7 @@ public:
         D3DMULTISAMPLE_TYPE MultiSample,
         DWORD MultisampleQuality,
         BOOL Lockable,
-        IDirect3DSurface9** ppSurface,
+        D3DSurface** ppSurface,
         HANDLE* pSharedHandle
         ) NOTIMPL_METHOD
 
@@ -224,14 +224,14 @@ public:
         D3DMULTISAMPLE_TYPE MultiSample,
         DWORD MultisampleQuality,
         BOOL Discard,
-        IDirect3DSurface9** ppSurface,
+        D3DSurface** ppSurface,
         HANDLE* pSharedHandle
         ) NOTIMPL_METHOD
 
     STDMETHOD(UpdateSurface)(
-        IDirect3DSurface9* pSourceSurface,
+        D3DSurface* pSourceSurface,
         CONST RECT* pSourceRect,
-        IDirect3DSurface9* pDestinationSurface,
+        D3DSurface* pDestinationSurface,
         CONST POINT* pDestPoint
         ) NOTIMPL_METHOD
 
@@ -241,25 +241,25 @@ public:
         ) NOTIMPL_METHOD
 
     STDMETHOD(GetRenderTargetData)(
-        IDirect3DSurface9* pRenderTarget,
-        IDirect3DSurface9* pDestSurface
+        D3DSurface* pRenderTarget,
+        D3DSurface* pDestSurface
         ) NOTIMPL_METHOD
 
     STDMETHOD(GetFrontBufferData)(
         UINT iSwapChain,
-        IDirect3DSurface9* pDestSurface
+        D3DSurface* pDestSurface
         ) NOTIMPL_METHOD
 
     STDMETHOD(StretchRect)(
-        IDirect3DSurface9* pSourceSurface,
+        D3DSurface* pSourceSurface,
         CONST RECT* pSourceRect,
-        IDirect3DSurface9* pDestSurface,
+        D3DSurface* pDestSurface,
         CONST RECT* pDestRect,
         D3DTEXTUREFILTERTYPE Filter
         );
 
     STDMETHOD(ColorFill)(
-       __inout_ecount(1)  IDirect3DSurface9* pSurface,
+       __inout_ecount(1)  D3DSurface* pSurface,
         __in_ecount(1) CONST RECT* pRect,
         D3DCOLOR color
         );
@@ -269,26 +269,26 @@ public:
         UINT Height,
         D3DFORMAT Format,
         D3DPOOL Pool,
-        __deref_out_ecount(1) IDirect3DSurface9** ppSurface,
+        __deref_out_ecount(1) D3DSurface** ppSurface,
         __out_ecount(1) HANDLE* pSharedHandle
         );
 
     STDMETHOD(SetRenderTarget)(
         DWORD RenderTargetIndex,
-        IDirect3DSurface9* pRenderTarget
+        D3DSurface* pRenderTarget
         );
 
     STDMETHOD(GetRenderTarget)(
         DWORD RenderTargetIndex,
-        IDirect3DSurface9** ppRenderTarget
+        D3DSurface** ppRenderTarget
         );
 
     STDMETHOD(SetDepthStencilSurface)(
-        IDirect3DSurface9* pNewZStencil
+        D3DSurface* pNewZStencil
         ) NOTIMPL_METHOD
 
     STDMETHOD(GetDepthStencilSurface)(
-        IDirect3DSurface9** ppZStencilSurface
+        D3DSurface** ppZStencilSurface
         ) NOTIMPL_METHOD
 
     STDMETHOD(BeginScene)(
@@ -519,7 +519,7 @@ public:
         UINT SrcStartIndex,
         UINT DestIndex,
         UINT VertexCount,
-        IDirect3DVertexBuffer9* pDestBuffer,
+        D3DVertexBuffer* pDestBuffer,
         IDirect3DVertexDeclaration9* pVertexDecl,
         DWORD Flags
         ) NOTIMPL_METHOD
@@ -596,14 +596,14 @@ public:
 
     STDMETHOD(SetStreamSource)(
         UINT StreamNumber,
-        IDirect3DVertexBuffer9* pStreamData,
+        D3DVertexBuffer* pStreamData,
         UINT OffsetInBytes,
         UINT Stride
         ) NOTIMPL_METHOD
 
     STDMETHOD(GetStreamSource)(
         UINT StreamNumber,
-        IDirect3DVertexBuffer9** ppStreamData,
+        D3DVertexBuffer** ppStreamData,
         UINT* OffsetInBytes,
         UINT* pStride
         ) NOTIMPL_METHOD
@@ -619,11 +619,11 @@ public:
         ) NOTIMPL_METHOD
 
     STDMETHOD(SetIndices)(
-        IDirect3DIndexBuffer9* pIndexData
+        D3DIndexBuffer* pIndexData
         ) NOTIMPL_METHOD
 
     STDMETHOD(GetIndices)(
-        IDirect3DIndexBuffer9** ppIndexData
+        D3DIndexBuffer** ppIndexData
         ) NOTIMPL_METHOD
 
     STDMETHOD(CreatePixelShader)(
@@ -704,11 +704,11 @@ public:
         ) NOTIMPL_METHOD
 
     STDMETHOD(ComposeRects)(
-        IDirect3DSurface9* pSrc,
-        IDirect3DSurface9* pDst,
-        IDirect3DVertexBuffer9* pSrcRectDescs,
+        D3DSurface* pSrc,
+        D3DSurface* pDst,
+        D3DVertexBuffer* pSrcRectDescs,
         UINT NumRects,
-        IDirect3DVertexBuffer9* pDstRectDescs,
+        D3DVertexBuffer* pDstRectDescs,
         D3DCOMPOSERECTSOP Operation,
         int Xoffset,
         int Yoffset
@@ -731,7 +731,7 @@ public:
                             HWND hTargetWindow,
                             CONST RGNDATA *pDestinationRegion,
                             DWORD dwFlags,
-                            IDirect3DSurface9 * pSourceSurfaceOverride) NOTIMPL_METHOD
+                            D3DSurface * pSourceSurfaceOverride) NOTIMPL_METHOD
 
     STDMETHOD( GetGPUThreadPriority     )
         (INT *pPriority) NOTIMPL_METHOD
@@ -751,7 +751,7 @@ public:
                                         D3DMULTISAMPLE_TYPE MultiSample, 
                                         DWORD MultiSampleQuality, 
                                         BOOL Lockable, 
-                                        IDirect3DSurface9 **ppSurface, 
+                                        D3DSurface **ppSurface, 
                                         HANDLE* pSharedHandle, 
                                         DWORD Usage) NOTIMPL_METHOD
 
@@ -759,7 +759,7 @@ public:
                                                 UINT Height, 
                                                 D3DFORMAT Format, 
                                                 D3DPOOL Pool, 
-                                                IDirect3DSurface9** ppSurface, 
+                                                D3DSurface** ppSurface, 
                                                 HANDLE* pSharedHandle, 
                                                 DWORD Usage) NOTIMPL_METHOD
 
@@ -769,7 +769,7 @@ public:
                                                 D3DMULTISAMPLE_TYPE MultiSample, 
                                                 DWORD MultiSampleQuality, 
                                                 BOOL Discardable, 
-                                                IDirect3DSurface9 **ppSurface, 
+                                                D3DSurface **ppSurface, 
                                                 HANDLE* pSharedHandle, 
                                                 DWORD Usage) NOTIMPL_METHOD
 
@@ -780,7 +780,7 @@ public:
         D3DFORMAT Format,
         D3DPOOL Pool,
         DWORD Usage,
-        IDirect3DSurface9** ppSurface,
+        D3DSurface** ppSurface,
         HANDLE* pSharedHandle
         );
 
@@ -826,12 +826,12 @@ public:
 
 
     STDMETHOD(GetInternalDevice)(
-        __deref_out_ecount(1) IDirect3DDevice9 **ppD3DDevice
+        __deref_out_ecount(1) D3DDeviceContext **ppD3DDevice
         );
 
 private:
     long m_ulRef;
-    IDirect3DDevice9 *m_pD3DDevice;
+    D3DDeviceContext *m_pD3DDevice;
     CD3DWrapper *m_pD3DWrapper;
     UINT m_uiID;
 };

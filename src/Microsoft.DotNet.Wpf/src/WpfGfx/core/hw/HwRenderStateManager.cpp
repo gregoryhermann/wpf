@@ -42,7 +42,7 @@ DeclareTag(tagWireframe, "MIL-HW", "Wireframe");
 //-----------------------------------------------------------------------------
 __checkReturn HRESULT
 CHwRenderStateManager::Create(
-    __inout_ecount(1) IDirect3DDevice9 *pD3DDevice,
+    __inout_ecount(1) D3DDeviceContext *pD3DDevice,
     DWORD dwMaxBlendStages,
     BOOL fCanHandleBlendFactor,
     BOOL fSupportsScissorRect,
@@ -86,7 +86,7 @@ Cleanup:
 //-----------------------------------------------------------------------------
 HRESULT
 CHwRenderStateManager::Init(
-    __inout_ecount(1) IDirect3DDevice9 *pD3DDevice,
+    __inout_ecount(1) D3DDeviceContext *pD3DDevice,
     DWORD dwMaxBlendStages,
     BOOL fCanHandleBlendFactor,
     BOOL fSupportsScissorRect,
@@ -544,7 +544,7 @@ Cleanup:
 //-------------------------------------------------------------------------
 HRESULT
 CHwRenderStateManager::ForceSetDepthStencilSurface(
-    __in_ecount_opt(1) IDirect3DSurface9 *pDepthStencilSurface,
+    __in_ecount_opt(1) D3DSurface *pDepthStencilSurface,
     UINT uWidth,
     UINT uHeight
     )
@@ -1071,7 +1071,7 @@ CHwRenderStateManager::IsDepthStencilSurfaceSmallerThan(
     UINT uHeight
     ) const
 {
-    IDirect3DSurface9 *pD3DSurface = NULL;
+    D3DSurface *pD3DSurface = NULL;
 
     bool fIsSmaller;
 
@@ -1425,7 +1425,7 @@ Cleanup:
 //-------------------------------------------------------------------------
 HRESULT
 CHwRenderStateManager::ForceSetStreamSource(
-    __in_ecount_opt(1) IDirect3DVertexBuffer9 *pStream,
+    __in_ecount_opt(1) D3DVertexBuffer *pStream,
     UINT uVertexStride
     )
 {
@@ -1463,7 +1463,7 @@ Cleanup:
 //-------------------------------------------------------------------------
 HRESULT
 CHwRenderStateManager::ForceSetIndices(
-    __in_ecount_opt(1) IDirect3DIndexBuffer9 *pStream
+    __in_ecount_opt(1) D3DIndexBuffer *pStream
     )
 {
     HRESULT hr = S_OK;

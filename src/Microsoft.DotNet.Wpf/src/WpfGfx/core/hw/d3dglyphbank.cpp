@@ -327,8 +327,8 @@ HRESULT CD3DGlyphBank::RectFillAlpha(
     UINT uHeight = srcRect.bottom - srcRect.top;
 
     RECT rcTemp = {0, 0, uWidth, uHeight};
-    IDirect3DSurface9* pTankSurface = pTank->GetSurfaceNoAddref();
-    IDirect3DSurface9* pTempSurface = NULL;
+    D3DSurface* pTankSurface = pTank->GetSurfaceNoAddref();
+    D3DSurface* pTempSurface = NULL;
 
     IFC( EnsureTempSurface(uWidth, uHeight, &pTempSurface) );
 
@@ -418,14 +418,14 @@ Cleanup:
 HRESULT CD3DGlyphBank::EnsureTempSurface(
     UINT uWidth,
     UINT uHeight,
-    __deref_out_ecount(1) IDirect3DSurface9 **ppTempSurface
+    __deref_out_ecount(1) D3DSurface **ppTempSurface
     )
 {
     Assert(ppTempSurface);
 
     HRESULT hr = S_OK;
-    IDirect3DTexture9 *pTexture = NULL;
-    IDirect3DSurface9 *pSurface = NULL;
+    D3DTexture *pTexture = NULL;
+    D3DSurface *pSurface = NULL;
 
     if (m_pTempSurface == NULL
         || !m_pTempSurface->IsValid()
@@ -494,8 +494,8 @@ CD3DGlyphBank::CreateTank(UINT uHeight, BOOL fPersistent)
     Assert(uHeight <= m_uMaxTankHeight);
     AssertMsg(!(uHeight & (uHeight-1)), "CreateTank: height is not a power of two");
 
-    IDirect3DSurface9 *pSurface = NULL;
-    IDirect3DTexture9 *pTexture = NULL;
+    D3DSurface *pSurface = NULL;
+    D3DTexture *pTexture = NULL;
     CD3DGlyphTank* pTank = 0;
 
     D3DSURFACE_DESC sd;
@@ -590,7 +590,7 @@ CD3DGlyphBank::ReleaseStubs()
 // The overall approach assumes that tanks are never reused.
 //  The tank is filled sequentially, run by run and stripe by stripe, in the
 //  same sequence as rendering happens. This is made on purpose, in order to
-//  reduce amount of IDirect3DDevice9::SetTexture() calls that are costly
+//  reduce amount of D3DDeviceContext::SetTexture() calls that are costly
 //  (AshrafM's investigation says 100 switshing per frame are acceptable and
 //  1000 too much). Even if some glyphruns in the tank are released, there are
 //  no attempts to reuse freed space.
@@ -641,8 +641,8 @@ CD3DGlyphBank::ReleaseLazyTanks()
 //
 //------------------------------------------------------------------------------
 CD3DGlyphTank::CD3DGlyphTank(
-    __in_ecount(1) IDirect3DTexture9* pTexture,
-    __in_ecount(1) IDirect3DSurface9* pSurface,
+    __in_ecount(1) D3DTexture* pTexture,
+    __in_ecount(1) D3DSurface* pSurface,
     UINT widTank,
     UINT heiTank,
     __in_ecount(1) IMILPoolManager *pManager
@@ -874,8 +874,8 @@ void CD3DGlyphTank::ReleaseD3DResources()
     Assert(IsValid() == m_fResourceValid);
 
     // This context is protected so it is safe to release the D3D resources
-    ReleaseInterface((*const_cast<IDirect3DSurface9 **>(&m_pSurface)));
-    ReleaseInterface((*const_cast<IDirect3DTexture9 **>(&m_pTexture)));
+    ReleaseInterface((*const_cast<D3DSurface **>(&m_pSurface)));
+    ReleaseInterface((*const_cast<D3DTexture **>(&m_pTexture)));
 
     return;
 }
@@ -891,7 +891,7 @@ void CD3DGlyphTank::ReleaseD3DResources()
 //
 //------------------------------------------------------------------------------
 CD3DGlyphBankTemporarySurface::CD3DGlyphBankTemporarySurface(
-    __in_ecount(1) IDirect3DSurface9* pSurface,
+    __in_ecount(1) D3DSurface* pSurface,
     UINT uWidth,
     UINT uHeight,
     __in_ecount(1) IMILPoolManager *pManager
@@ -931,7 +931,7 @@ CD3DGlyphBankTemporarySurface::~CD3DGlyphBankTemporarySurface()
 //------------------------------------------------------------------------------
 void CD3DGlyphBankTemporarySurface::ReleaseD3DResources()
 {
-    ReleaseInterface((*const_cast<IDirect3DSurface9 **>(&m_pSurface)));
+    ReleaseInterface((*const_cast<D3DSurface **>(&m_pSurface)));
 }
 
 

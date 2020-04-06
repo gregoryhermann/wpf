@@ -37,7 +37,7 @@
 
 HRESULT
 CacheHwTextureOnBitmap(
-    __inout_ecount(1) IDirect3DTexture9 *pTexture,
+    __inout_ecount(1) D3DTexture *pTexture,
     __inout_ecount(1) IWGXBitmap *pBitmap,
     __inout_ecount(1) CD3DDeviceLevel1 *pDevice
     )
@@ -133,7 +133,7 @@ Cleanup:
 //
 //             Copied from CD3DSurface::ReadIntoSysMemBuffer because 
 //             pSourceSurface is not from one of our devices. The original 
-//             could have been refactored to work on IDirect3DDevice9, but then 
+//             could have been refactored to work on D3DDeviceContext, but then 
 //             we would have lost CD3DDeviceLevel1 specific functionality 
 //             (entry check, vid mem management...)
 //
@@ -148,7 +148,7 @@ Cleanup:
 
 HRESULT
 ReadRenderTargetIntoSysMemBuffer(
-    __in IDirect3DSurface9 *pSourceSurface,
+    __in D3DSurface *pSourceSurface,
     __in const CMilRectU &rcCopy,
     MilPixelFormat::Enum fmtOut,
     UINT uStrideOut,
@@ -164,12 +164,12 @@ ReadRenderTargetIntoSysMemBuffer(
     const UINT uCopyHeight = rcCopy.Height();
     const RECT rcDest = { 0, 0, uCopyWidth, uCopyHeight };
 
-    IDirect3DDevice9 *pIDevice = NULL;
-    IDirect3DDevice9Ex *pIDeviceEx = NULL;
+    D3DDeviceContext *pIDevice = NULL;
+    D3DDeviceContextEx *pIDeviceEx = NULL;
 
-    IDirect3DTexture9 *pD3DLockableTexture = NULL;
-    IDirect3DSurface9 *pD3DLockableSurface = NULL;
-    IDirect3DSurface9 *pD3DVidMemCopySurface = NULL;
+    D3DTexture *pD3DLockableTexture = NULL;
+    D3DSurface *pD3DLockableSurface = NULL;
+    D3DSurface *pD3DVidMemCopySurface = NULL;
 
     if (   rcCopy.left > SURFACE_RECT_MAX 
         || rcCopy.right > SURFACE_RECT_MAX 
@@ -208,7 +208,7 @@ ReadRenderTargetIntoSysMemBuffer(
 
     IFC(pSourceSurface->GetDevice(&pIDevice));
     IGNORE_HR(pIDevice->QueryInterface(
-        __uuidof(IDirect3DDevice9Ex),
+        __uuidof(D3DDeviceContextEx),
         reinterpret_cast<void **>(&pIDeviceEx)
         ));
 

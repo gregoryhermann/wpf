@@ -240,7 +240,7 @@ CD3DSwapChain::Init(
 
     for (UINT i = 0; i < m_cBackBuffers; i++)
     {
-        IDirect3DSurface9 *pD3DBackBuffer = NULL;
+        D3DSurface *pD3DBackBuffer = NULL;
 
         IFC(m_pD3DSwapChain->GetBackBuffer(i,  D3DBACKBUFFER_TYPE_MONO, &pD3DBackBuffer));
 

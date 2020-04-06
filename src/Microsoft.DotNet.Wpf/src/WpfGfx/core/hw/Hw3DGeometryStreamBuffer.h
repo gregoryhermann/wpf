@@ -114,7 +114,7 @@ private:
 //
 //  Synopsis:
 //      This class expands on the capabilities of the CHwD3DBufferSpaceLocator
-//      class by hanging onto a IDirect3DVertexBuffer9 object and it's
+//      class by hanging onto a D3DVertexBuffer object and it's
 //      locking/unlocking.
 //
 //------------------------------------------------------------------------------
@@ -147,7 +147,7 @@ public:
         UINT cVerticesUsed
         );
 
-    __out_ecount(1) IDirect3DVertexBuffer9 *GetD3DBuffer() const
+    __out_ecount(1) D3DVertexBuffer *GetD3DBuffer() const
         { return m_pVertexBuffer; }
 
 private:
@@ -174,7 +174,7 @@ private:
     void ReleaseD3DResources();
 
 private:
-    IDirect3DVertexBuffer9 *m_pVertexBuffer;    
+    D3DVertexBuffer *m_pVertexBuffer;    
     bool m_fLocked;
 };
 
@@ -185,7 +185,7 @@ private:
 //
 //  Synopsis:
 //      This class expands on the capabilities of the CHwD3DBufferSpaceLocator
-//      class by hanging onto a IDirect3DIndexBuffer9 object and it's
+//      class by hanging onto a D3DIndexBuffer object and it's
 //      locking/unlocking.
 //
 //------------------------------------------------------------------------------
@@ -222,7 +222,7 @@ public:
 
     HRESULT Unlock();
 
-    __out_ecount(1) IDirect3DIndexBuffer9 *GetD3DBuffer() const
+    __out_ecount(1) D3DIndexBuffer *GetD3DBuffer() const
         { return m_pIndexBuffer; }
 
 private:
@@ -249,7 +249,7 @@ private:
     void ReleaseD3DResources();
 
 private:
-    IDirect3DIndexBuffer9 *m_pIndexBuffer;    
+    D3DIndexBuffer *m_pIndexBuffer;    
     bool m_fLocked;
 };
 

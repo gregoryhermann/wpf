@@ -30,9 +30,9 @@ template class CStateTable<IDirect3DBaseTexture9 *>;
 template class CStateTable<IDirect3DVertexShader9 *>;
 template class CStateTable<IDirect3DPixelShader9 *>;
 
-template class CStateTable<IDirect3DIndexBuffer9 *>;
-template class CStateTable<IDirect3DVertexBuffer9 *>;
-template class CStateTable<IDirect3DSurface9 *>;
+template class CStateTable<D3DIndexBuffer *>;
+template class CStateTable<D3DVertexBuffer *>;
+template class CStateTable<D3DSurface *>;
 
 
 

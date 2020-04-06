@@ -177,7 +177,7 @@ private:
     CDisplaySet const *m_pDisplaySet;
     CDisplaySet const *m_pNextDisplaySet;
 
-    IDirect3DDevice9 *m_pNullRefDevice;
+    D3DDeviceContext *m_pNullRefDevice;
 
     CD3DDeviceLevel1 *m_pSWDevice;
 

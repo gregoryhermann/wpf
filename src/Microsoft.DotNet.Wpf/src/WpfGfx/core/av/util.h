@@ -55,7 +55,7 @@ CopyHeapString(
 void
 GetUnderlyingDevice(
     __in        CD3DDeviceLevel1    *pCD3DDeviceLevel1,
-    __deref_out IDirect3DDevice9    **ppIDirect3DDevice9
+    __deref_out D3DDeviceContext    **ppD3DDeviceContext
     );
 
 class CMFMediaBuffer;

@@ -716,7 +716,7 @@ CD3DRenderState::ResetState()
 HRESULT
 CD3DRenderState::Init(
     __in_ecount(1) CD3DDeviceLevel1 *pDevice,
-    __inout_ecount(1) IDirect3DDevice9 *pD3DDevice
+    __inout_ecount(1) D3DDeviceContext *pD3DDevice
     )
 {
     HRESULT hr = S_OK;
@@ -836,7 +836,7 @@ CD3DRenderState::SetDepthStencilSurfaceInternal(
     )
 {
     HRESULT hr = S_OK;
-    IDirect3DSurface9 *pD3DSurfaceNoRef = NULL;
+    D3DSurface *pD3DSurfaceNoRef = NULL;
     UINT uWidth = 0;
     UINT uHeight = 0;
     
@@ -881,7 +881,7 @@ CD3DRenderState::ReleaseUseOfDepthStencilSurfaceInternal(
 {
     HRESULT hr = S_OK;
 
-    IDirect3DSurface9 *pD3DSurfaceNoRef =
+    D3DSurface *pD3DSurfaceNoRef =
         pDepthStencilBuffer->GetD3DSurfaceNoAddRef();
 
     if (pD3DSurfaceNoRef)

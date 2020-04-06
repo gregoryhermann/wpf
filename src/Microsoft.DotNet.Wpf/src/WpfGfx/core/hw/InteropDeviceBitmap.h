@@ -79,15 +79,15 @@ protected:
         MilPixelFormat::Enum fmtPixel,
         FrontBufferUpdateMethod oUpdateMethod,
         UINT uAdapter,
-        __in IDirect3DSurface9 *pUserSurface
+        __in D3DSurface *pUserSurface
         );
 
 private:
     
     static FrontBufferUpdateMethod GetUpdateMethod(
-        __in IDirect3DDevice9 *pID3DDevice,
-        __in_opt const IDirect3DDevice9Ex *pID3DDeviceEx,
-        __in IDirect3DSurface9 *pID3DSurface
+        __in D3DDeviceContext *pID3DDevice,
+        __in_opt const D3DDeviceContextEx *pID3DDeviceEx,
+        __in D3DSurface *pID3DSurface
         );
     
     HRESULT UpdateFrontBuffer();
@@ -106,7 +106,7 @@ private:
     mutable CCriticalSection m_cs;
     
     // Will be NULL after Detach() or NotifyAdapterStatus(m_uAdapter, false)
-    IDirect3DSurface9 *m_pIUserSurface;
+    D3DSurface *m_pIUserSurface;
 
     FrontBufferAvailableCallbackPtr m_pfnAvailable;
     UINT m_uVersion;

@@ -85,7 +85,7 @@ CMFMediaBuffer::~CMFMediaBuffer()
 HRESULT
 CMFMediaBuffer::
 Init(
-    __in    IDirect3DSurface9       *pIDecodeSurface
+    __in    D3DSurface       *pIDecodeSurface
     )
 {
     HRESULT hr = S_OK;

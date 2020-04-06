@@ -100,7 +100,7 @@ public:
     virtual HRESULT UpdateSurface(
         __in UINT cDirtyRects,
         __in_ecount(cDirtyRects) const CMilRectU *prgDirtyRects,
-        __in_ecount(1) IDirect3DSurface9 *pISrcSurface
+        __in_ecount(1) D3DSurface *pISrcSurface
         );
     
     virtual __out_opt CD3DSurface *GetValidTransferSurfaceNoRef();
@@ -144,21 +144,21 @@ protected:
 
 private:
     HRESULT Flush(
-        __in_ecount(1) IDirect3DDevice9 *pID3DDevice,
-        __in_ecount(1) IDirect3DSurface9 *pID3DSurface,
+        __in_ecount(1) D3DDeviceContext *pID3DDevice,
+        __in_ecount(1) D3DSurface *pID3DSurface,
         __in_ecount(1) const D3DSURFACE_DESC &desc
         );
 
     HRESULT UpdateSurfaceSharedHandle(
         UINT cDirtyRects,
         __in_ecount(cDirtyRects) const CMilRectU *prgDirtyRects,
-        __in_ecount(1) IDirect3DSurface9 *pISrcSurface
+        __in_ecount(1) D3DSurface *pISrcSurface
         );
 
     HRESULT UpdateSurfaceSoftware(
         UINT cDirtyRects,
         __in_ecount(cDirtyRects) const CMilRectU *prgDirtyRects,
-        __in_ecount(1) IDirect3DSurface9 *pISrcSurface
+        __in_ecount(1) D3DSurface *pISrcSurface
         );
 
     static HRESULT CreateInternal(

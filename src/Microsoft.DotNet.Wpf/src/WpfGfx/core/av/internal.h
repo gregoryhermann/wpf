@@ -26,9 +26,9 @@ class CMilSlaveVideo;
 
 interface IMediaDeviceConsumer
 {
-    STDMETHOD_(void, SetIDirect3DDevice9)(
+    STDMETHOD_(void, SetD3DDeviceContext)(
         THIS_
-        IN IDirect3DDevice9 *pIDirect3DDevice9
+        IN D3DDeviceContext *pD3DDeviceContext
         ) PURE;
 };
 

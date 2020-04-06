@@ -636,7 +636,7 @@ CHwDisplayRenderTarget::ShowSteppedRendering(
 
     rcPresentSource = rcPresentDest;
 
-    IDirect3DSurface9 *pID3DLockableSurface = NULL;
+    D3DSurface *pID3DLockableSurface = NULL;
     CD3DSurface *pD3DSurface = NULL;
     RECT rcCopySrc;
     bool fShrink = false;
@@ -857,7 +857,7 @@ CHwDisplayRenderTarget::ShowSteppedRendering(
             // Create a lockable copy
             //
 
-            IDirect3DDevice9 *pID3DDevice = NULL;
+            D3DDeviceContext *pID3DDevice = NULL;
 
             MIL_THRX(hrLocking, pD3DSurface->ID3DSurface()->GetDevice(&pID3DDevice));
 

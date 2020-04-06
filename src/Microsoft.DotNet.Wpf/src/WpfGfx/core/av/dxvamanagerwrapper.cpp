@@ -32,7 +32,7 @@ CDXVAManagerWrapper::
 CDXVAManagerWrapper(
     UINT uiID
     ) : m_uiID(uiID),
-        m_pIDirect3DDevice9(NULL),
+        m_pD3DDeviceContext(NULL),
         m_pDXVAManager(NULL)
 {
     TRACEF(NULL);
@@ -135,7 +135,7 @@ Cleanup:
 
 STDMETHODIMP
 CDXVAManagerWrapper::ResetDevice(
-    /* [in] */ IDirect3DDevice9 *pDevice,
+    /* [in] */ D3DDeviceContext *pDevice,
     /* [in] */ UINT resetToken)
 {
     HRESULT hr = S_OK;
@@ -150,20 +150,20 @@ CDXVAManagerWrapper::ResetDevice(
 
     CGuard<CCriticalSection> guard(m_csEntry);
 
-    if (m_pIDirect3DDevice9 == NULL && pDevice != NULL)
+    if (m_pD3DDeviceContext == NULL && pDevice != NULL)
     {
         CD3DLoader::GetLoadRef();
-        SetInterface(m_pIDirect3DDevice9, pDevice);
+        SetInterface(m_pD3DDeviceContext, pDevice);
     }
-    else if (m_pIDirect3DDevice9 != NULL && pDevice == NULL)
+    else if (m_pD3DDeviceContext != NULL && pDevice == NULL)
     {
-        ReleaseInterface(m_pIDirect3DDevice9);
+        ReleaseInterface(m_pD3DDeviceContext);
         CD3DLoader::ReleaseLoadRef();
     }
     else
     {
         // D3D load ref remains unchanged.
-        ReplaceInterface(m_pIDirect3DDevice9, pDevice);
+        ReplaceInterface(m_pD3DDeviceContext, pDevice);
     }
 
     if (pDevice)
@@ -214,7 +214,7 @@ Cleanup:
 STDMETHODIMP
 CDXVAManagerWrapper::LockDevice(
     /* [in] */ HANDLE hDevice,
-    /* [out] */ IDirect3DDevice9 **ppDevice,
+    /* [out] */ D3DDeviceContext **ppDevice,
     /* [in] */ BOOL fBlock)
 {
     HRESULT hr = S_OK;

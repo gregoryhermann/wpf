@@ -1354,7 +1354,7 @@ NewMixerDevice(
 {
     HRESULT                         hr = S_OK;
     DBG_CODE(D3DDEVICE_CREATION_PARAMETERS   dcp);
-    IDirect3DDevice9       *pIMixerDevice = NULL;
+    D3DDeviceContext       *pIMixerDevice = NULL;
 
     TRACEF(&hr);
 

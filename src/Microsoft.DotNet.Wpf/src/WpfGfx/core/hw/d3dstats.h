@@ -63,17 +63,17 @@ public:
     // CD3DDevice::Present notification
     //
 
-    void OnPresent(__inout_ecount(1) IDirect3DDevice9 *pD3DDevice);
+    void OnPresent(__inout_ecount(1) D3DDeviceContext *pD3DDevice);
 
 private:
     //
     // Query helpers
     //
 
-    void QueryStats(__inout_ecount(1) IDirect3DDevice9 *pD3DDevice);
+    void QueryStats(__inout_ecount(1) D3DDeviceContext *pD3DDevice);
     
     HRESULT QueryGetData(
-        __inout_ecount(1) IDirect3DDevice9 *pD3DDevice, 
+        __inout_ecount(1) D3DDeviceContext *pD3DDevice, 
         D3DQUERYTYPE d3dQueryType, 
         __out_bcount(dwDataSize) void* pData, 
         DWORD dwDataSize

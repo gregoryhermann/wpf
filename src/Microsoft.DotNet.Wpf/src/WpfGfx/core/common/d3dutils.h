@@ -92,7 +92,7 @@ void PopulateSurfaceDesc(
     );
 
 HRESULT GetMinimalTextureDesc(
-    __in_ecount(1) IDirect3DDevice9 *pD3DDevice,
+    __in_ecount(1) D3DDeviceContext *pD3DDevice,
     D3DFORMAT AdapterFormat,
     __in_ecount(1) D3DCAPS9 const *pcaps,
     __inout_ecount(1) D3DSURFACE_DESC *pd3dsd,

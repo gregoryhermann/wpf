@@ -136,31 +136,31 @@ Cleanup:
 
 class MediaDeviceConsumer : public IMediaDeviceConsumer
 {
-    IDirect3DDevice9    *m_pIDirect3DDevice9;
+    D3DDeviceContext    *m_pD3DDeviceContext;
 
 public:
 
-    MediaDeviceConsumer() : m_pIDirect3DDevice9(NULL)
+    MediaDeviceConsumer() : m_pD3DDeviceContext(NULL)
     {}
 
     ~MediaDeviceConsumer()
     {
-        ReleaseInterface(m_pIDirect3DDevice9);
+        ReleaseInterface(m_pD3DDeviceContext);
     }
 
-    STDMETHOD_(void, SetIDirect3DDevice9)(
-        __in    IDirect3DDevice9    *pIDirect3DDevice9
+    STDMETHOD_(void, SetD3DDeviceContext)(
+        __in    D3DDeviceContext    *pD3DDeviceContext
         )
     {
-        ReplaceInterface(m_pIDirect3DDevice9, pIDirect3DDevice9);
+        ReplaceInterface(m_pD3DDeviceContext, pD3DDeviceContext);
     }
 
     void
-    GetIDirect3DDevice9(
-        __deref_out     IDirect3DDevice9    **ppIDirect3DDevice9
+    GetD3DDeviceContext(
+        __deref_out     D3DDeviceContext    **ppD3DDeviceContext
         )
     {
-        SetInterface(*ppIDirect3DDevice9, m_pIDirect3DDevice9);
+        SetInterface(*ppD3DDeviceContext, m_pD3DDeviceContext);
     }
 };
 
@@ -168,14 +168,14 @@ public:
 void
 GetUnderlyingDevice(
     __in        CD3DDeviceLevel1    *pCD3DDeviceLevel1,
-    __deref_out IDirect3DDevice9    **ppIDirect3DDevice9
+    __deref_out D3DDeviceContext    **ppD3DDeviceContext
     )
 {
     MediaDeviceConsumer mdc;
 
     pCD3DDeviceLevel1->InitializeIMediaDeviceConsumer(&mdc);
 
-    mdc.GetIDirect3DDevice9(ppIDirect3DDevice9);
+    mdc.GetD3DDeviceContext(ppD3DDeviceContext);
 }
 
 HRESULT

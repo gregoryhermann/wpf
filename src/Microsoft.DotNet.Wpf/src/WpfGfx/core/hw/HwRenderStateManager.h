@@ -135,7 +135,7 @@ class CHwRenderStateManager :
 {
 public:
     static __checkReturn HRESULT Create(
-        __inout_ecount(1) IDirect3DDevice9 *pD3DDevice,
+        __inout_ecount(1) D3DDeviceContext *pD3DDevice,
         DWORD dwMaxBlendStages,
         BOOL fCanHandleBlendFactor,
         BOOL fSupportsScissorRect,
@@ -258,7 +258,7 @@ public:
     }
 
     MIL_FORCEINLINE HRESULT SetDepthStencilSurfaceInline(
-        __in_ecount_opt(1) IDirect3DSurface9 *pNewDepthSurface,
+        __in_ecount_opt(1) D3DSurface *pNewDepthSurface,
         UINT uWidth,
         UINT uHeight
         )
@@ -285,7 +285,7 @@ public:
         ) const;
 
     MIL_FORCEINLINE HRESULT ReleaseUseOfDepthStencilBuffer(
-        __in_ecount(1) IDirect3DSurface9 *pNewDepthSurface
+        __in_ecount(1) D3DSurface *pNewDepthSurface
         )
     {
         if (m_depthStencilSurface.IsStateSet(0,pNewDepthSurface))
@@ -548,7 +548,7 @@ public:
     }
 
     MIL_FORCEINLINE HRESULT SetStreamSource(
-        __in_ecount_opt(1) IDirect3DVertexBuffer9 *pStream,
+        __in_ecount_opt(1) D3DVertexBuffer *pStream,
         UINT uVertexStride
         )
     {
@@ -565,7 +565,7 @@ public:
     }
 
     HRESULT SetIndices(
-        __in_ecount_opt(1) IDirect3DIndexBuffer9 *pStream
+        __in_ecount_opt(1) D3DIndexBuffer *pStream
         )
     {
         if (!m_indexStream.IsStateSet(0, pStream))
@@ -634,7 +634,7 @@ private:
         );
 
     HRESULT ForceSetDepthStencilSurface(
-        __in_ecount_opt(1) IDirect3DSurface9 *pDepthStencilSurface,
+        __in_ecount_opt(1) D3DSurface *pDepthStencilSurface,
         UINT uWidth,
         UINT uHeight
         );
@@ -664,11 +664,11 @@ private:
         );
 
     HRESULT ForceSetIndices(
-        __in_ecount_opt(1) IDirect3DIndexBuffer9 *pStream
+        __in_ecount_opt(1) D3DIndexBuffer *pStream
         );
 
     HRESULT ForceSetStreamSource(
-        __in_ecount_opt(1) IDirect3DVertexBuffer9 *pStream,
+        __in_ecount_opt(1) D3DVertexBuffer *pStream,
         UINT uVertexStride
         );
 
@@ -677,7 +677,7 @@ private:
 #endif
 
     HRESULT Init(
-        __inout_ecount(1) IDirect3DDevice9 *pD3DDevice,
+        __inout_ecount(1) D3DDeviceContext *pD3DDevice,
         DWORD dwMaxBlendStages,
         BOOL fCanHandleBlendFactor,
         BOOL fSupportsScissorRect,
@@ -705,8 +705,8 @@ private:
     //
     // D3D Device our state setting functions will be called on
     //
-    IDirect3DDevice9* m_pID3DDevice;
-    IDirect3DDevice9Ex* m_pID3DDeviceEx;
+    D3DDeviceContext* m_pID3DDevice;
+    D3DDeviceContextEx* m_pID3DDeviceEx;
 
     //
     // RenderStates
@@ -754,7 +754,7 @@ private:
     //
     CStateTable<IDirect3DBaseTexture9 *> m_textures;
 
-    CStateTable<IDirect3DSurface9 *> m_depthStencilSurface;
+    CStateTable<D3DSurface *> m_depthStencilSurface;
 
     UINT m_uDepthStencilSurfaceWidth;
     UINT m_uDepthStencilSurfaceHeight;
@@ -764,10 +764,10 @@ private:
     //
     // Streams
     //
-    CStateTable<IDirect3DIndexBuffer9 *> m_indexStream;
+    CStateTable<D3DIndexBuffer *> m_indexStream;
 
     CStateTable<UINT> m_streamSourceVertexStride;
-    CStateTable<IDirect3DVertexBuffer9 *> m_streamSourceVertexBuffer;
+    CStateTable<D3DVertexBuffer *> m_streamSourceVertexBuffer;
 
     //
     // Scissor rect

@@ -23,7 +23,7 @@ private:
 public:
     static HRESULT Create(
         __inout_ecount(1) CD3DResourceManager *pResourceManager,
-        __inout_ecount(1) IDirect3DSurface9 *pD3DSurface,
+        __inout_ecount(1) D3DSurface *pD3DSurface,
         __deref_out_ecount(1) CD3DSurface **ppSurface
         );
 
@@ -49,12 +49,12 @@ public:
     }
 
 
-    __out_ecount_opt(1) IDirect3DSurface9 * GetD3DSurfaceNoAddRef() const
+    __out_ecount_opt(1) D3DSurface * GetD3DSurfaceNoAddRef() const
     {
         return m_pD3DSurface;
     }
 
-    __out_ecount(1) IDirect3DSurface9 * ID3DSurface() const
+    __out_ecount(1) D3DSurface * ID3DSurface() const
     {
         Assert(m_pD3DSurface);
         return m_pD3DSurface;
@@ -87,7 +87,7 @@ public:
         );
 
 protected:
-    CD3DSurface(__inout_ecount(1) IDirect3DSurface9 * pD3DSurface);
+    CD3DSurface(__inout_ecount(1) D3DSurface * pD3DSurface);
     ~CD3DSurface();
 
     HRESULT Init(
@@ -114,7 +114,7 @@ protected:
     // Pointer to the actual D3D resource.
     //  The pointer is constant to help enforce the modification restrictions
     //  of CD3DResource objects.
-    IDirect3DSurface9 * const m_pD3DSurface;
+    D3DSurface * const m_pD3DSurface;
 
     D3DSURFACE_DESC m_d3dsd;
 };

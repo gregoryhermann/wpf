@@ -29,7 +29,7 @@ MtDefine(D3DResource_TextureSurface, MILHwMetrics, "Approximate surface sizes");
 HRESULT 
 CD3DTextureSurface::Create(
     __inout_ecount(1) CD3DResourceManager *pResourceManager,
-    __inout_ecount(1) IDirect3DSurface9 *pID3DSurface,
+    __inout_ecount(1) D3DSurface *pID3DSurface,
     __deref_out_ecount(1) CD3DSurface **ppSurface
     )
 {
@@ -70,7 +70,7 @@ Cleanup:
 //
 //-------------------------------------------------------------------------
 CD3DTextureSurface::CD3DTextureSurface(
-    __inout_ecount(1) IDirect3DSurface9 * const pD3DSurface
+    __inout_ecount(1) D3DSurface * const pD3DSurface
     )
     : CD3DSurface(pD3DSurface)
 {
@@ -127,7 +127,7 @@ CD3DTextureSurface::ReleaseD3DResources()
     Assert(IsValid() == m_fResourceValid);
 
     // This context is protected so it is safe to release the D3D resource
-    ReleaseInterface((*const_cast<IDirect3DSurface9 **>(&m_pD3DSurface)));
+    ReleaseInterface((*const_cast<D3DSurface **>(&m_pD3DSurface)));
 
     return;
 }

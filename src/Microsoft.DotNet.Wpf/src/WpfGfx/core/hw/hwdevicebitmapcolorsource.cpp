@@ -588,7 +588,7 @@ HRESULT
 CHwDeviceBitmapColorSource::UpdateSurface(
     __in UINT cDirtyRects,
     __in_ecount(cDirtyRects) const CMilRectU *prgDirtyRects,
-    __in_ecount(1) IDirect3DSurface9 *pISrcSurface
+    __in_ecount(1) D3DSurface *pISrcSurface
     )
 {
     HRESULT hr = S_OK;
@@ -623,8 +623,8 @@ Cleanup:
 //------------------------------------------------------------------------------
 HRESULT
 CHwDeviceBitmapColorSource::Flush(
-    __in_ecount(1) IDirect3DDevice9 *pID3DDevice,
-    __in_ecount(1) IDirect3DSurface9 *pID3DSurface,
+    __in_ecount(1) D3DDeviceContext *pID3DDevice,
+    __in_ecount(1) D3DSurface *pID3DSurface,
     __in_ecount(1) const D3DSURFACE_DESC &desc
     )
 {
@@ -637,7 +637,7 @@ CHwDeviceBitmapColorSource::Flush(
     const RECT rcCopy = { 0, 0, uFlushWidth, uFlushHeight };
     const RECT rcFlush = { 0, 0, 1, 1 };
 
-    IDirect3DSurface9 *pIFlushSurface = NULL;
+    D3DSurface *pIFlushSurface = NULL;
     
     IFC(pID3DDevice->CreateRenderTarget(
         uFlushWidth,
@@ -692,16 +692,16 @@ HRESULT
 CHwDeviceBitmapColorSource::UpdateSurfaceSharedHandle(
     UINT cDirtyRects,
     __in_ecount(cDirtyRects) const CMilRectU *prgDirtyRects,
-    __in_ecount(1) IDirect3DSurface9 *pISrcSurface
+    __in_ecount(1) D3DSurface *pISrcSurface
     )
 {
     HRESULT hr = S_OK;
 
     Assert(m_hSharedHandle);
     
-    IDirect3DDevice9 *pID3DSrcDevice = NULL;
-    IDirect3DTexture9 *pIDestTexture = NULL;
-    IDirect3DSurface9 *pIDestSurface = NULL;
+    D3DDeviceContext *pID3DSrcDevice = NULL;
+    D3DTexture *pIDestTexture = NULL;
+    D3DSurface *pIDestSurface = NULL;
     
     IFC(pISrcSurface->GetDevice(&pID3DSrcDevice));
 
@@ -764,7 +764,7 @@ HRESULT
 CHwDeviceBitmapColorSource::UpdateSurfaceSoftware(
     UINT cDirtyRects,
     __in_ecount(cDirtyRects) const CMilRectU *prgDirtyRects,
-    __in_ecount(1) IDirect3DSurface9 *pISrcSurface
+    __in_ecount(1) D3DSurface *pISrcSurface
     )
 {
     HRESULT hr = S_OK;

@@ -23,7 +23,7 @@
 //-----------------------------------------------------------------------------
 HRESULT
 CFakeDevice::Create(
-    __deref_out_ecount(1) IDirect3DDevice9 **ppDevice
+    __deref_out_ecount(1) D3DDeviceContext **ppDevice
     )
 {
     HRESULT hr = S_OK;
@@ -146,8 +146,8 @@ HRESULT CFakeDevice::SetMaximumFrameLatency(unsigned int) STUB
 HRESULT CFakeDevice::WaitForVBlank(unsigned int) STUB
 HRESULT CFakeDevice::SetGPUThreadPriority(unsigned int) STUB
 HRESULT CFakeDevice::GetGPUThreadPriority(unsigned int *) STUB
-HRESULT CFakeDevice::PresentEx(struct tagRECT const *,struct tagRECT const *,struct HWND__ *,struct _RGNDATA const *,unsigned long,struct IDirect3DSurface9 *) STUB
-HRESULT CFakeDevice::ComposeRects(struct IDirect3DSurface9 *,struct IDirect3DSurface9 *,struct IDirect3DVertexBuffer9 *,unsigned int,struct IDirect3DVertexBuffer9 *,enum _D3DCOMPOSERECTSOP,int,int) STUB
+HRESULT CFakeDevice::PresentEx(struct tagRECT const *,struct tagRECT const *,struct HWND__ *,struct _RGNDATA const *,unsigned long,struct D3DSurface *) STUB
+HRESULT CFakeDevice::ComposeRects(struct D3DSurface *,struct D3DSurface *,struct D3DVertexBuffer *,unsigned int,struct D3DVertexBuffer *,enum _D3DCOMPOSERECTSOP,int,int) STUB
 HRESULT CFakeDevice::SetConvolutionMonoKernel(unsigned int,unsigned int,float *,float *) STUB
 HRESULT CFakeDevice::CreateQuery(enum _D3DQUERYTYPE,struct IDirect3DQuery9 * *) STUB
 HRESULT CFakeDevice::DeletePatch(unsigned int) STUB
@@ -161,12 +161,12 @@ HRESULT CFakeDevice::GetPixelShaderConstantF(unsigned int,float *,unsigned int) 
 HRESULT CFakeDevice::SetPixelShaderConstantF(unsigned int,float const *,unsigned int) STUB
 HRESULT CFakeDevice::GetPixelShader(struct IDirect3DPixelShader9 * *) STUB
 HRESULT CFakeDevice::SetPixelShader(struct IDirect3DPixelShader9 *) STUB
-HRESULT CFakeDevice::GetIndices(struct IDirect3DIndexBuffer9 * *) STUB
-HRESULT CFakeDevice::SetIndices(struct IDirect3DIndexBuffer9 *) STUB
+HRESULT CFakeDevice::GetIndices(struct D3DIndexBuffer * *) STUB
+HRESULT CFakeDevice::SetIndices(struct D3DIndexBuffer *) STUB
 HRESULT CFakeDevice::GetStreamSourceFreq(unsigned int,unsigned int *) STUB
 HRESULT CFakeDevice::SetStreamSourceFreq(unsigned int,unsigned int) STUB
-HRESULT CFakeDevice::GetStreamSource(unsigned int,struct IDirect3DVertexBuffer9 * *,unsigned int *,unsigned int *) STUB
-HRESULT CFakeDevice::SetStreamSource(unsigned int,struct IDirect3DVertexBuffer9 *,unsigned int,unsigned int) STUB
+HRESULT CFakeDevice::GetStreamSource(unsigned int,struct D3DVertexBuffer * *,unsigned int *,unsigned int *) STUB
+HRESULT CFakeDevice::SetStreamSource(unsigned int,struct D3DVertexBuffer *,unsigned int,unsigned int) STUB
 HRESULT CFakeDevice::GetVertexShaderConstantB(unsigned int,int *,unsigned int) STUB
 HRESULT CFakeDevice::SetVertexShaderConstantB(unsigned int,int const *,unsigned int) STUB
 HRESULT CFakeDevice::GetVertexShaderConstantI(unsigned int,int *,unsigned int) STUB
@@ -180,7 +180,7 @@ HRESULT CFakeDevice::SetFVF(unsigned long) STUB
 HRESULT CFakeDevice::GetVertexDeclaration(struct IDirect3DVertexDeclaration9 * *) STUB
 HRESULT CFakeDevice::SetVertexDeclaration(struct IDirect3DVertexDeclaration9 *) STUB
 HRESULT CFakeDevice::CreateVertexDeclaration(struct _D3DVERTEXELEMENT9 const *,struct IDirect3DVertexDeclaration9 * *) STUB
-HRESULT CFakeDevice::ProcessVertices(unsigned int,unsigned int,unsigned int,struct IDirect3DVertexBuffer9 *,struct IDirect3DVertexDeclaration9 *,unsigned long) STUB
+HRESULT CFakeDevice::ProcessVertices(unsigned int,unsigned int,unsigned int,struct D3DVertexBuffer *,struct IDirect3DVertexDeclaration9 *,unsigned long) STUB
 HRESULT CFakeDevice::DrawIndexedPrimitiveUP(enum _D3DPRIMITIVETYPE,unsigned int,unsigned int,unsigned int,void const *,enum _D3DFORMAT,void const *,unsigned int) STUB
 HRESULT CFakeDevice::DrawPrimitiveUP(enum _D3DPRIMITIVETYPE,unsigned int,void const *,unsigned int) STUB
 HRESULT CFakeDevice::DrawIndexedPrimitive(enum _D3DPRIMITIVETYPE,int,unsigned int,unsigned int,unsigned int,unsigned int) STUB
@@ -225,29 +225,29 @@ HRESULT CFakeDevice::SetTransform(enum _D3DTRANSFORMSTATETYPE,struct _D3DMATRIX 
 HRESULT CFakeDevice::Clear(unsigned long,struct _D3DRECT const *,unsigned long,unsigned long,float,unsigned long) STUB
 HRESULT CFakeDevice::EndScene(void) STUB
 HRESULT CFakeDevice::BeginScene(void) STUB
-HRESULT CFakeDevice::GetDepthStencilSurface(struct IDirect3DSurface9 * *) STUB
-HRESULT CFakeDevice::SetDepthStencilSurface(struct IDirect3DSurface9 *) STUB
-HRESULT CFakeDevice::GetRenderTarget(unsigned long,struct IDirect3DSurface9 * *) STUB
-HRESULT CFakeDevice::SetRenderTarget(unsigned long,struct IDirect3DSurface9 *) STUB
-HRESULT CFakeDevice::CreateOffscreenPlainSurface(unsigned int,unsigned int,enum _D3DFORMAT,enum _D3DPOOL,struct IDirect3DSurface9 * *,void * *) STUB
-HRESULT CFakeDevice::ColorFill(struct IDirect3DSurface9 *,struct tagRECT const *,unsigned long) STUB
-HRESULT CFakeDevice::StretchRect(struct IDirect3DSurface9 *,struct tagRECT const *,struct IDirect3DSurface9 *,struct tagRECT const *,enum _D3DTEXTUREFILTERTYPE) STUB
-HRESULT CFakeDevice::GetFrontBufferData(unsigned int,struct IDirect3DSurface9 *) STUB
-HRESULT CFakeDevice::GetRenderTargetData(struct IDirect3DSurface9 *,struct IDirect3DSurface9 *) STUB
+HRESULT CFakeDevice::GetDepthStencilSurface(struct D3DSurface * *) STUB
+HRESULT CFakeDevice::SetDepthStencilSurface(struct D3DSurface *) STUB
+HRESULT CFakeDevice::GetRenderTarget(unsigned long,struct D3DSurface * *) STUB
+HRESULT CFakeDevice::SetRenderTarget(unsigned long,struct D3DSurface *) STUB
+HRESULT CFakeDevice::CreateOffscreenPlainSurface(unsigned int,unsigned int,enum _D3DFORMAT,enum _D3DPOOL,struct D3DSurface * *,void * *) STUB
+HRESULT CFakeDevice::ColorFill(struct D3DSurface *,struct tagRECT const *,unsigned long) STUB
+HRESULT CFakeDevice::StretchRect(struct D3DSurface *,struct tagRECT const *,struct D3DSurface *,struct tagRECT const *,enum _D3DTEXTUREFILTERTYPE) STUB
+HRESULT CFakeDevice::GetFrontBufferData(unsigned int,struct D3DSurface *) STUB
+HRESULT CFakeDevice::GetRenderTargetData(struct D3DSurface *,struct D3DSurface *) STUB
 HRESULT CFakeDevice::UpdateTexture(struct IDirect3DBaseTexture9 *,struct IDirect3DBaseTexture9 *) STUB
-HRESULT CFakeDevice::UpdateSurface(struct IDirect3DSurface9 *,struct tagRECT const *,struct IDirect3DSurface9 *,struct tagPOINT const *) STUB
-HRESULT CFakeDevice::CreateDepthStencilSurface(unsigned int,unsigned int,enum _D3DFORMAT,enum _D3DMULTISAMPLE_TYPE,unsigned long,int,struct IDirect3DSurface9 * *,void * *) STUB
-HRESULT CFakeDevice::CreateRenderTarget(unsigned int,unsigned int,enum _D3DFORMAT,enum _D3DMULTISAMPLE_TYPE,unsigned long,int,struct IDirect3DSurface9 * *,void * *) STUB
-HRESULT CFakeDevice::CreateIndexBuffer(unsigned int,unsigned long,enum _D3DFORMAT,enum _D3DPOOL,struct IDirect3DIndexBuffer9 * *,void * *) STUB
-HRESULT CFakeDevice::CreateVertexBuffer(unsigned int,unsigned long,unsigned long,enum _D3DPOOL,struct IDirect3DVertexBuffer9 * *,void * *) STUB
+HRESULT CFakeDevice::UpdateSurface(struct D3DSurface *,struct tagRECT const *,struct D3DSurface *,struct tagPOINT const *) STUB
+HRESULT CFakeDevice::CreateDepthStencilSurface(unsigned int,unsigned int,enum _D3DFORMAT,enum _D3DMULTISAMPLE_TYPE,unsigned long,int,struct D3DSurface * *,void * *) STUB
+HRESULT CFakeDevice::CreateRenderTarget(unsigned int,unsigned int,enum _D3DFORMAT,enum _D3DMULTISAMPLE_TYPE,unsigned long,int,struct D3DSurface * *,void * *) STUB
+HRESULT CFakeDevice::CreateIndexBuffer(unsigned int,unsigned long,enum _D3DFORMAT,enum _D3DPOOL,struct D3DIndexBuffer * *,void * *) STUB
+HRESULT CFakeDevice::CreateVertexBuffer(unsigned int,unsigned long,unsigned long,enum _D3DPOOL,struct D3DVertexBuffer * *,void * *) STUB
 HRESULT CFakeDevice::CreateCubeTexture(unsigned int,unsigned int,unsigned long,enum _D3DFORMAT,enum _D3DPOOL,struct IDirect3DCubeTexture9 * *,void * *) STUB
 HRESULT CFakeDevice::CreateVolumeTexture(unsigned int,unsigned int,unsigned int,unsigned int,unsigned long,enum _D3DFORMAT,enum _D3DPOOL,struct IDirect3DVolumeTexture9 * *,void * *) STUB
-HRESULT CFakeDevice::CreateTexture(unsigned int,unsigned int,unsigned int,unsigned long,enum _D3DFORMAT,enum _D3DPOOL,struct IDirect3DTexture9 * *,void * *) STUB
+HRESULT CFakeDevice::CreateTexture(unsigned int,unsigned int,unsigned int,unsigned long,enum _D3DFORMAT,enum _D3DPOOL,struct D3DTexture * *,void * *) STUB
 void CFakeDevice::GetGammaRamp(unsigned int,struct _D3DGAMMARAMP *) {BREAK;}
 void CFakeDevice::SetGammaRamp(unsigned int,unsigned long,struct _D3DGAMMARAMP const *) {BREAK;}
 HRESULT CFakeDevice::SetDialogBoxMode(int) STUB
 HRESULT CFakeDevice::GetRasterStatus(unsigned int,struct _D3DRASTER_STATUS *) STUB
-HRESULT CFakeDevice::GetBackBuffer(unsigned int,unsigned int,enum _D3DBACKBUFFER_TYPE,struct IDirect3DSurface9 * *) STUB
+HRESULT CFakeDevice::GetBackBuffer(unsigned int,unsigned int,enum _D3DBACKBUFFER_TYPE,struct D3DSurface * *) STUB
 HRESULT CFakeDevice::Present(struct tagRECT const *,struct tagRECT const *,struct HWND__ *,struct _RGNDATA const *) STUB
 HRESULT CFakeDevice::Reset(struct _D3DPRESENT_PARAMETERS_ *) STUB
 unsigned int CFakeDevice::GetNumberOfSwapChains(void) {BREAK; return 0;}
@@ -255,7 +255,7 @@ HRESULT CFakeDevice::GetSwapChain(unsigned int,struct IDirect3DSwapChain9 * *) S
 HRESULT CFakeDevice::CreateAdditionalSwapChain(struct _D3DPRESENT_PARAMETERS_ *,struct IDirect3DSwapChain9 * *) STUB
 int CFakeDevice::ShowCursor(int) {BREAK; return 0;}
 void CFakeDevice::SetCursorPosition(int,int,unsigned long) {BREAK;}
-HRESULT CFakeDevice::SetCursorProperties(unsigned int,unsigned int,struct IDirect3DSurface9 *) STUB
+HRESULT CFakeDevice::SetCursorProperties(unsigned int,unsigned int,struct D3DSurface *) STUB
 HRESULT CFakeDevice::GetCreationParameters(struct _D3DDEVICE_CREATION_PARAMETERS *) STUB
 HRESULT CFakeDevice::GetDisplayMode(unsigned int,struct _D3DDISPLAYMODE *) STUB
 HRESULT CFakeDevice::GetDeviceCaps(struct _D3DCAPS9 *) STUB
@@ -269,8 +269,8 @@ HRESULT CFakeDevice::PresentEx(const RECT *,const RECT *,HWND,const RGNDATA *,DW
 HRESULT CFakeDevice::GetGPUThreadPriority(INT *) STUB
 HRESULT CFakeDevice::SetGPUThreadPriority(INT) STUB
 HRESULT CFakeDevice::CheckDeviceState(HWND) STUB
-HRESULT CFakeDevice::CreateRenderTargetEx(UINT, UINT, D3DFORMAT, D3DMULTISAMPLE_TYPE, DWORD, BOOL, IDirect3DSurface9 **, HANDLE *, DWORD) STUB
-HRESULT CFakeDevice::CreateOffscreenPlainSurfaceEx(UINT, UINT, D3DFORMAT, D3DPOOL, IDirect3DSurface9 **, HANDLE *, DWORD) STUB
-HRESULT CFakeDevice::CreateDepthStencilSurfaceEx(UINT,UINT,D3DFORMAT,D3DMULTISAMPLE_TYPE,DWORD,BOOL,IDirect3DSurface9 **,HANDLE *,DWORD) STUB
+HRESULT CFakeDevice::CreateRenderTargetEx(UINT, UINT, D3DFORMAT, D3DMULTISAMPLE_TYPE, DWORD, BOOL, D3DSurface **, HANDLE *, DWORD) STUB
+HRESULT CFakeDevice::CreateOffscreenPlainSurfaceEx(UINT, UINT, D3DFORMAT, D3DPOOL, D3DSurface **, HANDLE *, DWORD) STUB
+HRESULT CFakeDevice::CreateDepthStencilSurfaceEx(UINT,UINT,D3DFORMAT,D3DMULTISAMPLE_TYPE,DWORD,BOOL,D3DSurface **,HANDLE *,DWORD) STUB
 
 

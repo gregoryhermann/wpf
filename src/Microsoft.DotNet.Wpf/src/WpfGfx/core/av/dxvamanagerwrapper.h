@@ -14,7 +14,7 @@
 //
 //  $Description:
 //      Header for the CDXVAManagerWrapper class, which wraps an instance of the
-//      IDirect3DSurface9 interface. This wrapper was written for the purpose of
+//      D3DSurface interface. This wrapper was written for the purpose of
 //      logging D3D calls, but it may also be used to restrict and/or redirect
 //      D3D calls.
 //
@@ -47,7 +47,7 @@ public:
     //
 
     STDMETHOD(ResetDevice)(
-        /* [in] */ IDirect3DDevice9 *pDevice,
+        /* [in] */ D3DDeviceContext *pDevice,
         /* [in] */ UINT Reason);
 
     STDMETHOD(OpenDeviceHandle)(
@@ -61,7 +61,7 @@ public:
 
     STDMETHOD(LockDevice)(
         /* [in] */ HANDLE hDevice,
-        /* [out] */ IDirect3DDevice9 **ppDevice,
+        /* [out] */ D3DDeviceContext **ppDevice,
         /* [in] */ BOOL fBlock);
 
     STDMETHOD(UnlockDevice)(
@@ -87,7 +87,7 @@ protected:
 private:
 
     UINT m_uiID;
-    IDirect3DDevice9 *m_pIDirect3DDevice9;
+    D3DDeviceContext *m_pD3DDeviceContext;
     IDirect3DDeviceManager9 *m_pDXVAManager;
     CCriticalSection m_csEntry;
 };

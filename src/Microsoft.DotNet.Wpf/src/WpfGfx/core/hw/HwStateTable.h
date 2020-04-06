@@ -529,8 +529,8 @@ CStateTable<IDirect3DPixelShader9 *>::CEntry::GetValue(
 
 template<>
 MIL_FORCEINLINE void
-CStateTable<IDirect3DIndexBuffer9 *>::CEntry::GetValue(
-    __out_ecount(1) IDirect3DIndexBuffer9 *&oOutValue
+CStateTable<D3DIndexBuffer *>::CEntry::GetValue(
+    __out_ecount(1) D3DIndexBuffer *&oOutValue
     ) const
 {
     oOutValue = m_oValue;
@@ -543,8 +543,8 @@ CStateTable<IDirect3DIndexBuffer9 *>::CEntry::GetValue(
 
 template<>
 MIL_FORCEINLINE void
-CStateTable<IDirect3DVertexBuffer9 *>::CEntry::GetValue(
-    __out_ecount(1) IDirect3DVertexBuffer9 *&oOutValue
+CStateTable<D3DVertexBuffer *>::CEntry::GetValue(
+    __out_ecount(1) D3DVertexBuffer *&oOutValue
     ) const
 {
     oOutValue = m_oValue;
@@ -557,8 +557,8 @@ CStateTable<IDirect3DVertexBuffer9 *>::CEntry::GetValue(
 
 template<>
 MIL_FORCEINLINE void
-CStateTable<IDirect3DSurface9 *>::CEntry::GetValue(
-    __out_ecount(1) IDirect3DSurface9 *&oOutValue
+CStateTable<D3DSurface *>::CEntry::GetValue(
+    __out_ecount(1) D3DSurface *&oOutValue
     ) const
 {
     oOutValue = m_oValue;

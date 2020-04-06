@@ -120,10 +120,10 @@ namespace dxlayer
         static std::string get_pixel_shader_profile_name(ID3DDevice* pD3DDevice);
 
         // Specialization of get_pixel_shader_profile_name with 
-        // ID3DDevice = IDirect3DDevice9
+        // ID3DDevice = D3DDeviceContext
         template<>
-        inline static std::string get_pixel_shader_profile_name<IDirect3DDevice9>(
-            IDirect3DDevice9* pD3DDevice)
+        inline static std::string get_pixel_shader_profile_name<D3DDeviceContext>(
+            D3DDeviceContext* pD3DDevice)
         {
             // We will query D3DCAPS9 to identify the best supported
             // profile name. If that query fails, then the following 
@@ -193,10 +193,10 @@ namespace dxlayer
         static std::string get_vertex_shader_profile_name(ID3DDevice* pD3DDevice);
 
         // Specialization of get_vertex_shader_profile_name with 
-        // ID3DDevice = IDirect3DDevice9
+        // ID3DDevice = D3DDeviceContext
         template<>
-        static std::string get_vertex_shader_profile_name<IDirect3DDevice9>(
-            IDirect3DDevice9* pD3DDevice)
+        static std::string get_vertex_shader_profile_name<D3DDeviceContext>(
+            D3DDeviceContext* pD3DDevice)
         {
             // We will query D3DCAPS9 to identify the best supported
             // profile name. If that query fails, then the following 

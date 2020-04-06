@@ -266,7 +266,7 @@ HRESULT CD3DDeviceManager::GetSWDevice(
 
     CGuard<CCriticalSection> oGuard(m_csManagement);
 
-    IDirect3DDevice9 *pIDirect3DDevice = NULL;
+    D3DDeviceContext *pIDirect3DDevice = NULL;
     CD3DDeviceLevel1 *pDeviceLevel1 = NULL;
     
     if (m_pID3D == NULL)
@@ -1535,8 +1535,8 @@ CD3DDeviceManager::CreateNewDevice(
 
     D3DPRESENT_PARAMETERS *rgPresentParams;
 
-    IDirect3DDevice9 *pID3DDevice = NULL;
-    IDirect3DDevice9Ex *pID3DDeviceEx = NULL;
+    D3DDeviceContext *pID3DDevice = NULL;
+    D3DDeviceContextEx *pID3DDeviceEx = NULL;
 
     IDirect3D9Ex* pID3DEx = NULL;
     IGNORE_HR(m_pID3D->QueryInterface(IID_IDirect3D9Ex, (void**)&pID3DEx));

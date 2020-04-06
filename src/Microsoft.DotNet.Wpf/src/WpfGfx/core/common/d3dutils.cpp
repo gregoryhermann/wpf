@@ -72,7 +72,7 @@ DeclareTagEx(tagTextureFixup, "MIL_HW", "Texture Create Description Fixup", FALS
 
 HRESULT
 GetMinimalTextureDesc(
-    __in_ecount(1) IDirect3DDevice9 *pD3DDevice,    // The D3D device to check
+    __in_ecount(1) D3DDeviceContext *pD3DDevice,    // The D3D device to check
                                                     // for the surface
                                                     // description
 

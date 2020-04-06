@@ -79,7 +79,7 @@ protected:
         );
 
     CD3DDeviceLevel1        *m_pMixerDevice;
-    IDirect3DTexture9       *m_pIMixerTexture;
+    D3DTexture       *m_pIMixerTexture;
 
 private:
 
@@ -109,13 +109,13 @@ private:
     // Cross thread members- used by both the media thread and the composition
     // thread.
     //
-    IDirect3DSurface9       *m_pIMixerSurface;
+    D3DSurface       *m_pIMixerSurface;
 
     //
     // Composition thread members- used only by the composition thread.
     //
     CClientMemoryBitmap     *m_pBitmap;
-    IDirect3DSurface9       *m_pIBitmapSurface;
+    D3DSurface       *m_pIBitmapSurface;
     bool                    m_fTextureCachedOnBitmap;
     bool                    m_surfaceLocked;
 };

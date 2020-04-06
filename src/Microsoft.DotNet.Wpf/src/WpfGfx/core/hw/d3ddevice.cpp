@@ -16,7 +16,7 @@
 //      Implementation of CD3DDeviceLevel1
 //
 //      Abstracts the core D3D device to provide the following functionality:
-//         1. Restrict access to methods of IDirect3DDevice9 to those
+//         1. Restrict access to methods of D3DDeviceContext to those
 //            available on level 1 graphics cards. (Level1 is the base support
 //            we require to hw accelerate)
 //         2. Provide correct information for GetDeviceCaps
@@ -181,7 +181,7 @@ DbgIsPixelZoomMode()
 //------------------------------------------------------------------------------
 HRESULT
 CD3DDeviceLevel1::Create(
-    __inout_ecount(1) IDirect3DDevice9 *pID3DDevice,
+    __inout_ecount(1) D3DDeviceContext *pID3DDevice,
     __in_ecount(1) const CDisplay *pPrimaryDisplay,
     __in_ecount(1) IMILPoolManager *pManager,
     DWORD dwBehaviorFlags,
@@ -312,7 +312,7 @@ CD3DDeviceLevel1::CD3DDeviceLevel1(
 //------------------------------------------------------------------------------
 HRESULT
 CD3DDeviceLevel1::Init(
-    __inout_ecount(1) IDirect3DDevice9 *pID3DDevice,
+    __inout_ecount(1) D3DDeviceContext *pID3DDevice,
     __in_ecount(1) const CDisplay *pDisplay
     )
 {
@@ -1785,7 +1785,7 @@ CD3DDeviceLevel1::MarkUnusable(
 //      CD3DDeviceLevel1::GetSwapChain
 //
 //  Synopsis:
-//      delegate to IDirect3DDevice9::GetSwapChain
+//      delegate to D3DDeviceContext::GetSwapChain
 //      Note: we always create a new wrapper object
 //
 //------------------------------------------------------------------------------
@@ -1831,7 +1831,7 @@ Cleanup:
 //      CD3DDeviceLevel1::CreateRenderTarget
 //
 //  Synopsis:
-//      delegate to IDirect3DDevice9::CreateRenderTargetUntracked, then place
+//      delegate to D3DDeviceContext::CreateRenderTargetUntracked, then place
 //      a resource wrapper around it
 //
 //------------------------------------------------------------------------------
@@ -1847,7 +1847,7 @@ CD3DDeviceLevel1::CreateRenderTarget(
     )
 {
     HRESULT hr = S_OK;
-    IDirect3DSurface9 *pID3DSurface = NULL;
+    D3DSurface *pID3DSurface = NULL;
 
     IFC(CreateRenderTargetUntracked(
         uiWidth,
@@ -1873,7 +1873,7 @@ Cleanup:
 //      CD3DDeviceLevel1::CreateRenderTargetUntracked
 //
 //  Synopsis:
-//      Delegate to IDirect3DDevice9::CreateRenderTarget. This method is called
+//      Delegate to D3DDeviceContext::CreateRenderTarget. This method is called
 //      "Untracked" because the surface created is not tracked by our resource
 //      management system. This version of CreateRenderTarget should only be
 //      called if absolutely necessary.
@@ -1887,12 +1887,12 @@ CD3DDeviceLevel1::CreateRenderTargetUntracked(
     D3DMULTISAMPLE_TYPE d3dMultiSampleType,
     DWORD dwMultisampleQuality,
     bool fLockable,
-    __deref_out_ecount(1) IDirect3DSurface9 ** const ppD3DSurface
+    __deref_out_ecount(1) D3DSurface ** const ppD3DSurface
     )
 {
     HRESULT hr = S_OK;
 
-    IDirect3DSurface9 *pID3DSurface = NULL;
+    D3DSurface *pID3DSurface = NULL;
 
     *ppD3DSurface = NULL;
 
@@ -1936,14 +1936,14 @@ Cleanup:
 //      CD3DDeviceLevel1::GetRenderTargetData
 //
 //  Synopsis:
-//      Delegate to IDirect3DDevice9::GetRenderTargetData, Copies data from a
+//      Delegate to D3DDeviceContext::GetRenderTargetData, Copies data from a
 //      render target source surface to a system memory destination surface.
 //
 //------------------------------------------------------------------------------
 HRESULT
 CD3DDeviceLevel1::GetRenderTargetData(
-    __in_ecount(1) IDirect3DSurface9 *pSourceSurface,
-    __in_ecount(1) IDirect3DSurface9 *pDestinationSurface
+    __in_ecount(1) D3DSurface *pSourceSurface,
+    __in_ecount(1) D3DSurface *pDestinationSurface
     )
 {
     HRESULT hr = S_OK;
@@ -1968,7 +1968,7 @@ Cleanup:
 //      CD3DDeviceLevel1::CreateAdditionalSwapChain
 //
 //  Synopsis:
-//      delegate to IDirect3DDevice9::CreateAdditionalSwapChain
+//      delegate to D3DDeviceContext::CreateAdditionalSwapChain
 //
 //------------------------------------------------------------------------------
 HRESULT
@@ -2084,7 +2084,7 @@ Cleanup:
 //      CD3DDeviceLevel1::CreateVertexBuffer
 //
 //  Synopsis:
-//      delegate to IDirect3DDevice9::CreateVertexBuffer
+//      delegate to D3DDeviceContext::CreateVertexBuffer
 //
 //------------------------------------------------------------------------------
 HRESULT
@@ -2093,7 +2093,7 @@ CD3DDeviceLevel1::CreateVertexBuffer(
     DWORD Usage,
     DWORD FVF,
     D3DPOOL Pool,
-    __deref_out_ecount(1) IDirect3DVertexBuffer9 ** const ppVertexBuffer
+    __deref_out_ecount(1) D3DVertexBuffer ** const ppVertexBuffer
     )
 {
     AssertDeviceEntry(*this);
@@ -2130,7 +2130,7 @@ CD3DDeviceLevel1::CreateIndexBuffer(
     DWORD Usage,
     D3DFORMAT Format,
     D3DPOOL Pool,
-    __deref_out_ecount(1) IDirect3DIndexBuffer9 ** const ppIndexBuffer
+    __deref_out_ecount(1) D3DIndexBuffer ** const ppIndexBuffer
     )
 {
     AssertDeviceEntry(*this);
@@ -2167,16 +2167,16 @@ CD3DDeviceLevel1::CreateIndexBuffer(
 //      CD3DDeviceLevel1::ComposeRects
 //
 //  Synopsis:
-//      delegate to IDirect3DDevice9::ComposeRects
+//      delegate to D3DDeviceContext::ComposeRects
 //
 //------------------------------------------------------------------------------
 HRESULT
 CD3DDeviceLevel1::ComposeRects(
-        __in_ecount(1) IDirect3DSurface9* pSource,
-        __inout_ecount(1) IDirect3DSurface9* pDestination,
-        __in_ecount(1) IDirect3DVertexBuffer9* pSrcRectDescriptors,
+        __in_ecount(1) D3DSurface* pSource,
+        __inout_ecount(1) D3DSurface* pDestination,
+        __in_ecount(1) D3DVertexBuffer* pSrcRectDescriptors,
         UINT NumRects,
-        __in_ecount(1) IDirect3DVertexBuffer9* pDstRectDescriptors,
+        __in_ecount(1) D3DVertexBuffer* pDstRectDescriptors,
         D3DCOMPOSERECTSOP Operation
         )
 {
@@ -2209,7 +2209,7 @@ CD3DDeviceLevel1::ComposeRects(
 //      CD3DDeviceLevel1::CreateTexture
 //
 //  Synopsis:
-//      delegate to IDirect3DDevice9::CreateTexture
+//      delegate to D3DDeviceContext::CreateTexture
 //
 //  Notes:
 //      Shared handle support is a D3D9.L only feature.
@@ -2219,7 +2219,7 @@ HRESULT
 CD3DDeviceLevel1::CreateTexture(
     __in_ecount(1) const D3DSURFACE_DESC *pSurfDesc,
     UINT uLevels,
-    __deref_out_ecount(1) IDirect3DTexture9 ** const ppD3DTexture,
+    __deref_out_ecount(1) D3DTexture ** const ppD3DTexture,
     __deref_opt_inout_ecount(1) HANDLE * const pSharedHandle
     )
 {
@@ -2276,7 +2276,7 @@ CD3DDeviceLevel1::CreateTexture(
 //      CD3DDeviceLevel1::CreateStateBlock
 //
 //  Synopsis:
-//      delegate to IDirect3DDevice9::CreateStateBlock
+//      delegate to D3DDeviceContext::CreateStateBlock
 //
 //------------------------------------------------------------------------------
 HRESULT
@@ -2313,7 +2313,7 @@ CD3DDeviceLevel1::CreateStateBlock(
 //      CD3DDeviceLevel1::CreateLockableTexture
 //
 //  Synopsis:
-//      delegate to IDirect3DDevice9::CreateTexture
+//      delegate to D3DDeviceContext::CreateTexture
 //
 //------------------------------------------------------------------------------
 HRESULT
@@ -2325,7 +2325,7 @@ CD3DDeviceLevel1::CreateLockableTexture(
     AssertDeviceEntry(*this);
 
     HRESULT hr = S_OK;
-    IDirect3DTexture9 *pD3DTexture = NULL;
+    D3DTexture *pD3DTexture = NULL;
     UINT uLevels = 1;
 
     Assert((pSurfDesc->Pool == m_ManagedPool) ||
@@ -2384,7 +2384,7 @@ Cleanup:
 //      CD3DDeviceLevel1::CreateSysMemUpdateSurface
 //
 //  Synopsis:
-//         delegate to IDirect3DDevice9::CreateSurface
+//         delegate to D3DDeviceContext::CreateSurface
 //
 //      *** WARNING *** WARNING *** WARNING *** WARNING ***
 //
@@ -2400,11 +2400,11 @@ CD3DDeviceLevel1::CreateSysMemUpdateSurface(
     UINT uHeight,
     D3DFORMAT fmtTexture,
     __in_xcount_opt(uWidth * uHeight * D3DFormatSize(fmtTexture)) void *pvPixels,
-    __deref_out_ecount(1) IDirect3DSurface9 ** const ppD3DSysMemSurface
+    __deref_out_ecount(1) D3DSurface ** const ppD3DSysMemSurface
     )
 {
     HRESULT hr = S_OK;
-    IDirect3DTexture9 *pD3DTexture = NULL;
+    D3DTexture *pD3DTexture = NULL;
 
     *ppD3DSysMemSurface = NULL;
 
@@ -2498,7 +2498,7 @@ Cleanup:
 //      CD3DDeviceLevel1::CreateSysMemReferenceTexture
 //
 //  Synopsis:
-//         delegate to IDirect3DDevice9::CreateTexture
+//         delegate to D3DDeviceContext::CreateTexture
 //
 //      *** WARNING *** WARNING *** WARNING *** WARNING ***
 //
@@ -2514,7 +2514,7 @@ CD3DDeviceLevel1::CreateSysMemReferenceTexture(
         pSurfDesc->Width * pSurfDesc->Height
         * D3DFormatSize(pSurfDesc->Format)
         ) void *pvPixels,
-    __deref_out_ecount(1) IDirect3DTexture9 ** const ppD3DSysMemTexture
+    __deref_out_ecount(1) D3DTexture ** const ppD3DSysMemTexture
     )
 {
     HRESULT hr = S_OK;
@@ -2563,7 +2563,7 @@ CD3DDeviceLevel1::CreateSysMemReferenceTexture(
 //      CD3DDeviceLevel1::UpdateSurface
 //
 //  Synopsis:
-//      delegate to IDirect3DDevice9::UpdateSurface
+//      delegate to D3DDeviceContext::UpdateSurface
 //
 //  Note:
 //      There is no check for this, but the src texture must be in system memory
@@ -2572,9 +2572,9 @@ CD3DDeviceLevel1::CreateSysMemReferenceTexture(
 //------------------------------------------------------------------------------
 HRESULT
 CD3DDeviceLevel1::UpdateSurface(
-    __in_ecount(1) IDirect3DSurface9 *pD3DSysMemSrcSurface,
+    __in_ecount(1) D3DSurface *pD3DSysMemSrcSurface,
     __in_ecount_opt(1) const RECT *pSourceRect,
-    __inout_ecount(1) IDirect3DSurface9 *pD3DPoolDefaultDestSurface,
+    __inout_ecount(1) D3DSurface *pD3DPoolDefaultDestSurface,
     __in_ecount_opt(1) const POINT *pDestPoint
     )
 {
@@ -2599,15 +2599,15 @@ Cleanup:
 //      CD3DDeviceLevel1::UpdateTexture
 //
 //  Synopsis:
-//      delegate to IDirect3DDevice9::UpdateTexture
+//      delegate to D3DDeviceContext::UpdateTexture
 //      Note: There is no check for this, but the src texture
 //      must be in system memory and the dest texture must be in
 //      pool default.
 //
 //------------------------------------------------------------------------------
 HRESULT CD3DDeviceLevel1::UpdateTexture(
-    __in_ecount(1) IDirect3DTexture9 *pD3DSysMemSrcTexture,
-    __inout_ecount(1) IDirect3DTexture9 *pD3DPoolDefaultDestTexture
+    __in_ecount(1) D3DTexture *pD3DSysMemSrcTexture,
+    __inout_ecount(1) D3DTexture *pD3DPoolDefaultDestTexture
     )
 {
     HRESULT hr = S_OK;
@@ -2627,7 +2627,7 @@ Cleanup:
 //      CD3DDeviceLevel1::StretchRect
 //
 //  Synopsis:
-//      delegate to IDirect3DDevice9::StretchRect
+//      delegate to D3DDeviceContext::StretchRect
 //      Note: There are restrictions on which types of surfaces
 //      may be used with this function. See the D3D docs for
 //      specifics.
@@ -2636,7 +2636,7 @@ Cleanup:
 HRESULT CD3DDeviceLevel1::StretchRect(
     __in_ecount(1) CD3DSurface *pSourceSurface,
     __in_ecount_opt(1) const RECT *pSourceRect,
-    __inout_ecount(1) IDirect3DSurface9 *pDestSurface,
+    __inout_ecount(1) D3DSurface *pDestSurface,
     __in_ecount_opt(1) const RECT *pDestRect,
     D3DTEXTUREFILTERTYPE Filter
     )
@@ -2832,7 +2832,7 @@ CD3DDeviceLevel1::SetRenderTarget(
         rcViewport.Height = m_desc.Height;
 
         //
-        // We must call ScissorRectChanged because IDirect3DDevice9::SetRenderTarget
+        // We must call ScissorRectChanged because D3DDeviceContext::SetRenderTarget
         // resets the scissor rect to the viewport.
         //
         if (SupportsScissorRect())
@@ -2932,7 +2932,7 @@ CD3DDeviceLevel1::ReleaseUseOfRenderTarget(
 //      CD3DDeviceLevel1::Clear
 //
 //  Synopsis:
-//      delegate to IDirect3DDevice9::Clear
+//      delegate to D3DDeviceContext::Clear
 //
 //------------------------------------------------------------------------------
 HRESULT
@@ -3041,7 +3041,7 @@ Cleanup:
 //------------------------------------------------------------------------------
 HRESULT
 CD3DDeviceLevel1::ColorFill(
-    __inout_ecount(1) IDirect3DSurface9 *pSurface,
+    __inout_ecount(1) D3DSurface *pSurface,
     __in_ecount_opt(1) const RECT *pRect,
     D3DCOLOR color
     )
@@ -3728,7 +3728,7 @@ Cleanup:
 HRESULT
 CD3DDeviceLevel1::SetD3DTexture(
     DWORD dwTextureStage,
-    __in_ecount_opt(1) IDirect3DTexture9 *pD3DTexture
+    __in_ecount_opt(1) D3DTexture *pD3DTexture
     )
 {
     AssertDeviceEntry(*this);
@@ -3769,7 +3769,7 @@ Cleanup:
 //      CD3DDeviceLevel1::BeginScene
 //
 //  Synopsis:
-//      delegate to IDirect3DDevice9::BeginScene
+//      delegate to D3DDeviceContext::BeginScene
 //
 //------------------------------------------------------------------------------
 HRESULT
@@ -3799,7 +3799,7 @@ Cleanup:
 //      CD3DDeviceLevel1::EndScene
 //
 //  Synopsis:
-//      delegate to IDirect3DDevice9::EndScene
+//      delegate to D3DDeviceContext::EndScene
 //
 //------------------------------------------------------------------------------
 HRESULT
@@ -4776,7 +4776,7 @@ CD3DDeviceLevel1::DbgTraceDeviceCreationFailure(
 //      CD3DDeviceLevel1::CreateDepthBuffer
 //
 //  Synopsis:
-//      delegate to IDirect3DDevice9::CreateDepthStencilBuffer
+//      delegate to D3DDeviceContext::CreateDepthStencilBuffer
 //
 //------------------------------------------------------------------------------
 HRESULT
@@ -4788,7 +4788,7 @@ CD3DDeviceLevel1::CreateDepthBuffer(
     )
 {
     HRESULT hr = S_OK;
-    IDirect3DSurface9* pD3DSurface = NULL;
+    D3DSurface* pD3DSurface = NULL;
 
 
     //   What depth buffer should be used
@@ -4841,7 +4841,7 @@ Cleanup:
 //
 //  Synopsis:
 //      Turns ZEnable on and off and delegates to
-//      IDirect3DDevice9::SetDepthStencilSurface if pSurface is non null
+//      D3DDeviceContext::SetDepthStencilSurface if pSurface is non null
 //
 //------------------------------------------------------------------------------
 HRESULT
@@ -5589,7 +5589,7 @@ CD3DDeviceLevel1::DrawLargePrimitiveUP(
     // Check for supported primitive types and compute max primitives for the 0xffff case
     //
     // (From the d3d docs) MaxPrimitiveCount (is the) Maximum number of primitives for each
-    // IDirect3DDevice9::DrawPrimitive call. There are two cases:
+    // D3DDeviceContext::DrawPrimitive call. There are two cases:
     //
     // - If MaxPrimitiveCount is not equal to 0xffff, you can draw at most MaxPrimitiveCount
     //   primitives with each draw call.
@@ -5709,14 +5709,14 @@ Cleanup:
 //------------------------------------------------------------------------------
 HRESULT
 CD3DDeviceLevel1::CopyD3DTexture(
-    __in_ecount(1) IDirect3DTexture9 *pD3DSourceTexture,
-    __inout_ecount(1) IDirect3DTexture9 *pD3DDestinationTexture
+    __in_ecount(1) D3DTexture *pD3DSourceTexture,
+    __inout_ecount(1) D3DTexture *pD3DDestinationTexture
     )
 {
     HRESULT hr = S_OK;
 
-    IDirect3DSurface9 *pD3DSurfaceSource      = NULL;
-    IDirect3DSurface9 *pD3DSurfaceDestination = NULL;
+    D3DSurface *pD3DSurfaceSource      = NULL;
+    D3DSurface *pD3DSurfaceDestination = NULL;
 
     IFC(pD3DSourceTexture->GetSurfaceLevel(0, &pD3DSurfaceSource));
     IFC(pD3DDestinationTexture->GetSurfaceLevel(0, &pD3DSurfaceDestination));
@@ -6522,7 +6522,7 @@ CD3DDeviceLevel1::InitializeIMediaDeviceConsumer(
     __in_ecount(1) IMediaDeviceConsumer *pIMediaDeviceConsumer
     )
 {
-    pIMediaDeviceConsumer->SetIDirect3DDevice9(m_pD3DDevice);
+    pIMediaDeviceConsumer->SetD3DDeviceContext(m_pD3DDevice);
 }
 
 #if DBG

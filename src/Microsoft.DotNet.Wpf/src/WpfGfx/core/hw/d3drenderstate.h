@@ -98,7 +98,7 @@ public:
     // Associate a d3d device with the render state object
     HRESULT Init(
         __in_ecount(1) CD3DDeviceLevel1 *pDevice,
-        __inout_ecount(1) IDirect3DDevice9 *pD3DDevice
+        __inout_ecount(1) D3DDeviceContext *pD3DDevice
         );
 
     HRESULT ResetState();
@@ -381,7 +381,7 @@ public:
     }
 
     MIL_FORCEINLINE HRESULT SetStreamSource(
-        __in_ecount_opt(1) IDirect3DVertexBuffer9 *pStream,
+        __in_ecount_opt(1) D3DVertexBuffer *pStream,
         UINT uVertexStride
         )
     {
@@ -393,7 +393,7 @@ public:
     }
 
     MIL_FORCEINLINE HRESULT SetIndices(
-        __in_ecount_opt(1) IDirect3DIndexBuffer9 *pStream
+        __in_ecount_opt(1) D3DIndexBuffer *pStream
         )
     {
         return m_pStateManager->SetIndices(

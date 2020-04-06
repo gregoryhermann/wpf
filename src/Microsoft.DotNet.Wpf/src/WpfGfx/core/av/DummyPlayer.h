@@ -72,8 +72,8 @@ public:
         __out_ecount(1) MilPointAndSizeF *prcContent
         );
 
-    STDMETHOD_(void, SetIDirect3DDevice9)(
-        __in IDirect3DDevice9 *pIDirect3DDevice9
+    STDMETHOD_(void, SetD3DDeviceContext)(
+        __in D3DDeviceContext *pD3DDeviceContext
         );
 
     //

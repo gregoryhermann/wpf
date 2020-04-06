@@ -63,7 +63,7 @@ private:
         );
 
 private:
-    IDirect3DDevice9 *m_pDevice;
+    D3DDeviceContext *m_pDevice;
     FILE *m_pFileCpp;
     FILE *m_pFileHpp;
     ID3DXEffect *m_pEffect;

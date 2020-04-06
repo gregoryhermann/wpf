@@ -3405,11 +3405,11 @@ HRESULT
 CHwSurfaceRenderTarget::PopulateDestinationTexture(
     __in_ecount(1) const CMILSurfaceRect *prcSource,
     __in_ecount(1) const CMILSurfaceRect *prcDest,
-    __inout_ecount(1) IDirect3DTexture9 *pD3DTexture
+    __inout_ecount(1) D3DTexture *pD3DTexture
     )
 {
     HRESULT hr = S_OK;
-    IDirect3DSurface9 *pD3DSurface = NULL;
+    D3DSurface *pD3DSurface = NULL;
 
     ENTER_USE_CONTEXT_FOR_SCOPE(*m_pD3DDevice);
 
