@@ -11,18 +11,18 @@
 namespace dxlayer
 {
     // Describes a 4x4 matrix 
-    // This is based on the D3DMATRIX type
-    struct basetypes<dxapi::xmath>::matrix_base_t : public D3DMATRIX
+    // This is based on the DirectX::XMFLOAT4X4 type
+    struct basetypes<dxapi::xmath>::matrix_base_t : public DirectX::XMFLOAT4X4
     {
     public:
 
 #pragma region constructors
 
-        inline matrix_base_t() : D3DMATRIX() {}
-        inline matrix_base_t(const D3DMATRIX& mat) 
-            : D3DMATRIX(mat) {}
+        inline matrix_base_t() : DirectX::XMFLOAT4X4() {}
+        inline matrix_base_t(const DirectX::XMFLOAT4X4& mat) 
+            : DirectX::XMFLOAT4X4(mat) {}
         inline matrix_base_t(const FLOAT* values) 
-            : D3DMATRIX(
+            : DirectX::XMFLOAT4X4(
         {
             values[0], values[1], values[2], values[3],
             values[4], values[5], values[6], values[7],
@@ -35,7 +35,7 @@ namespace dxlayer
             FLOAT f21, FLOAT f22, FLOAT f23, FLOAT f24,
             FLOAT f31, FLOAT f32, FLOAT f33, FLOAT f34,
             FLOAT f41, FLOAT f42, FLOAT f43, FLOAT f44)
-            : D3DMATRIX(
+            : DirectX::XMFLOAT4X4(
         {
             f11, f12, f13, f14,
             f21, f22, f23, f24,

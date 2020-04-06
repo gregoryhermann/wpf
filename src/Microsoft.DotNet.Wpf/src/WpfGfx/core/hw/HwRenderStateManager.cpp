@@ -617,10 +617,15 @@ CHwRenderStateManager::ForceSetWorldTransform(
 {
     HRESULT hr = S_OK;
 
+#pragma warning (push)
+#pragma warning (disable : 4995)
+
     IFC(m_pID3DDevice->SetTransform(
         D3DTS_WORLD,
-        pMatrix
+        reinterpret_cast<const D3DMATRIX*>(pMatrix)
         ));
+
+#pragma warning (pop)
 
 Cleanup:
     m_worldTransform.UpdateState(
@@ -648,10 +653,15 @@ CHwRenderStateManager::ForceSetNonWorldTransform(
 {
     HRESULT hr = S_OK;
 
+#pragma warning (push)
+#pragma warning (disable : 4995)
+
     IFC(m_pID3DDevice->SetTransform(
         state,
-        pMatrix
+        reinterpret_cast<const D3DMATRIX*>(pMatrix)
         ));
+
+#pragma warning (pop)
 
 Cleanup:
     m_nonWorldTransforms.UpdateState(
@@ -1338,12 +1348,6 @@ Cleanup:
     RRETURN(hr);
 }
 
-// error C4995: 'D3DMATRIX': name was marked as #pragma deprecated
-//
-// Ignore deprecation of D3DMATRIX for this prototype because
-// it is defined in the interface this class is implementing
-#pragma warning (push)
-#pragma warning (disable : 4995)
 //+------------------------------------------------------------------------
 //
 //  Function:   CHwRenderStateManager::SetTransform
@@ -1355,7 +1359,7 @@ Cleanup:
 HRESULT
 CHwRenderStateManager::SetTransform(
     D3DTRANSFORMSTATETYPE state,
-    __in_ecount(1) const D3DMATRIX *pMatrix
+    __in_ecount(1) const DirectX::XMFLOAT4X4 *pMatrix
     )
 {
     HRESULT hr = S_OK;
@@ -1379,7 +1383,6 @@ CHwRenderStateManager::SetTransform(
 Cleanup:
     RRETURN(hr);
 }
-#pragma warning (pop)
 
 //+------------------------------------------------------------------------
 //

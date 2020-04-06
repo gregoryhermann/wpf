@@ -110,7 +110,7 @@ public:
 
     /* Local Transform */
     HRESULT SetLocalTransform(
-        __in_ecount(1) const D3DMATRIX *pIMatrix
+        __in_ecount(1) const DirectX::XMFLOAT4X4 *pIMatrix
         );
 
     /* Source Rectangle */

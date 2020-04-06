@@ -539,8 +539,8 @@ typedef struct
 {
     MILCMD Type;
     HMIL_RESOURCE Handle;
-    D3DMATRIX viewMatrix;
-    D3DMATRIX projectionMatrix;
+   DirectX::XMFLOAT4X4 viewMatrix;
+    DirectX::XMFLOAT4X4 projectionMatrix;
     HMIL_RESOURCE htransform;
 } MILCMD_MATRIXCAMERA;
 
@@ -723,7 +723,7 @@ typedef struct
 {
     MILCMD Type;
     HMIL_RESOURCE Handle;
-    D3DMATRIX matrix;
+    DirectX::XMFLOAT4X4 matrix;
 } MILCMD_MATRIXTRANSFORM3D;
 
 typedef struct

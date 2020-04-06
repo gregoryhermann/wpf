@@ -9,7 +9,7 @@
 //
 //  Description:
 //      Declaration of the base matrix class used by the MIL.
-//      This class derives from D3DMATRIX, and adds no
+//      This class derives from DirectX::XMFLOAT4X4, and adds no
 //      additional data to the memory footprint.  This is done to 
 //      maximize interchangeability between matrix classes and minimize
 //      overhead.
@@ -19,13 +19,6 @@
 #pragma once
 
 #include "factory.hpp"
-
-// error C4995: 'matrix-type': name was marked as #pragma deprecated
-//
-// Ignore deprecation of non-CBaseMatrix types in this file because
-// CBaseMatrix inherits from them, and provides conversion functionality
-#pragma warning (push)
-#pragma warning (disable : 4995)
 
 template <typename ResultInCoordSpace, typename ResultOutCoordSpace> class CMatrixBuilder;
 
@@ -55,8 +48,8 @@ public:
     }
 
     CBaseMatrix(__in_ecount(1) const CBaseMatrix &m) : dxlayer::matrix(m) { }
-    CBaseMatrix(const D3DMATRIX& m) : dxlayer::matrix(m) {}
-    CBaseMatrix(const D3DMATRIX*& m) : dxlayer::matrix(*m) {}
+    CBaseMatrix(const DirectX::XMFLOAT4X4& m) : dxlayer::matrix(m) {}
+    CBaseMatrix(const DirectX::XMFLOAT4X4*& m) : dxlayer::matrix(*m) {}
 
 
 protected:
@@ -87,9 +80,6 @@ public:
         C_ASSERT(sizeof(*pm) == sizeof(CBaseMatrix));
         return static_cast<CBaseMatrix const *>(pm);
     }
-
-// Re-enable deprecation of D3D*MATRIX types.
-#pragma warning (pop)
 
     BOOL IsIdentity() const;
 

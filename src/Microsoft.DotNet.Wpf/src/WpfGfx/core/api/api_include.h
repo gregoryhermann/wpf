@@ -13,14 +13,6 @@
 
 #pragma once
 
-// error C4995: 'matrix-type': name was marked as #pragma deprecated
-//
-// Ignore deprecation of non-CMILMatrix types in the api directory because
-// API classes have to implement interfaces defined in windows/published,
-// which must use D3DMATRIX instead of CMILMatrix
-#pragma warning (push)
-#pragma warning (disable : 4995)
-
 /*=========================================================================*\
     Class forward declarations - The classes definitions should be listed
     in the same order here as they appear later in the file.
@@ -77,7 +69,6 @@ class DpiProvider;
 
 #include "api_codecfactory.h"
 
-#pragma warning (pop)
 /*=========================================================================*/
 
 

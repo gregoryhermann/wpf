@@ -9,7 +9,7 @@
 //
 //  Description:
 //      Declaration of the general matrix class used by the MIL.
-//      This class derives from CBaseMatrix which derives from D3DMATRIX, and
+//      This class derives from CBaseMatrix which derives from DirectX::XMFLOAT4X4, and
 //      adds no additional data to the memory footprint.  This is done to
 //      maximize interchangeability between matrix classes and minimize
 //      overhead.
@@ -48,13 +48,7 @@ public:
     {
     }
 
-    // D3DMATRIX copy constructor & assignment operator 
-
-// error C4995: 'matrix-type': name was marked as #pragma deprecated
-//
-// Ignore deprecation of D3DMATRIX type here to provides conversion functionality
-#pragma warning (push)
-#pragma warning (disable : 4995)
+    // DirectX::XMFLOAT4X4 copy constructor & assignment operator 
 
     CMILMatrix(__in_ecount(1) const dxlayer::basetypes<dxlayer::dx_apiset>::matrix_base_t &m)
         : CBaseMatrix(m)
@@ -67,13 +61,12 @@ public:
         return *this;
     }
 
-    // We continue to support D3DMATRIX (but not D3DXMATRIX)
-    CMILMatrix(__in_ecount(1) const D3DMATRIX &m)
+    CMILMatrix(__in_ecount(1) const DirectX::XMFLOAT4X4&m)
         : CBaseMatrix(m)
     {
     }
 
-    CMILMatrix &operator = (__in_ecount(1) const D3DMATRIX  &m)
+    CMILMatrix &operator = (__in_ecount(1) const DirectX::XMFLOAT4X4&m)
     {
         CBaseMatrix::operator=(m);
         return *this;
@@ -90,9 +83,6 @@ public:
         *this = *this * f;
         return *this;
     }
-
-#pragma warning (pop)
-
 
     void SetToIdentity()
     {

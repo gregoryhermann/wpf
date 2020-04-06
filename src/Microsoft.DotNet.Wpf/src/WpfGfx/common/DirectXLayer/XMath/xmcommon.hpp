@@ -51,7 +51,7 @@ namespace dxlayer
         struct quaternion_base_t;
 
         // Describes a 4x4 matrix 
-        // This is based on the D3DMATRIX types
+        // This is based on the DirectX::XMFLOAT4X4 types
         struct matrix_base_t;
 
         // Describes color values in a manner compatible 

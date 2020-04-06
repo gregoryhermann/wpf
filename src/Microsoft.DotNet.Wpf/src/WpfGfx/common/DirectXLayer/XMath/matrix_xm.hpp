@@ -26,7 +26,7 @@ namespace dxlayer
 
         inline matrix_t() : base_t() {}
         inline matrix_t(const base_t& mat) : base_t(mat){}
-        inline matrix_t(const D3DMATRIX& mat): base_t(mat) {}
+        inline matrix_t(const DirectX::XMFLOAT4X4& mat): base_t(mat) {}
         inline matrix_t(const FLOAT* values) : base_t(values) {}
         inline matrix_t(
             FLOAT _11, FLOAT _12, FLOAT _13, FLOAT _14,

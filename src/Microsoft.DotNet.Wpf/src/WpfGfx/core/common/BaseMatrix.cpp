@@ -9,7 +9,7 @@
 //
 //  Description:
 //      Implementation of the base matrix class used by the MIL.
-//      This class derives from D3DMATRIX, and adds no
+//      This class derives from DirectX::XMFLOAT4X4, and adds no
 //      additional data to the memory footprint.  This is done to 
 //      maximize interchangeability between matrix classes and minimize
 //      overhead.

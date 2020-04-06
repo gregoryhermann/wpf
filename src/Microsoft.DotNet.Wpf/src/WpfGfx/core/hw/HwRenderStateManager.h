@@ -152,17 +152,10 @@ public:
 
     DEFINE_REF_COUNT_BASE
 
-    // error C4995: 'D3DMATRIX': name was marked as #pragma deprecated
-    //
-    // Ignore deprecation of D3DMATRIX for this prototype because
-    // it is defined in the interface this class is implementing
-#pragma warning (push)
-#pragma warning (disable : 4995)
     HRESULT SetTransform(
         D3DTRANSFORMSTATETYPE state,
-        __in_ecount(1) const D3DMATRIX *pMatrix
+        __in_ecount(1) const DirectX::XMFLOAT4X4 *pMatrix
         );
-#pragma warning (pop)
 
     HRESULT SetRenderState(
         D3DRENDERSTATETYPE state,

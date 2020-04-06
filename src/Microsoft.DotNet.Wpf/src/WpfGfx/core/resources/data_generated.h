@@ -13,11 +13,6 @@
 
 #pragma once
 
-// error C4995: 'D3DMATRIX': name was marked as #pragma deprecated
-//
-// Ignore deprecation of D3DMATRIX for these types because
-// they are generated from a defintion that is also used
-// to generate types in wpf\src\Graphics\Include\Generated.
 #pragma warning (push)
 #pragma warning (disable : 4995)
 
@@ -72,8 +67,8 @@ struct CMilOrthographicCameraDuce_Data
 struct CMilMatrixCameraDuce_Data
 {
     CMilTransform3DDuce *m_pTransform;
-    D3DMATRIX m_viewMatrix;
-    D3DMATRIX m_projectionMatrix;
+   DirectX::XMFLOAT4X4 m_viewMatrix;
+   DirectX::XMFLOAT4X4 m_projectionMatrix;
 };
 
 struct CMilModel3DGroupDuce_Data
@@ -230,7 +225,7 @@ struct CMilRotateTransform3DDuce_Data
 
 struct CMilMatrixTransform3DDuce_Data
 {
-    D3DMATRIX m_matrix;
+    DirectX::XMFLOAT4X4 m_matrix;
 };
 
 struct CMilPixelShaderDuce_Data
@@ -615,7 +610,5 @@ struct CMilBitmapCacheDuce_Data
     BOOL m_SnapsToDevicePixels;
     BOOL m_EnableClearType;
 };
-
-#pragma warning (pop)
 
 

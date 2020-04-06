@@ -41,7 +41,7 @@ struct AlphaScaleParams : public EffectParams
 // This resource should be of type IMILBitmapSource and is used as the mask image
 struct AlphaMaskParams : public EffectParams
 {
-    D3DMATRIX matTransform;
+    DirectX::XMFLOAT4X4 matTransform;
 };
 
 

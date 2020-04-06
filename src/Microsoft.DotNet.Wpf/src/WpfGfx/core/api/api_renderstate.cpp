@@ -75,14 +75,8 @@ HRESULT CMILRenderState::SetSourceRectangle(__in_ecount_opt(1) const MilPointAnd
     RRETURN(hr);
 }
 
-// error C4995: 'D3DMATRIX': name was marked as #pragma deprecated
-//
-// Ignore deprecation of D3DMATRIX for this prototype because
-// it is defined in the interface this class is implementing
-#pragma warning (push)
-#pragma warning (disable : 4995)
 HRESULT CMILRenderState::SetLocalTransform(
-    __in_ecount(1) const D3DMATRIX *pMatrix
+    __in_ecount(1) const DirectX::XMFLOAT4X4 *pMatrix
     )
 {
     HRESULT hr = S_OK;
@@ -101,9 +95,6 @@ HRESULT CMILRenderState::SetLocalTransform(
 
     RRETURN(hr);
 }
-
-#pragma warning (pop)
-
 
 HRESULT CMILRenderState::SetInterpolationMode(
     MilBitmapInterpolationMode::Enum interpolationMode)

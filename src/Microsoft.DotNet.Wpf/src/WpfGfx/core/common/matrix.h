@@ -9,7 +9,7 @@
 //
 //  Description:
 //      Definition of the matrix transform class used by the MIL.
-//      This class derives from CBaseMatrix which derives from D3DMATRIX, and
+//      This class derives from CBaseMatrix which derives from DirectX::XMFLOAT4X4, and
 //      adds no additional data to the memory footprint.  This is done to
 //      maximize interchangeability between matrix classes and minimize
 //      overhead.

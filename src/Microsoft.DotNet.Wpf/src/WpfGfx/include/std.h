@@ -352,7 +352,27 @@ RtlAssert(
 #pragma warning(push)
 #pragma warning (disable:4005) // suppress macro redefinition warning
 #include <D2D1.h>
+
+#define DX11
+
+#ifdef DX11
+#include <d3d11.h>
+
+typedef ID3D11Device D3DDevice;
+typedef ID3D11DeviceContext D3DDeviceContext;
+typedef ID3D11DeviceContext D3DDeviceContextEx;
+
+#else
 #include <d3d9.h>
+
+typedef IDirect3DDevice9 D3DDevice;
+typedef IDirect3DDevice9 D3DDeviceContext;
+typedef IDirect3DDevice9 D3DDeviceContextEx;
+
+#endif
+
+#include <directxmath.h>
+
 #include "dwrite.h"
 #pragma warning(pop)
 
@@ -426,8 +446,8 @@ extern "C" {
 // Please only use CMILMatrix.
 //
 // The MIL has standardized on a single matrix 4x4 type, CMILMatrix.
-// Except for D3DMATRIX definitions in windows/published and implementations of interfaces
-// that use D3DMATRIX, these types have been permanently removed, and shouldn't be
+// Except for DirectX::XMFLOAT4X4 definitions in windows/published and implementations of interfaces
+// that use DirectX::XMFLOAT4X4, these types have been permanently removed, and shouldn't be
 // re-introduced.
 #pragma deprecated(D3DMATRIX, D3DXMATRIX, MILMatrix, GpMatrix, MIL_MATRIXF)
 
