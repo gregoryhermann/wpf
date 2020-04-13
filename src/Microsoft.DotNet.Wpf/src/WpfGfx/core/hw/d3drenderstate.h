@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-
 //+-----------------------------------------------------------------------------
 //
 
@@ -70,12 +69,13 @@ enum PixelShader
     PXS_NUM
 };
 
-
 struct AlphaBlendMode;
 struct TextureStageOperation;
 struct FilterMode;
 
-class CD3DSurface;
+class CD3DTexture;
+
+#include "D3DVertex.h"
 
 //+-----------------------------------------------------------------------------
 //
@@ -157,7 +157,7 @@ public:
         }
 
     // Get alpha texture format that becomes known during Init() and then never changes
-    D3DFORMAT GetAlphaTextureFormat() const { return m_alphaTextureFormat; }
+    DXGI_FORMAT GetAlphaTextureFormat() const { return m_alphaTextureFormat; }
 
     // Setting render state for text
     HRESULT SetRenderState_Text_ClearType_SolidBrush(
@@ -183,7 +183,8 @@ public:
         );
 
     HRESULT SetAlphaBlendMode(
-        __in_ecount(1) const AlphaBlendMode *pabmNew
+        __in_ecount(1) const AlphaBlendMode *pabmNew,
+        DWORD dwBlendFactorRGBA = 0
         );
 
     HRESULT GetFillMode(
@@ -210,26 +211,12 @@ public:
 
     HRESULT SetRenderState_AlphaSolidBrush();
 
-    HRESULT SetRenderState_Texture(
-        TextureBlendMode blendMode,
-        TextureBlendArgument eBlendArgument,
-        MilBitmapInterpolationMode::Enum interpolationMode,
-        UINT cMasks
-    );
-
+    // Maybe eliminate this entirely?
+    HRESULT DisableTextureTransform(UINT texture) { return S_OK; }
 
     //
     // Forwarded calls to the RenderStateManager
     //
-
-    MIL_FORCEINLINE HRESULT DisableTextureStage(
-        DWORD dwStage
-        )
-    {
-        return m_pStateManager->DisableTextureStage(
-            dwStage
-            );
-    }
 
     MIL_FORCEINLINE HRESULT SetConvolutionMonoKernel(UINT width, UINT height)
     {
@@ -239,13 +226,13 @@ public:
             );
     }
 
-    MIL_FORCEINLINE HRESULT SetTransform(
-        D3DTRANSFORMSTATETYPE state,
+    MIL_FORCEINLINE HRESULT SetTextureTransform(
+        UINT uiSlot,
         __in_ecount(1) const CMILMatrix *pMatrix
         )
     {
-        return m_pStateManager->SetTransform(
-            state,
+        return m_pStateManager->SetTextureTransform(
+            uiSlot,
             pMatrix
             );
     }
@@ -259,17 +246,35 @@ public:
             );
     }
 
-    MIL_FORCEINLINE HRESULT SetNonWorldTransform(
-        D3DTRANSFORMSTATETYPE state,
+    MIL_FORCEINLINE HRESULT SetViewTransform(
         __in_ecount(1) const CMILMatrix *pMatrix
         )
     {
-        return m_pStateManager->SetNonWorldTransform(
-            state,
+        return m_pStateManager->SetViewTransform(
             pMatrix
             );
     }
 
+    MIL_FORCEINLINE HRESULT SetProjectionTransform(
+        __in_ecount(1) const CMILMatrix *pMatrix
+        )
+    {
+        return m_pStateManager->SetProjectionTransform(
+            pMatrix
+            );
+    }
+
+
+    MIL_FORCEINLINE HRESULT GetProjectionTransform(
+        __in_ecount(1) CMILMatrix *pMatrix
+        )
+    {
+        return m_pStateManager->GetProjectionTransform(
+            pMatrix
+            );
+    }
+
+    /*
     MIL_FORCEINLINE HRESULT GetTransform(
         D3DTRANSFORMSTATETYPE state,
         __out_ecount(1) CMILMatrix *pMatrix
@@ -280,6 +285,7 @@ public:
             pMatrix
             );
     }
+    */
 
     MIL_FORCEINLINE HRESULT SetRenderState(
         D3DRENDERSTATETYPE state,
@@ -292,69 +298,43 @@ public:
             );
     }
 
-    MIL_FORCEINLINE HRESULT SetTextureStageState(
-        DWORD dwStage,
-        D3DTEXTURESTAGESTATETYPE state,
-        DWORD dwValue
-        )
-    {
-        return m_pStateManager->SetTextureStageStateInline(
-            dwStage,
-            state,
-            dwValue
-            );
-    }
-
     MIL_FORCEINLINE HRESULT SetDefaultTexCoordIndices()
     {
         return m_pStateManager->SetDefaultTexCoordIndices();
     }
 
-    MIL_FORCEINLINE HRESULT DisableTextureTransform(DWORD dwStage)
-    {
-        return m_pStateManager->SetTextureStageStateInline(
-            dwStage,
-            D3DTSS_TEXTURETRANSFORMFLAGS,
-            D3DTTFF_DISABLE
-            );
+    MIL_FORCEINLINE HRESULT SetSamplerScalingState(
+        DWORD dwSampler,
+        MilBitmapScalingMode::Enum scalingMode
+    ) 
+    { 
+        OutputDebugStringA("Implement SetSamplerScalingState.");
+        return S_OK;
     }
 
-    MIL_FORCEINLINE HRESULT SetSamplerState(
+    MIL_FORCEINLINE HRESULT SetSamplerWrapState(
         DWORD dwSampler,
-        D3DSAMPLERSTATETYPE state,
-        DWORD dwValue
-        )
-    {
-        //
-        // Setting the ADDRESSU sampler state to NULL is not supported.
-        //
-        Assert(dwValue || state != D3DSAMP_ADDRESSU);
-
-        //
-        // Setting the ADDRESSV sampler state to NULL is not supported.
-        //
-        Assert(dwValue || state != D3DSAMP_ADDRESSV);
-
-        return m_pStateManager->SetSamplerStateInline(
-            dwSampler,
-            state,
-            dwValue
-            );
+        MilBitmapWrapMode::Enum scalingModeU,
+        MilBitmapWrapMode::Enum scalingModeV
+    ) 
+    { 
+        OutputDebugStringA("Implement SetSamplerWrapState.");
+        return S_OK;
     }
 
     MIL_FORCEINLINE HRESULT SetTexture(
         DWORD dwStage,
-        __in_ecount_opt(1) IDirect3DBaseTexture9 *pTexture
+        __in_ecount_opt(1) ID3D11ShaderResourceView *pSRV
         )
     {
         return m_pStateManager->SetTextureInline(
             dwStage,
-            pTexture
+            pSRV
             );
     }
 
     MIL_FORCEINLINE HRESULT SetVertexShader(
-        __in_ecount_opt(1) IDirect3DVertexShader9 *pVertexShader
+        __in_ecount_opt(1) ID3D11VertexShader *pVertexShader
         )
     {
         return m_pStateManager->SetVertexShaderInline(
@@ -362,12 +342,30 @@ public:
             );
     }
 
+    MIL_FORCEINLINE HRESULT SetVertexShaderConstantBuffer(
+        __in_ecount_opt(1) ID3D11Buffer* pVertexShaderConstantBuffer
+        )
+    {
+        return m_pStateManager->SetVertexShaderConstantBufferInline(
+            pVertexShaderConstantBuffer
+            );
+    }
+
     MIL_FORCEINLINE HRESULT SetPixelShader(
-        __in_ecount_opt(1) IDirect3DPixelShader9 *pPixelShader
+        __in_ecount_opt(1) ID3D11PixelShader *pPixelShader
         )
     {
         return m_pStateManager->SetPixelShaderInline(
             pPixelShader
+            );
+    }
+
+    MIL_FORCEINLINE HRESULT SetPixelShaderConstantBuffer(
+        __in_ecount_opt(1) ID3D11Buffer* pPixelShaderConstantBuffer
+        )
+    {
+        return m_pStateManager->SetPixelShaderConstantBufferInline(
+            pPixelShaderConstantBuffer
             );
     }
 
@@ -380,17 +378,27 @@ public:
             );
     }
 
-    MIL_FORCEINLINE HRESULT SetStreamSource(
+    MIL_FORCEINLINE HRESULT SetVertexBuffer(
         __in_ecount_opt(1) D3DVertexBuffer *pStream,
         UINT uVertexStride
         )
     {
-        return m_pStateManager->SetStreamSource(
+        return m_pStateManager->SetVertexBuffer(
             pStream,
             uVertexStride
             );
 
     }
+
+    MIL_FORCEINLINE HRESULT SetRenderTarget(
+        __in_ecount_opt(1) ID3D11RenderTargetView *pRenderTarget
+        )
+    {
+        return m_pStateManager->SetRenderTargetInline(
+            pRenderTarget
+            );
+    }
+
 
     MIL_FORCEINLINE HRESULT SetIndices(
         __in_ecount_opt(1) D3DIndexBuffer *pStream
@@ -401,34 +409,21 @@ public:
             );
     }
 
-    MIL_FORCEINLINE BOOL IsFVFSet(
-        DWORD dwFVF
+    MIL_FORCEINLINE BOOL IsInputLayoutSet(
+        ID3D11InputLayout* pInputLayout
         ) const
     {
-        return m_pStateManager->IsFVFSet(dwFVF);
+        return m_pStateManager->IsInputLayoutSet(pInputLayout);
     }
 
-    MIL_FORCEINLINE HRESULT Set2DTransformForFixedFunction()
+    MIL_FORCEINLINE HRESULT Set2DTransformForVertexShader()
     {
-        return m_pStateManager->Set2DTransformForFixedFunction();
+        return m_pStateManager->Set2DTransformForVertexShader();
     }
 
-    MIL_FORCEINLINE HRESULT Set2DTransformForVertexShader(
-        UINT uStartRegister
-        )
+    MIL_FORCEINLINE HRESULT Set3DTransformForVertexShader()
     {
-        return m_pStateManager->Set2DTransformForVertexShader(
-            uStartRegister
-            );
-    }
-
-    MIL_FORCEINLINE HRESULT Set3DTransformForVertexShader(
-        UINT uStartRegister
-        )
-    {
-        return m_pStateManager->Set3DTransformForVertexShader(
-            uStartRegister
-            );
+        return m_pStateManager->Set3DTransformForVertexShader();
     }
 
     MIL_FORCEINLINE MilPointAndSizeL GetClip() const
@@ -463,21 +458,19 @@ public:
         return m_pStateManager->GetViewport();
     }
 
-    MIL_FORCEINLINE HRESULT SetFVF(DWORD dwFVF)
+    MIL_FORCEINLINE HRESULT SetInputLayout(ID3D11InputLayout* pInputLayout)
     {
-        return m_pStateManager->SetFVFInline(dwFVF);
+        return m_pStateManager->SetInputLayoutInline(pInputLayout);
     }
+
+    HRESULT SetRasterizerState(const D3D11_RASTERIZER_DESC& rasterizerDesc);
+    HRESULT SetDepthStencilState(const D3D11_DEPTH_STENCIL_DESC& depthStencilDesc);
+    HRESULT SetSamplerState(UINT samplerIdx, const D3D11_SAMPLER_DESC& samplerDesc);
+    HRESULT SetBlendState(const D3D11_BLEND_DESC& blendDesc, DWORD dwBlendFactorRGBA = 0);
 
     MIL_FORCEINLINE void SetClipSet(BOOL fSet)
     {
         return m_pStateManager->SetClipSet(fSet);
-    }
-
-    MIL_FORCEINLINE void ScissorRectChanged(
-        __in_ecount(1) const MilPointAndSizeL *prc
-        )
-    {
-        return m_pStateManager->ScissorRectChanged(prc);
     }
 
     MIL_FORCEINLINE HRESULT SetScissorRect(
@@ -486,6 +479,8 @@ public:
     {
         return m_pStateManager->SetScissorRect(prc);
     }
+
+    HRESULT SetInputLayoutFormat(D3DVertexType vertexType);
 
 protected:
     //
@@ -500,12 +495,18 @@ protected:
         return m_pStateManager->IsDepthStencilSurfaceSmallerThan(uWidth, uHeight);
     }
 
-    HRESULT SetDepthStencilSurfaceInternal(
-        __in_ecount_opt(1) CD3DSurface *pDepthStencilBuffer
+    HRESULT SetDepthStencilTextureInternal(
+        __in_ecount(1) CD3DTexture *pDepthStencilTexture
         );
 
-    HRESULT ReleaseUseOfDepthStencilSurfaceInternal(
-        __in_ecount(1) CD3DSurface *pDepthStencilBuffer
+    HRESULT ReleaseUseOfDepthStencilTextureInternal(
+        __in_ecount(1) CD3DTexture *pDepthStencilTexture
+        );
+
+    HRESULT EnsureInputLayout(
+        D3DVertexType vertexType, 
+        const void* pVertexShaderBytecode, 
+        size_t bytecodeLength
         );
 
 private:
@@ -524,18 +525,7 @@ private:
 
 public:
 
-    /////////////////////////////////////////////////
-    //
-    //   Low-Level Render State Setting Methods
-    //
-    //-----------------------------------------------
-    HRESULT SetTextureStageOperation(
-        DWORD dwStage,
-        __in_ecount(1) const TextureStageOperation *ptsoNew
-        );
-
     BOOL CanDrawText() const { return m_fCanDrawText; }
-    BOOL CanDrawTextUsingPS20() const { return m_fDrawTextUsingPS20; }
 
     HRESULT SetClearTypeOffsets(float ds, float dt);
 
@@ -588,14 +578,34 @@ private:
     CD3DDeviceLevel1 *m_pDeviceNoRef;
 
     // format of the textures used to represent glyph run shapes
-    D3DFORMAT m_alphaTextureFormat;
+    DXGI_FORMAT m_alphaTextureFormat;
     HRESULT InitAlphaTextures();
 
     BOOL m_fCanDrawText;
     BOOL m_fDrawTextUsingPS20;
 
-    IDirect3DPixelShader9* m_pPixelShaders[PXS_NUM];
+    ID3D11PixelShader* m_pPixelShaders[PXS_NUM];
+
+    ID3D11PixelShader* m_pPassthroughPixelShader;
+    ID3D11VertexShader* m_pPassthroughVertexShader;
+
     const FilterMode* m_pTextFilterMode;
+    ID3D11InputLayout* m_pInputLayouts[D3DVertexType::Count];
+
+    template<class T>
+    struct MapCompareBinary
+    {
+        bool operator()(const T& a, const T& b) const 
+        {
+            return memcmp(&a, &b, sizeof(T)) < 0;
+        }
+    };
+
+    std::map<D3D11_RASTERIZER_DESC, ID3D11RasterizerState*, MapCompareBinary<D3D11_RASTERIZER_DESC>> m_compiledRasterizerStates;
+    std::map<D3D11_DEPTH_STENCIL_DESC, ID3D11DepthStencilState*, MapCompareBinary<D3D11_DEPTH_STENCIL_DESC>> m_compiledDepthStencilStates;
+    std::map<D3D11_SAMPLER_DESC, ID3D11SamplerState*, MapCompareBinary<D3D11_SAMPLER_DESC>> m_compiledSamplerStates;
+    std::map<D3D11_BLEND_DESC, ID3D11BlendState*, MapCompareBinary<D3D11_BLEND_DESC>> m_compiledBlendStates;
+
 
     HRESULT InitPixelShaders();
 
@@ -613,7 +623,6 @@ private:
         UINT gammaIndex,
         float flEffectAlpha
         );
-
 };
 
 

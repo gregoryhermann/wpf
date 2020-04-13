@@ -26,7 +26,7 @@ public:
     DECLARE_METERHEAP_CLEAR(ProcessHeap, Mt(CGPUMarker));
 
     CGPUMarker(
-        __in_ecount(1) IDirect3DQuery9 *pQuery,
+        __in_ecount(1) ID3D11Query *pQuery,
         ULONGLONG ullMarkerId
         );
 
@@ -34,9 +34,10 @@ public:
 
     void Reset(ULONGLONG ullMarkerId);
 
-    HRESULT InsertIntoCommandStream();
+    HRESULT InsertIntoCommandStream(D3DDeviceContext* pContext);
 
     HRESULT CheckStatus(
+        D3DDeviceContext* pContext,
         BOOL fFlush,
         __out_ecount(1) bool *pfConsumed
         );
@@ -44,7 +45,7 @@ public:
     ULONGLONG GetId() const { return m_ullMarkerId; }
     
 private:
-    IDirect3DQuery9 *m_pQuery;
+    ID3D11Query *m_pQuery;
     ULONGLONG        m_ullMarkerId;
     BOOL             m_fIssued;
     BOOL             m_fConsumed;

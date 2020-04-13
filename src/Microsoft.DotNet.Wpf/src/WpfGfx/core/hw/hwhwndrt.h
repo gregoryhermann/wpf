@@ -50,7 +50,6 @@ protected:
         __in_ecount_opt(1) HWND hwnd,
         MilWindowLayerType::Enum eWindowLayerType,
         __in_ecount(1) CDisplay const *pDisplay,
-        D3DDEVTYPE type,
         MilRTInitialization::Flags dwFlags,
         __deref_out_ecount(1) CHwDisplayRenderTarget **ppRenderTarget
         );
@@ -59,8 +58,6 @@ protected:
 
     CHwHWNDRenderTarget(
         __inout_ecount(1) CD3DDeviceLevel1 *pD3DDevice,
-        __in_ecount(1) D3DPRESENT_PARAMETERS const &D3DPresentParams,
-        UINT AdapterOrdinalInGroup,
         DisplayId associatedDisplay,
         MilWindowLayerType::Enum eWindowLayerType
         );
@@ -97,7 +94,6 @@ protected:
     override HRESULT Init(
         __in_ecount_opt(1) HWND hwnd, 
         __in_ecount(1) CDisplay const *pDisplay,
-        D3DDEVTYPE type,
         MilRTInitialization::Flags dwFlags
         );
 
@@ -105,7 +101,7 @@ private:
     HRESULT UpdateFlippingChain(UINT uWidth, UINT uHeight);
 
 private:
-
+    HWND m_hwnd;
     const MilWindowLayerType::Enum m_eWindowLayerType;
 };
 

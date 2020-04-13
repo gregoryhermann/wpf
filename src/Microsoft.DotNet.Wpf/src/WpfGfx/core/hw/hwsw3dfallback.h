@@ -37,7 +37,7 @@ private:
     CHw3DSoftwareSurface(
         __inout_ecount(1) CD3DDeviceLevel1 *pDevice,
         MilPixelFormat::Enum fmtTarget,
-        D3DFORMAT d3dfmtTarget,
+        DXGI_FORMAT dxgifmtTarget,
         DisplayId associatedDisplay,
         bool fComposeWithCopy
         );

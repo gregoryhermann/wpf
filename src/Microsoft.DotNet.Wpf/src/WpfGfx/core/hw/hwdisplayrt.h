@@ -39,7 +39,6 @@ public:
         __in_ecount_opt(1) HWND hwnd,
         MilWindowLayerType::Enum eWindowLayerType,
         __in_ecount(1) CDisplay const *pDisplay,
-        D3DDEVTYPE type,
         MilRTInitialization::Flags dwFlags,
         __deref_out_ecount(1) CHwDisplayRenderTarget **ppRenderTarget
         );
@@ -48,8 +47,7 @@ protected:
 
     CHwDisplayRenderTarget(
         __inout_ecount(1) CD3DDeviceLevel1 *pD3DDevice,
-        __in_ecount(1) D3DPRESENT_PARAMETERS const &D3DPresentParams,
-        UINT AdapterOrdinalInGroup,
+        DXGI_FORMAT format,
         DisplayId associatedDisplay
         );
 
@@ -58,7 +56,6 @@ protected:
     virtual HRESULT Init(
         __in_ecount_opt(1) HWND hwnd,
         __in_ecount(1) CDisplay const *pDisplay,
-        D3DDEVTYPE type,
         MilRTInitialization::Flags dwFlags
         );
 
@@ -188,7 +185,6 @@ protected:
     BOOL    m_fEnableRendering; // Rendering is disabled during resize
     CD3DSwapChain *m_pD3DSwapChain;
     D3DPRESENT_PARAMETERS m_D3DPresentParams;
-    UINT const m_AdapterOrdinalInGroup;
     DWORD m_dwPresentFlags;
 
     // HRESULT indicating whether the display is invalid (on Resize/Present)

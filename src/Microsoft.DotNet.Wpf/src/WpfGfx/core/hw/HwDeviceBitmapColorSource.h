@@ -97,10 +97,10 @@ public:
         UINT nStrideOut
         );
 
-    virtual HRESULT UpdateSurface(
+    virtual HRESULT UpdateTexture(
         __in UINT cDirtyRects,
         __in_ecount(cDirtyRects) const CMilRectU *prgDirtyRects,
-        __in_ecount(1) D3DSurface *pISrcSurface
+        __in_ecount(1) D3DTexture *pISrcTexture
         );
     
     virtual __out_opt CD3DSurface *GetValidTransferSurfaceNoRef();
@@ -111,7 +111,7 @@ protected:
         __in_ecount(1) CD3DDeviceLevel1 *pDevice,
         __in_opt IWGXBitmap *pBitmap,
         MilPixelFormat::Enum fmt,
-        __in_ecount(1) const D3DSURFACE_DESC &d3dsd,
+        __in_ecount(1) const D3D11_TEXTURE2D_DESC &desc,
         UINT uLevels
         );
     
@@ -138,7 +138,7 @@ protected:
         __in_ecount(1) const CMilRectU &rcBoundsRequired,
         __in_ecount_opt(1) const CD3DVidMemOnlyTexture *pVidMemTexture,
         __out_ecount(1) CacheParameters &oRealizationDesc,
-        __out_ecount(1) D3DSURFACE_DESC &d3dsd,
+        __out_ecount(1) D3D11_TEXTURE2D_DESC &desc,
         __out_ecount(1) UINT &uLevels
         );
 
@@ -149,16 +149,16 @@ private:
         __in_ecount(1) const D3DSURFACE_DESC &desc
         );
 
-    HRESULT UpdateSurfaceSharedHandle(
+    HRESULT UpdateTextureSharedHandle(
         UINT cDirtyRects,
         __in_ecount(cDirtyRects) const CMilRectU *prgDirtyRects,
-        __in_ecount(1) D3DSurface *pISrcSurface
+        __in_ecount(1) D3DTexture *pISrcTexture
         );
 
-    HRESULT UpdateSurfaceSoftware(
+    HRESULT UpdateTextureSoftware(
         UINT cDirtyRects,
         __in_ecount(cDirtyRects) const CMilRectU *prgDirtyRects,
-        __in_ecount(1) D3DSurface *pISrcSurface
+        __in_ecount(1) D3DTexture *pISrcTexture
         );
 
     static HRESULT CreateInternal(
@@ -182,7 +182,7 @@ private:
     // Can be NULL!
     HANDLE m_hSharedHandle;
 
-    // System memory texture used for software updates in UpdateSurfaceSoftware
+    // System memory texture used for software updates in UpdateTextureSoftware
     CD3DLockableTexture *m_pSysMemTexture;
 };
 

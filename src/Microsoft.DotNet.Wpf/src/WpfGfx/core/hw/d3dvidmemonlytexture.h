@@ -25,7 +25,7 @@ public:
     DEFINE_RESOURCE_REF_COUNT_BASE
 
     static HRESULT Create(
-        __in_ecount(1) const D3DSURFACE_DESC *pSurfDesc,
+        __in_ecount(1) const D3D11_TEXTURE2D_DESC *pDesc,
         UINT uLevels,
         bool fIsEvictable,
         __inout_ecount(1) CD3DDeviceLevel1 *pDevice,
@@ -46,6 +46,7 @@ protected:
 
     HRESULT Init(
         __inout_ecount(1) CD3DResourceManager *pResourceManager,
+        __inout_ecount(1) CD3DDeviceLevel1 *pDevice,
         __inout_ecount(1) D3DTexture *pD3DTexture
         );
 

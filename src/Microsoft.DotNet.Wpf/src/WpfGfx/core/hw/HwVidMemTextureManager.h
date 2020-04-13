@@ -33,23 +33,23 @@ public:
 
     void SetRealizationParameters(
         __in_ecount(1) CD3DDeviceLevel1 *pDevice,
-        D3DFORMAT d3dFormat,
+        DXGI_FORMAT dxgiFormat,
         UINT uWidth,
         UINT uHeight,
         TextureMipMapLevel eMipMapLevel
         DBG_COMMA_PARAM(bool bDbgConditionalNonPowTwoOkay)
         );
 
-    bool IsSysMemSurfaceValid() const
+    bool IsSysMemTextureValid() const
     {
-        return (m_pSysMemSurface != NULL) && (m_pSysMemSurface->IsValid());
+        return (m_pSysMemTexture != NULL) && (m_pSysMemTexture->IsValid());
     }
 
-    HRESULT ReCreateAndLockSysMemSurface(
+    HRESULT ReCreateAndLockSysMemTexture(
         __out_ecount(1) D3DLOCKED_RECT *pD3DLockedRect
         );
 
-    HRESULT UnlockSysMemSurface(
+    HRESULT UnlockSysMemTexture(
         );
 
     HRESULT PushBitsToVidMemTexture();
@@ -68,7 +68,7 @@ private:
     void Destroy();
 
     void ComputeTextureDesc(
-        D3DFORMAT d3dFormat,
+        DXGI_FORMAT dxgiFormat,
         UINT uWidth,
         UINT uHeight,
         TextureMipMapLevel eMipMapLevel
@@ -78,16 +78,16 @@ private:
 private:
     CD3DDeviceLevel1 *m_pDeviceNoRef;
 
-    CD3DSurface *m_pSysMemSurface;
+    CD3DTexture *m_pSysMemTexture;
 
     CD3DVidMemOnlyTexture *m_pVideoMemTexture;
 
-    D3DSURFACE_DESC m_d3dsdRequiredForVidMem;
+    D3D11_TEXTURE2D_DESC m_descRequiredForVidMem;
     UINT m_uLevelsForVidMem;
 
 #if DBG
 private:
-    bool m_fDBGSysMemSurfaceIsLocked;
+    bool m_fDBGSysMemTextureIsLocked;
 #endif
 };
 

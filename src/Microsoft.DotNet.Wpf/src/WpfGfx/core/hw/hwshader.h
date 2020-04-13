@@ -112,12 +112,6 @@ private:
         __inout_ecount(1) CContextState *pContextState
         );
 
-    HRESULT FixedFunctionDrawMesh3D(
-        __inout_ecount(1) CD3DDeviceLevel1 *pD3DDevice,
-        __inout_ecount(1) CMILMesh3D *pMesh3D,
-        __inout_ecount(1) CContextState *pContextState
-        );
-
 protected:
     CHwShader(
         __in_ecount(1) CD3DDeviceLevel1 *pDevice

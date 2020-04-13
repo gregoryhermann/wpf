@@ -71,13 +71,6 @@ private:
     //
 
     void QueryStats(__inout_ecount(1) D3DDeviceContext *pD3DDevice);
-    
-    HRESULT QueryGetData(
-        __inout_ecount(1) D3DDeviceContext *pD3DDevice, 
-        D3DQUERYTYPE d3dQueryType, 
-        __out_bcount(dwDataSize) void* pData, 
-        DWORD dwDataSize
-        ); 
 
     //
     // Output DDI stats

@@ -59,71 +59,7 @@ CD3DStats::QueryStats(
     __inout_ecount(1) D3DDeviceContext *pD3DDevice
     )
 {
-    HRESULT hr = S_OK;
-    D3DDEVINFO_DDISTATS ddiStats;
-    D3DDEVINFO_RESOURCEMANAGER resourceManagerStats;
-    D3DDEVINFO_D3DVERTEXSTATS vertexStats;
 
-    //
-    // Get and output the DDI stats
-    //
-
-    MIL_THR(QueryGetData(
-        pD3DDevice, 
-        D3DQUERYTYPE_DDISTATS, 
-        &ddiStats, 
-        sizeof(ddiStats)
-        ));
-
-    if (SUCCEEDED(hr))
-    {
-        OutputDDIStats(ddiStats);
-    }
-    else
-    {
-        TraceTag((tagError, "Failed to query DDI stats (hr = 0x%x)", hr));
-    }
-
-
-    //
-    // Get and output the resource manager stats
-    //
-
-    MIL_THR(QueryGetData(
-        pD3DDevice, 
-        D3DQUERYTYPE_RESOURCEMANAGER, 
-        &resourceManagerStats, 
-        sizeof(resourceManagerStats)
-        ));
-
-    if (SUCCEEDED(hr))
-    {
-        OutputResourceManagerStats(resourceManagerStats);
-    }
-    else
-    {
-        TraceTag((tagError, "Failed to query resource manager stats (hr = 0x%x)", hr));
-    }
-
-    //
-    // Get and output the vertex stats
-    //
-
-    MIL_THR(QueryGetData(
-        pD3DDevice, 
-        D3DQUERYTYPE_VERTEXSTATS, 
-        &vertexStats, 
-        sizeof(vertexStats)
-        ));
-
-    if (SUCCEEDED(hr))
-    {
-        OutputVertexStats(vertexStats);
-    }
-    else
-    {
-        TraceTag((tagError, "Failed to query vertex stats (hr = 0x%x)", hr));
-    }
 }
 
 //+-----------------------------------------------------------------------------
@@ -148,36 +84,6 @@ CD3DStats::OnPresent(
         QueryStats(pD3DDevice);
     }
 }
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DStats::QueryGetData
-//
-//  Synopsis:
-//      Create the query, issue it, and call GetData.
-//
-//------------------------------------------------------------------------------
-HRESULT 
-CD3DStats::QueryGetData(
-    __inout_ecount(1) D3DDeviceContext *pD3DDevice, 
-    D3DQUERYTYPE d3dQueryType, 
-    __out_bcount(dwDataSize) void* pData, 
-    DWORD dwDataSize
-    )
-{
-    HRESULT hr = S_OK;
-    IDirect3DQuery9 *pD3DQuery = NULL;
-
-    IFC(pD3DDevice->CreateQuery(d3dQueryType, &pD3DQuery));
-    IFC(pD3DQuery->Issue(D3DISSUE_END));
-    IFC(pD3DQuery->GetData(pData, dwDataSize, 0));
-
-Cleanup:
-    ReleaseInterface(pD3DQuery);
-    RRETURN(hr);
-}
-
 
 //+-----------------------------------------------------------------------------
 //

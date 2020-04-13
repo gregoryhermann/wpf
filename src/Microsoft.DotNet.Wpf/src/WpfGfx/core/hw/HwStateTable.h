@@ -541,6 +541,7 @@ CStateTable<D3DIndexBuffer *>::CEntry::GetValue(
     }
 }
 
+#ifndef DX11
 template<>
 MIL_FORCEINLINE void
 CStateTable<D3DVertexBuffer *>::CEntry::GetValue(
@@ -554,6 +555,7 @@ CStateTable<D3DVertexBuffer *>::CEntry::GetValue(
         m_oValue->AddRef();
     }
 }
+#endif
 
 template<>
 MIL_FORCEINLINE void

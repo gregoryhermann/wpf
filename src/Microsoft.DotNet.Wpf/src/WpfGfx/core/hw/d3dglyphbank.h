@@ -21,37 +21,38 @@
 
 MtExtern(CD3DGlyphBank);
 MtExtern(D3DResource_GlyphTank);
-MtExtern(D3DResource_GlyphBankTempSurface);
+MtExtern(D3DResource_GlyphBankTempTexture);
 
 class CD3DDeviceLevel1;
+class CD3DVidMemOnlyTexture;
 
 //+-----------------------------------------------------------------------------
 //
 //  Class:
-//      CD3DGlyphBankTemporarySurface
+//      CD3DGlyphBankTemporaryTexture
 //
 //  Synopsis:
-//      Holds a D3DPOOL_SYSTEMMEM surface that's used to pump data to glyph
+//      Holds a D3DPOOL_SYSTEMMEM texture that's used to pump data to glyph
 //      tanks.
 //
 //------------------------------------------------------------------------------
-class CD3DGlyphBankTemporarySurface : public CD3DResource
+class CD3DGlyphBankTemporaryTexture : public CD3DResource
 {
 public:
     DECLARE_METERHEAP_ALLOC(ProcessHeap, Mt(CD3DGlyphBank));
 
-    CD3DGlyphBankTemporarySurface(
-        __in_ecount(1) D3DSurface* pSurface,
+    CD3DGlyphBankTemporaryTexture(
+        __in_ecount(1) D3DTexture* pTexture,
         UINT uWidth,
         UINT uHeight,
         __in_ecount(1) IMILPoolManager *pManager
         );
 
-    ~CD3DGlyphBankTemporarySurface();
+    ~CD3DGlyphBankTemporaryTexture();
 
     UINT GetWidth() const {return m_uWidth;}
     UINT GetHeight() const {return m_uHeight;}
-    D3DSurface* GetSurfaceNoAddref() const {return m_pSurface;}
+    D3DTexture* GetTextureNoAddref() const {return m_pTexture;}
 
     bool IsExpensive() const
     {
@@ -65,12 +66,12 @@ private:
 #if PERFMETER
     virtual PERFMETERTAG GetPerfMeterTag() const
     {
-        return Mt(D3DResource_GlyphBankTempSurface);
+        return Mt(D3DResource_GlyphBankTempTexture);
     }
 #endif
 
 private:
-    D3DSurface * const m_pSurface;
+    D3DTexture* const m_pTexture;
     UINT const m_uWidth;
     UINT const m_uHeight;
 };
@@ -95,8 +96,8 @@ public:
     DECLARE_METERHEAP_CLEAR(ProcessHeap, Mt(CD3DGlyphBank));
 
     CD3DGlyphTank(
+        __in_ecount(1) CD3DDeviceLevel1* pDevice,
         __in_ecount(1) D3DTexture* pTexture,
-        __in_ecount(1) D3DSurface* pSurface,
         UINT uTankWidth,
         UINT uTankHeight,
         __in_ecount(1) IMILPoolManager *pManager
@@ -121,8 +122,7 @@ public:
     // accessors
     //
 
-    D3DTexture* GetTextureNoAddref() const {return m_pTexture;}
-    D3DSurface* GetSurfaceNoAddref() const {return m_pSurface;}
+    CD3DTexture* GetTextureNoAddref() const {return reinterpret_cast<CD3DTexture *>(m_pTexture);}
     float GetWidTextureRc() const {return m_rWidthReciprocal;}
     float GetHeiTextureRc() const {return m_rHeightReciprocal;}
     UINT GetLoad() const {return m_nPeakLoad - m_nLostLoad;}
@@ -165,8 +165,8 @@ private:
     // Pointers to the actual D3D resources.
     //  These pointers are constant to help enforce the modification
     //  restrictions of CD3DResource objects.
-    D3DTexture * const m_pTexture;
-    D3DSurface * const m_pSurface;
+    CD3DVidMemOnlyTexture* m_pTexture;
+    CD3DDeviceLevel1* m_pDevice;
 
     UINT m_uWidth, m_uHeight;
     float m_rWidthReciprocal, m_rHeightReciprocal;
@@ -258,10 +258,10 @@ public:
     }
 
 private:
-    HRESULT EnsureTempSurface(
+    HRESULT EnsureTempTexture(
         UINT uWidth,
         UINT uHeight,
-        __deref_out_ecount(1) D3DSurface **ppTempSurface
+        __deref_out_ecount(1) D3DTexture **ppTempTexture
         );
 
 private:
@@ -291,7 +291,7 @@ private:
 
     CGlyphPainterMemory m_glyphPainterMemory;
 
-    CD3DGlyphBankTemporarySurface *m_pTempSurface;
+    CD3DGlyphBankTemporaryTexture *m_pTempTexture;
 };
 
 

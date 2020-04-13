@@ -13,6 +13,7 @@
 //------------------------------------------------------------------------
 
 #include "precomp.h"
+#include <d3dcompiler.h>
 
 //+----------------------------------------------------------------------------
 //
@@ -25,7 +26,6 @@ CCodeGen::CCodeGen()
 {
     m_pFileCpp = NULL;
     m_pFileHpp = NULL;
-    m_pDevice = NULL;
     m_cbTotal = 0;
 }
 
@@ -47,7 +47,6 @@ CCodeGen::~CCodeGen()
     {
         fclose(m_pFileHpp);
     }
-    ReleaseInterface(m_pDevice);
 }
 
 
@@ -66,21 +65,19 @@ CCodeGen::Initialize(
 {
     HRESULT hr = S_OK;
 
-    m_pFileCpp = fopen(pszFileNameCpp, "wt");
+    fopen_s(&m_pFileCpp, pszFileNameCpp, "wt");
     if (!m_pFileCpp)
     {
         printf("Can't open %s for writing\n", pszFileNameCpp);
         IFC(E_FAIL);
     }
 
-    m_pFileHpp = fopen(pszFileNameHpp, "wt");
+    fopen_s(&m_pFileHpp, pszFileNameHpp, "wt");
     if (!m_pFileHpp)
     {
         printf("Can't open %s for writing\n", pszFileNameHpp);
         IFC(E_FAIL);
     }
-
-    IFC(CFakeDevice::Create(&m_pDevice));
 
     fprintf(m_pFileCpp, sc_szTitle);
     fprintf(m_pFileCpp, "#include \"precomp.hpp\"\n\n");
@@ -122,30 +119,23 @@ char const CCodeGen::sc_szTitle[] =
 HRESULT
 CCodeGen::CompileEffect(
     __in WCHAR const *pszEffectFileName,
+    __in char const* pszTechniqueName,
     __in char const *pszEffectName
     )
 {
     HRESULT hr = S_OK;
 
     m_pszEffectName = pszEffectName;
+    m_pszTechniqueName = pszTechniqueName;
 
-    ID3DXBuffer *pCompilationErrors = NULL;
+    ID3DBlob* pCompilationErrors = NULL;
 
-    IFC(D3DXCreateEffectFromFile(
-        m_pDevice,
-        pszEffectFileName,
-        NULL,   //CONST D3DXMACRO* pDefines,
-        NULL,   //LPD3DXINCLUDE pInclude,
-        0,      //DWORD Flags: D3DXSHADER_DEBUG/SKIPVALIDATION/SKIPOPTIMIZATION 
-        NULL,   //LPD3DXEFFECTPOOL pPool,
-        &m_pEffect,
-        &pCompilationErrors
-        ));
+    D3DCompileFromFile(pszEffectFileName, nullptr, nullptr, "", "ps_4_0_level_9_3", 0, 0, &m_pShader, &pCompilationErrors);
 
-    IFC(WriteEffect());
+    IFC(WritePixelShader());
 
 Cleanup:
-    ReleaseInterface(m_pEffect);
+    ReleaseInterface(m_pShader);
     if (pCompilationErrors != NULL)
     {
         // Output compiler errors
@@ -160,92 +150,6 @@ Cleanup:
 
 //+----------------------------------------------------------------------------
 //
-//  Member:    CCodeGen::WriteEffect
-//
-//  Synopsis:
-//      Traverse given ID3DXEffect, pointed by m_pEffect.
-//      Generate C++ code for its components.
-//
-//-----------------------------------------------------------------------------
-HRESULT
-CCodeGen::WriteEffect()
-{
-
-    HRESULT hr = S_OK;
-    D3DXEFFECT_DESC descEffect;
-
-    IFC(m_pEffect->GetDesc(&descEffect));
-
-    for (UINT i = 0; i < descEffect.Techniques; i++)
-    {
-        m_hTechnique = m_pEffect->GetTechnique(i);
-        IFH(m_hTechnique);
-        IFC(WriteTechnique());
-    }
-
-Cleanup:
-    return hr;
-}
-
-//+----------------------------------------------------------------------------
-//
-//  Member:    CCodeGen::WriteTechnique
-//
-//  Synopsis:
-//      Traverse current technique, pointed by m_hTechnique.
-//      Generate C++ code for its components.
-//
-//-----------------------------------------------------------------------------
-HRESULT
-CCodeGen::WriteTechnique()
-{
-    HRESULT hr = S_OK;
-
-    IFC(m_pEffect->GetTechniqueDesc(m_hTechnique, &m_descTechnique));
-
-    for (UINT i = 0; i < m_descTechnique.Passes; i++)
-    {
-        m_hPass = m_pEffect->GetPass(m_hTechnique, i);
-        IFH(m_hPass);
-        IFC(WritePass());
-    }
-
-Cleanup:
-    return hr;
-}
-
-//+----------------------------------------------------------------------------
-//
-//  Member:    CCodeGen::WritePass
-//
-//  Synopsis:
-//      Traverse current pass, pointed by m_hPass.
-//      Generate C++ code for its components.
-//
-//-----------------------------------------------------------------------------
-HRESULT
-CCodeGen::WritePass()
-{
-    HRESULT hr = S_OK;
-
-    IFC(m_pEffect->GetPassDesc(m_hPass, &m_descPass));
-
-    if (m_descPass.pPixelShaderFunction != NULL)
-    {
-        IFC(WritePixelShader());
-    }
-
-    if (m_descPass.pVertexShaderFunction != NULL)
-    {
-        IFC(WriteVertexShader());
-    }
-
-Cleanup:
-    return hr;
-}    
-
-//+----------------------------------------------------------------------------
-//
 //  Member:    CCodeGen::WritePixelShader
 //
 //  Synopsis:
@@ -257,7 +161,7 @@ CCodeGen::WritePixelShader()
 {
     HRESULT hr = S_OK;
 
-    const DWORD* pFunction = m_descPass.pPixelShaderFunction;
+    const DWORD* pFunction = (const DWORD * )m_pShader->GetBufferPointer();
 
     // form shader data array definition header, like
     // const DWORD
@@ -266,65 +170,23 @@ CCodeGen::WritePixelShader()
         m_pFileCpp,
         "const DWORD\ng_PixelShader_%s_%s_%s[] =\n",
         m_pszEffectName,
-        m_descTechnique.Name,
-        m_descPass.Name
+        m_pszTechniqueName,
+        "P0"
         );
 
     fprintf(
         m_pFileHpp,
         "extern const DWORD g_PixelShader_%s_%s_%s[];\n",
         m_pszEffectName,
-        m_descTechnique.Name,
-        m_descPass.Name
+        m_pszTechniqueName,
+        "P0"
         );
 
-    WriteDwordArray(pFunction);
+    WriteDwordArray(pFunction, m_pShader->GetBufferSize());
 
 //Cleanup:
     return hr;
 }
-
-
-//+----------------------------------------------------------------------------
-//
-//  Member:    CCodeGen::WriteVertexShader
-//
-//  Synopsis:
-//      Generate code for vertex shader.
-//
-//-----------------------------------------------------------------------------
-HRESULT
-CCodeGen::WriteVertexShader()
-{
-    HRESULT hr = S_OK;
-
-    const DWORD* pFunction = m_descPass.pVertexShaderFunction;
-
-    // form shader data array definition header, like
-    // const DWORD
-    // g_VertexShader_Foo_Tech_Pass[] =
-    fprintf(
-        m_pFileCpp,
-        "const DWORD\ng_VertexShader_%s_%s_%s[] =\n",
-        m_pszEffectName,
-        m_descTechnique.Name,
-        m_descPass.Name
-        );
-
-    fprintf(
-        m_pFileHpp,
-        "extern const DWORD g_VertexShader_%s_%s_%s[];\n",
-        m_pszEffectName,
-        m_descTechnique.Name,
-        m_descPass.Name
-        );
-
-    WriteDwordArray(pFunction);
-
-//Cleanup:
-    return hr;
-}
-
 
 //+----------------------------------------------------------------------------
 //
@@ -337,16 +199,15 @@ CCodeGen::WriteVertexShader()
 //-----------------------------------------------------------------------------
 void
 CCodeGen::WriteDwordArray(
-    __in DWORD const *pFunction
-    )
+    __in DWORD const *pFunction,
+    __in DWORD cbSize
+)
 {
     // open array data
     fprintf(m_pFileCpp, "{\n");
 
     // write data array, uRowSize DWORDs per line
     static const UINT uRowSize = 6;
-
-    UINT cbSize = D3DXGetShaderSize(pFunction);
 
     for (UINT i = 0, n = cbSize/sizeof(DWORD); i < n; i++)
     {

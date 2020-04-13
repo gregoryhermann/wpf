@@ -38,6 +38,7 @@ public:
 
     static HRESULT Create(
         __inout_ecount(1) CD3DResourceManager *pResourceManager,
+        __in_ecount(1) CD3DDeviceLevel1* pDevice,
         __in_ecount(1) D3DTexture *pD3DTexture,
         __deref_out_ecount(1) CD3DLockableTexture **ppD3DLockableTexture
         );
@@ -62,6 +63,7 @@ protected:
 
     HRESULT Init(
         __inout_ecount(1) CD3DResourceManager *pResourceManager,
+        __in_ecount(1) CD3DDeviceLevel1* pDevice,
         __in_ecount(1) D3DTexture *pD3DTexture
         );
 
@@ -72,112 +74,4 @@ protected:
     }
 #endif
 };
-
-//+-----------------------------------------------------------------------------
-//
-//  Class:
-//      CD3DLockableTexturePair
-//
-//  Synopsis:
-//      Holds one or two lockable textures. Normally, only the main one is used;
-//      the second is involved only for text rendering in clear type mode. 
-//      Clear type requires 6 components per texel: three colors and three
-//      alphas (separate alpha for each color component). As far as DX allows
-//      only four components, we store alphas separately in m_pAuxTexture, while
-//      m_pMainTexture stores colors.
-//
-//------------------------------------------------------------------------------
-class CD3DLockableTexturePair
-{
-public:
-    CD3DLockableTexturePair();
-    ~CD3DLockableTexturePair();
-
-    VOID InitMain(
-        __in_ecount(1) CD3DLockableTexture *pTexture
-        );
-
-    VOID InitAux(
-        __in_ecount(1) CD3DLockableTexture *pTexture
-        );
-
-    HRESULT Draw(
-        __in_ecount(1) CD3DDeviceLevel1 *pDevice,
-        __in_ecount(1) const MilPointAndSizeL &rc,
-        bool fUseAux
-        );
-
-private:
-    friend class CD3DLockableTexturePairLock;
-    CD3DLockableTexture *m_pTextureMain;
-    CD3DLockableTexture *m_pTextureAux;
-};
-
-//+-----------------------------------------------------------------------------
-//
-//  Class:
-//      CD3DLockableTexturePairLock
-//
-//  Synopsis:
-//      The helper class for CD3DLockableTexturePair locking/unlocking. This is
-//      short-term life time object supposed to live in stack frame.
-//
-//------------------------------------------------------------------------------
-class CD3DLockableTexturePairLock
-{
-public:
-    CD3DLockableTexturePairLock(
-        __in_ecount(1) const CD3DLockableTexturePair* pTexturePair
-        )
-        : m_texturePair(*pTexturePair)
-    {
-        m_fMainLocked = false;
-        m_fAuxLocked = false;
-    }
-
-    struct LockData
-    {
-        BYTE *pMainBits;
-        BYTE *pAuxBits;
-        INT uPitch;
-
-    #if DBG_ANALYSIS
-        UINT m_uDbgAnalysisLockedWidth;
-        UINT m_uDbgAnalysisLockedHeight;
-    #endif
-    };
-
-    HRESULT Lock(
-        UINT uWidth,
-        UINT uHeight,
-        __out_ecount(1) LockData &lockData,
-        bool fUseAux = false
-        );
-
-    ~CD3DLockableTexturePairLock()
-    {
-        if (m_fMainLocked)
-        {
-            IGNORE_HR(m_texturePair.m_pTextureMain->UnlockRect());
-        }
-        if (m_fAuxLocked)
-        {
-            IGNORE_HR(m_texturePair.m_pTextureAux->UnlockRect());
-        }
-    }
-
-private:
-    static HRESULT LockOne(
-        __in_ecount(1) CD3DLockableTexture* pTexture,
-        UINT uWidth,
-        UINT uHeight,
-        __out_ecount(1) D3DLOCKED_RECT* pD3DLockedRect
-        );
-
-private:
-    CD3DLockableTexturePair const& m_texturePair;
-    bool m_fMainLocked;
-    bool m_fAuxLocked;
-};
-
 

@@ -118,6 +118,7 @@ public:
         );
 
     HRESULT GetHwShader(
+        D3DVertexType vertexType,
         __in_ecount(uNumPipelineItems) HwPipelineItem const *rgShaderItem,
         UINT uNumPipelineItems,
         __deref_out_ecount(1) CHwPipelineShader **ppHwShader

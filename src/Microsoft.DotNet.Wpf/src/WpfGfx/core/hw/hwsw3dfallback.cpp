@@ -33,14 +33,14 @@ const size_t kTargetPixelSize = sizeof(ARGB);
 CHw3DSoftwareSurface::CHw3DSoftwareSurface(
     __inout_ecount(1) CD3DDeviceLevel1 *pDevice,
     MilPixelFormat::Enum fmtTarget,
-    D3DFORMAT d3dfmtTarget,
+    DXGI_FORMAT dxgifmtTarget,
     DisplayId associatedDisplay,
     bool fComposeWithCopy
     ) :
     CHwSurfaceRenderTarget(
         pDevice,
         fmtTarget,
-        d3dfmtTarget,
+        dxgifmtTarget,
         associatedDisplay
         ),
     m_fComposeWithCopy(fComposeWithCopy)
@@ -48,7 +48,7 @@ CHw3DSoftwareSurface::CHw3DSoftwareSurface(
     m_fEnableRendering = false;
     m_fSurfaceDirty = false;
 
-    Assert(kTargetPixelSize == D3DFormatSize(m_d3dfmtTargetSurface));
+    Assert(kTargetPixelSize == D3DFormatSize(m_dxgifmtTargetTexture));
 
     m_pWrapperBitmap = NULL;
 }
@@ -113,13 +113,12 @@ CHw3DSoftwareSurface::Create(
     }
 
     // Make sure device is capable of using this target format
-    D3DFORMAT d3dfmtTarget = PixelFormatToD3DFormat(fmtTarget);
-    IFC(pD3DDevice->CheckRenderTargetFormat(d3dfmtTarget));
+    DXGI_FORMAT dxgiFmtTarget = PixelFormatToD3DFormat(fmtTarget);
 
     pHw3DFallback = new CHw3DSoftwareSurface(
         pD3DDevice,
         fmtTarget,
-        d3dfmtTarget,
+        dxgiFmtTarget,
         associatedDisplay,
         fComposeWithCopy
         );
@@ -192,17 +191,12 @@ CHw3DSoftwareSurface::BeginSw3D(
 
     if (m_rcBounds.Intersect(rcBounds))
     {
-        D3DLOCKED_RECT d3dLock;
-
         //
         // Lock everything within bounds
         //
 
-        IFC(m_pD3DTargetSurface->LockRect(
-            &d3dLock,
-            &m_rcBounds,
-            0
-            ));
+        D3D11_MAPPED_SUBRESOURCE mappedSubresource;
+        m_pD3DDevice->GetDeviceContext()->Map(m_pD3DTargetTexture->GetD3DTextureNoRef(), 0, D3D11_MAP_READ, 0, &mappedSubresource);
 
         //
         // Initialize relevant pixels of D3D surface.
@@ -210,7 +204,7 @@ CHw3DSoftwareSurface::BeginSw3D(
 
         size_t cbWidth = kTargetPixelSize * m_rcBounds.Width();
 
-        BYTE *pbDestPixels = reinterpret_cast<BYTE*>(d3dLock.pBits);
+        BYTE *pbDestPixels = reinterpret_cast<BYTE*>(mappedSubresource.pData);
 
         if (m_fComposeWithCopy)
         {
@@ -233,7 +227,7 @@ CHw3DSoftwareSurface::BeginSw3D(
 #endif
 
                 CopyMemory(pbDestPixels, pbSourcePixels, cbWidth);
-                pbDestPixels += d3dLock.Pitch;
+                pbDestPixels += mappedSubresource.RowPitch;
                 pbSourcePixels += cbTargetStride;
             }
         }
@@ -248,7 +242,7 @@ CHw3DSoftwareSurface::BeginSw3D(
             for (int y = m_rcBounds.top; y < m_rcBounds.bottom; y++)
             {
                 ZeroMemory(pbDestPixels, cbWidth);
-                pbDestPixels += d3dLock.Pitch;
+                pbDestPixels += mappedSubresource.RowPitch;
             }
         }
 
@@ -256,7 +250,7 @@ CHw3DSoftwareSurface::BeginSw3D(
         // Unlock D3D target
         //
 
-        IFC(m_pD3DTargetSurface->UnlockRect());
+        m_pD3DDevice->GetDeviceContext()->Unmap(m_pD3DTargetTexture->GetD3DTextureNoRef(), 0);
 
         //
         // Finally ready to clear the depth buffer
@@ -264,16 +258,17 @@ CHw3DSoftwareSurface::BeginSw3D(
 
         if (prZ)
         {
-            D3DMULTISAMPLE_TYPE MultisampleType = D3DMULTISAMPLE_NONE;
+            DXGI_SAMPLE_DESC sampleDesc = { 0 };
+            sampleDesc.Count = 1;
 
             IFC(CHwSurfaceRenderTarget::Begin3DInternal(
                 *prZ,
                 fUseZBuffer,
-                MultisampleType
+                sampleDesc
                 ));
 
             // We should not change MultisampleType if D3DMULTISAMPLE_NONE is requested
-            Assert(MultisampleType == D3DMULTISAMPLE_NONE);
+            Assert(sampleDesc.Count == 1);
         }
 
     }
@@ -410,7 +405,7 @@ bool
 CHw3DSoftwareSurface::IsValid() const
 {
     Assert(m_fEnableRendering);
-    Assert(m_pD3DTargetSurface->IsValid());
+    Assert(m_pD3DTargetTexture->IsValid());
 
     return true;
 }
@@ -438,14 +433,14 @@ CHw3DSoftwareSurface::EnsureSurface()
     // Release old resources
     //
 
-    if (m_pD3DTargetSurface)
+    if (m_pD3DTargetTexture)
     {
         if (m_uiNewTargetWidth  != m_uWidth ||
             m_uiNewTargetHeight != m_uHeight)
         {
             ENTER_DEVICE_FOR_SCOPE(*m_pD3DDevice);
 
-            ReleaseInterface(m_pD3DTargetSurface);
+            ReleaseInterface(m_pD3DTargetTexture);
         }
     }
 
@@ -453,18 +448,17 @@ CHw3DSoftwareSurface::EnsureSurface()
     // Create our TargetSurface if it doesn't exist
     //
 
-    if (!m_pD3DTargetSurface)
+    if (!m_pD3DTargetTexture)
     {
         ENTER_DEVICE_FOR_SCOPE(*m_pD3DDevice);
 
         IFC(m_pD3DDevice->CreateRenderTarget(
             m_uiNewTargetWidth,
             m_uiNewTargetHeight,
-            m_d3dfmtTargetSurface,
-            D3DMULTISAMPLE_NONE,
+            m_dxgifmtTargetTexture,
             0,
-            TRUE,
-            &m_pD3DTargetSurface
+            0,
+            &m_pD3DTargetTexture
             ));
 
         m_uWidth = m_uiNewTargetWidth;
@@ -520,19 +514,18 @@ CHw3DSoftwareSurface::CompositeWithSwRenderTarget(
     )
 {
     HRESULT hr = S_OK;
-    D3DLOCKED_RECT d3dLock;
-
     BOOL fSurfaceLocked = false;
 
     //
     // Lock the D3D SW Surface so we can grab it's bits.
     //
 
-    IFC(m_pD3DTargetSurface->LockRect(
-        &d3dLock,
-        &rc3DBounds,
-        0
-        ));
+    D3D11_MAPPED_SUBRESOURCE mappedSubresource;
+    m_pD3DDevice->GetDeviceContext()->Map(m_pD3DTargetTexture->GetD3DTextureNoRef(),
+        0,
+        D3D11_MAP_READ,
+        0,
+        &mappedSubresource);
 
     fSurfaceLocked = true;
 
@@ -552,13 +545,13 @@ CHw3DSoftwareSurface::CompositeWithSwRenderTarget(
                                + kTargetPixelSize * static_cast<UINT>(rc3DBounds.left)
                                + cbTargetStride * static_cast<UINT>(rc3DBounds.top);
 
-        BYTE *pbSourcePixels = static_cast<BYTE *>(d3dLock.pBits);
+        BYTE *pbSourcePixels = static_cast<BYTE *>(mappedSubresource.pData);
 
         for (int y = rc3DBounds.top; y < rc3DBounds.bottom; y++)
         {
             CopyMemory(pbDestPixels, pbSourcePixels, cbWidth);
             pbDestPixels += cbTargetStride;
-            pbSourcePixels += d3dLock.Pitch;
+            pbSourcePixels += mappedSubresource.RowPitch;
         }
     }
     else
@@ -611,9 +604,9 @@ CHw3DSoftwareSurface::CompositeWithSwRenderTarget(
             bltRenderState.SourceRect.Width,
             bltRenderState.SourceRect.Height,
             m_fmtTarget,
-            m_uHeight * d3dLock.Pitch,
-            static_cast<BYTE *>(d3dLock.pBits),
-            d3dLock.Pitch
+            m_uHeight * mappedSubresource.RowPitch,
+            static_cast<BYTE *>(mappedSubresource.pData),
+            mappedSubresource.RowPitch
             ));
 
         // Translate source into position
@@ -644,7 +637,7 @@ Cleanup:
 
     if (fSurfaceLocked)
     {
-        MIL_THR_SECONDARY(m_pD3DTargetSurface->UnlockRect());
+        m_pD3DDevice->GetDeviceContext()->Unmap(m_pD3DTargetTexture->GetD3DTextureNoRef(), 0);
     }
 
     RRETURN(hr);

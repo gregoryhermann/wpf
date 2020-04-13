@@ -112,6 +112,7 @@ CHwDeviceBitmapColorSource::CreateCommon(
     __in_ecount_opt(1) const CD3DVidMemOnlyTexture *pVidMemTexture,
     __out_ecount(1) CacheParameters &oRealizationDesc,
     __out_ecount(1) D3DSURFACE_DESC &d3dsd,
+    __out_ecount(1) D3D11_TEXTURE2D_DESC &desc,
     __out_ecount(1) UINT &uLevels
     )
 {
@@ -131,11 +132,11 @@ CHwDeviceBitmapColorSource::CreateCommon(
 
     oRealizationDesc.dlU.uLength = oRealizationDesc.rcSourceContained.Width<UINT>();
     oRealizationDesc.dlU.eLayout = NaturalTexelLayout;
-    oRealizationDesc.dlU.d3dta   = D3DTADDRESS_CLAMP;
+    oRealizationDesc.dlU.wrapMode   = MilBitmapWrapMode::Extend;
 
     oRealizationDesc.dlV.uLength = oRealizationDesc.rcSourceContained.Height<UINT>();
     oRealizationDesc.dlV.eLayout = NaturalTexelLayout;
-    oRealizationDesc.dlV.d3dta   = D3DTADDRESS_CLAMP;
+    oRealizationDesc.dlV.wrapMode   = MilBitmapWrapMode::Extend;
 
     oRealizationDesc.fOnlyContainsSubRectOfSource =
            (oRealizationDesc.dlU.uLength != oRealizationDesc.uWidth)
@@ -148,35 +149,24 @@ CHwDeviceBitmapColorSource::CreateCommon(
 
     if (pVidMemTexture)
     {
-        d3dsd = pVidMemTexture->D3DSurface0Desc();
+        desc = pVidMemTexture->D3DSurface0Desc();
         uLevels = pVidMemTexture->Levels();
     }
     else
     {
-        GetD3DSDRequired(
+        GetTextureDescRequired(
             pDevice,
             oRealizationDesc,
-            &d3dsd,
+            &desc,
             &uLevels
             );
-
-        // Shared texture is read-only source for this module, but requestor will
-        // update it with StretchRect; so make it a render target.
-        d3dsd.Usage |= D3DUSAGE_RENDERTARGET;
     }
 
-    if (   d3dsd.Width > pDevice->GetMaxTextureWidth()
-        || d3dsd.Height > pDevice->GetMaxTextureHeight())
+    if (   desc.Width > pDevice->GetMaxTextureWidth()
+        || desc.Height > pDevice->GetMaxTextureHeight())
     {
         IFC(WGXERR_MAX_TEXTURE_SIZE_EXCEEDED);
     }
-
-    AssertMinimalTextureDesc(
-        pDevice,
-        oRealizationDesc.dlU.d3dta,
-        oRealizationDesc.dlV.d3dta,
-        &d3dsd
-        );
 
 Cleanup:
     ReleaseInterfaceNoNULL(pbcs);
@@ -221,7 +211,7 @@ CHwDeviceBitmapColorSource::CreateInternal(
     HRESULT hr = S_OK;
     CHwDeviceBitmapColorSource *pbcs = NULL;
     CacheParameters oRealizationDesc;
-    D3DSURFACE_DESC d3dsd;
+    D3D11_TEXTURE2D_DESC desc;
     UINT uLevels;
 
     IFC(CHwDeviceBitmapColorSource::CreateCommon(
@@ -231,7 +221,7 @@ CHwDeviceBitmapColorSource::CreateInternal(
         rcBoundsRequired,
         pVidMemTexture,
         OUT oRealizationDesc,
-        OUT d3dsd,
+        OUT desc,
         OUT uLevels
         ));
 
@@ -239,7 +229,7 @@ CHwDeviceBitmapColorSource::CreateInternal(
         pDevice,
         NULL,        // color source is read-only and shouldn't be affected by IWGXBitmap changes (e.g. dirty rects)
         fmt, 
-        d3dsd, 
+        desc, 
         uLevels
         );
     IFCOOM(pbcs);
@@ -276,10 +266,10 @@ CHwDeviceBitmapColorSource::CHwDeviceBitmapColorSource(
     __in_ecount(1) CD3DDeviceLevel1 *pDevice,
     __in_opt IWGXBitmap *pBitmap,
     MilPixelFormat::Enum fmt,
-    __in_ecount(1) const D3DSURFACE_DESC &d3dsd,
+    __in_ecount(1) const D3D11_TEXTURE2D_DESC &desc,
     UINT uLevels
     ) :
-    CHwBitmapColorSource(pDevice, pBitmap, fmt, d3dsd, uLevels),
+    CHwBitmapColorSource(pDevice, pBitmap, fmt, desc, uLevels),
     m_hSharedHandle(NULL), m_pSysMemTexture(NULL)
 {
 }
@@ -466,6 +456,67 @@ CHwDeviceBitmapColorSource::UpdateValidBounds(
     m_rcRequiredRealizationBounds = rcValid;
 }
 
+//+-----------------------------------------------------------------------------
+//
+//  Member:
+//      CHwDeviceBitmapColorSource::UpdateSurface
+//
+//  Synopsis:
+//      Copys dirty rects from pISrcSurface to our texture either by sharing
+//      a handle or by copying through software. The surfaces will always be
+//      on different devices but, in the software case, they may be on different
+//      adapters.
+//
+//------------------------------------------------------------------------------
+
+HRESULT
+CHwDeviceBitmapColorSource::UpdateTexture(
+    __in UINT cDirtyRects,
+    __in_ecount(cDirtyRects) const CMilRectU *prgDirtyRects,
+    __in_ecount(1) D3DTexture *pISrcTexture
+    )
+{
+    HRESULT hr = S_OK;
+
+    Assert(cDirtyRects > 0);
+
+    ENTER_DEVICE_FOR_SCOPE(*m_pDevice);
+
+    if (m_hSharedHandle)
+    {
+        IFC(UpdateTextureSharedHandle(cDirtyRects, prgDirtyRects, pISrcTexture));
+    }
+    else
+    {
+        IFC(UpdateTextureSoftware(cDirtyRects, prgDirtyRects, pISrcTexture));
+    }
+
+Cleanup:
+
+    RRETURN(hr);
+}
+
+//+-----------------------------------------------------------------------------
+//
+//  Member:
+//      CHwDeviceBitmapColorSource::Flush
+//
+//  Synopsis:
+//      Reads a single pixel from pID3DSurface in order to cause a flush. We
+//      must first copy to something small that we can read back from.
+//
+//------------------------------------------------------------------------------
+HRESULT
+CHwDeviceBitmapColorSource::Flush(
+    __in_ecount(1) D3DDeviceContext *pID3DDevice,
+    __in_ecount(1) D3DSurface *pID3DSurface,
+    __in_ecount(1) const D3DSURFACE_DESC &desc
+    )
+{
+    pID3DDevice->Flush();
+    return S_OK;
+}
+
 
 //+-----------------------------------------------------------------------------
 //
@@ -504,8 +555,6 @@ CHwDeviceBitmapColorSource::CopyPixels(
     // This call may be made w/o calling through a Hw RT.  See notes above.
     ENTER_DEVICE_FOR_SCOPE(*m_pDevice);
 
-    CD3DSurface *pSrcSurface = NULL;
-
     CMilRectU rcValidCopy = m_rcCachedRealizationBounds;
 
     if (cClipRects == 1)
@@ -537,9 +586,6 @@ CHwDeviceBitmapColorSource::CopyPixels(
 
         Assert(cbBufferInset <= cbBufferOut);
 
-
-        IFC(m_pVidMemOnlyTexture->GetD3DSurfaceLevel(0, OUT &pSrcSurface));
-
         rcValidCopy.Offset(
             -static_cast<INT>(m_rcPrefilteredBitmap.left),
             -static_cast<INT>(m_rcPrefilteredBitmap.top)
@@ -554,7 +600,7 @@ CHwDeviceBitmapColorSource::CopyPixels(
         Assert(rcValidCopy.right <= INT_MAX);
         Assert(rcValidCopy.bottom <= INT_MAX);
 
-        IFC(pSrcSurface->ReadIntoSysMemBuffer(
+        IFC(m_pVidMemOnlyTexture->ReadIntoSysMemBuffer(
             rcValidCopy,
             cClipRects,
             rgClipRects,
@@ -566,113 +612,7 @@ CHwDeviceBitmapColorSource::CopyPixels(
     }
 
 Cleanup:
-    ReleaseInterfaceNoNULL(pSrcSurface);
 
-    RRETURN(hr);
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CHwDeviceBitmapColorSource::UpdateSurface
-//
-//  Synopsis:
-//      Copys dirty rects from pISrcSurface to our texture either by sharing
-//      a handle or by copying through software. The surfaces will always be
-//      on different devices but, in the software case, they may be on different
-//      adapters.
-//
-//------------------------------------------------------------------------------
-
-HRESULT
-CHwDeviceBitmapColorSource::UpdateSurface(
-    __in UINT cDirtyRects,
-    __in_ecount(cDirtyRects) const CMilRectU *prgDirtyRects,
-    __in_ecount(1) D3DSurface *pISrcSurface
-    )
-{
-    HRESULT hr = S_OK;
-
-    Assert(cDirtyRects > 0);
-
-    ENTER_DEVICE_FOR_SCOPE(*m_pDevice);
-
-    if (m_hSharedHandle)
-    {
-        IFC(UpdateSurfaceSharedHandle(cDirtyRects, prgDirtyRects, pISrcSurface));
-    }
-    else
-    {
-        IFC(UpdateSurfaceSoftware(cDirtyRects, prgDirtyRects, pISrcSurface));
-    }
-
-Cleanup:
-
-    RRETURN(hr);
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CHwDeviceBitmapColorSource::Flush
-//
-//  Synopsis:
-//      Reads a single pixel from pID3DSurface in order to cause a flush. We
-//      must first copy to something small that we can read back from.
-//
-//------------------------------------------------------------------------------
-HRESULT
-CHwDeviceBitmapColorSource::Flush(
-    __in_ecount(1) D3DDeviceContext *pID3DDevice,
-    __in_ecount(1) D3DSurface *pID3DSurface,
-    __in_ecount(1) const D3DSURFACE_DESC &desc
-    )
-{
-    HRESULT hr = S_OK;
-    // The surface that we will read back from will be 16x16 unless
-    // the source is smaller than that. We don't do 1x1 because D3D
-    // tells us that some drivers have issues with ultra small surfaces.
-    const UINT uFlushWidth = min(16u, desc.Width);
-    const UINT uFlushHeight = min(16u, desc.Height);
-    const RECT rcCopy = { 0, 0, uFlushWidth, uFlushHeight };
-    const RECT rcFlush = { 0, 0, 1, 1 };
-
-    D3DSurface *pIFlushSurface = NULL;
-    
-    IFC(pID3DDevice->CreateRenderTarget(
-        uFlushWidth,
-        uFlushHeight,
-        desc.Format,
-        D3DMULTISAMPLE_NONE,
-        0,      // multisample quality
-        TRUE,   // lockable
-        &pIFlushSurface,
-        NULL
-        ));
-
-    IFC(pID3DDevice->StretchRect(
-        pID3DSurface,
-        &rcCopy,
-        pIFlushSurface,
-        &rcCopy,
-        D3DTEXF_NONE
-        ));
-
-    D3DLOCKED_RECT dontCare;
-    IFC(pIFlushSurface->LockRect(
-        &dontCare,
-        &rcFlush,
-        D3DLOCK_READONLY
-        ));
-
-Cleanup:
-    if (pIFlushSurface)
-    {
-        IGNORE_HR(pIFlushSurface->UnlockRect());
-    }
-        
-    ReleaseInterface(pIFlushSurface);
-    
     RRETURN(hr);
 }
 
@@ -689,13 +629,16 @@ Cleanup:
 //------------------------------------------------------------------------------
 
 HRESULT
-CHwDeviceBitmapColorSource::UpdateSurfaceSharedHandle(
+CHwDeviceBitmapColorSource::UpdateTextureSharedHandle(
     UINT cDirtyRects,
     __in_ecount(cDirtyRects) const CMilRectU *prgDirtyRects,
-    __in_ecount(1) D3DSurface *pISrcSurface
+    __in_ecount(1) D3DTexture *pISrcTexture
     )
 {
+    // Is this required?
+    Assert(0);
     HRESULT hr = S_OK;
+#if 0
 
     Assert(m_hSharedHandle);
     
@@ -705,7 +648,7 @@ CHwDeviceBitmapColorSource::UpdateSurfaceSharedHandle(
     
     IFC(pISrcSurface->GetDevice(&pID3DSrcDevice));
 
-    const D3DSURFACE_DESC &desc = m_pVidMemOnlyTexture->D3DSurface0Desc();
+    const auto &desc = m_pVidMemOnlyTexture->D3DSurface0Desc();
 
     IFC(pID3DSrcDevice->CreateTexture(
         desc.Width,
@@ -713,7 +656,6 @@ CHwDeviceBitmapColorSource::UpdateSurfaceSharedHandle(
         m_pVidMemOnlyTexture->Levels(),
         desc.Usage,
         desc.Format,
-        desc.Pool,
         &pIDestTexture,
         &m_hSharedHandle
         ));
@@ -746,6 +688,7 @@ Cleanup:
     ReleaseInterface(pIDestTexture);
     ReleaseInterface(pID3DSrcDevice);
 
+#endif
     RRETURN(hr);
 }
 
@@ -761,10 +704,10 @@ Cleanup:
 //------------------------------------------------------------------------------
 
 HRESULT
-CHwDeviceBitmapColorSource::UpdateSurfaceSoftware(
+CHwDeviceBitmapColorSource::UpdateTextureSoftware(
     UINT cDirtyRects,
     __in_ecount(cDirtyRects) const CMilRectU *prgDirtyRects,
-    __in_ecount(1) D3DSurface *pISrcSurface
+    __in_ecount(1) D3DTexture* pISrcTexture
     )
 {
     HRESULT hr = S_OK;
@@ -776,14 +719,8 @@ CHwDeviceBitmapColorSource::UpdateSurfaceSoftware(
     // Create and cache a system memory texture if we don't have one already
     if (!m_pSysMemTexture)
     {
-        D3DSURFACE_DESC descSrc;
-        IFC(pISrcSurface->GetDesc(&descSrc));
-
-        // Modify the description for system memory use
-        descSrc.Usage = 0;
-        descSrc.Pool = D3DPOOL_SYSTEMMEM;
-        descSrc.MultiSampleType = D3DMULTISAMPLE_NONE;
-        descSrc.MultiSampleQuality = 0;
+        D3D11_TEXTURE2D_DESC descSrc;
+        pISrcTexture->GetDesc(&descSrc);
         
         IFC(m_pDevice->CreateLockableTexture(&descSrc, &m_pSysMemTexture));
     }
@@ -796,7 +733,7 @@ CHwDeviceBitmapColorSource::UpdateSurfaceSoftware(
     for (UINT i = 0; i < cDirtyRects; ++i)
     {
         IFC(ReadRenderTargetIntoSysMemBuffer(
-            pISrcSurface,
+            pISrcTexture,
             prgDirtyRects[i],
             m_fmtTexture,
             static_cast<UINT>(rcLock.Pitch),

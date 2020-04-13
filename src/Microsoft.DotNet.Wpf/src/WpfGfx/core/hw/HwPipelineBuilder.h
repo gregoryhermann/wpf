@@ -68,10 +68,6 @@ public:
         __in_ecount(1) CHwTexturedColorSource *pAlphaMaskColorSource
         );
 
-    HRESULT Mul_BlendColors(
-        __in_ecount(1) CHwColorComponentSource *pBlendColorSource
-        );
-
     HRESULT Set_AAColorSource(
         __in_ecount(1) CHwColorComponentSource *pAAColorSource
         );
@@ -309,83 +305,6 @@ private:
     INT m_iAntiAliasingPiggybackedByItem;
 
     MilVertexFormat m_mvfAvailable;  // vertex props that are yet unclaimed
-};
-
-
-
-//+-----------------------------------------------------------------------------
-//
-//  Class:
-//      CHwFFPipelineBuilder
-//
-//  Synopsis:
-//      Short lived fixed function builder class that takes the generic pipeline
-//      and constructs a fixed function pipeline from it.
-//
-//------------------------------------------------------------------------------
-
-class CHwFFPipelineBuilder :
-    public CHwPipelineBuilder
-{
-public:
-    CHwFFPipelineBuilder(
-        __inout_ecount(1) CHwFFPipeline *pHP
-        );
-
-    HRESULT Setup(
-        MilCompositingMode::Enum eCompositingMode,
-        __inout_ecount(1) IGeometryGenerator *pIGeometryGenerator,
-        __inout_ecount(1) IHwPrimaryColorSource *pIPCS,
-        __in_ecount_opt(1) const IMILEffectList *pIEffects,
-        __in_ecount(1) const CHwBrushContext    *pEffectContext
-        );
-
-    override HRESULT Set_Constant(
-        __in_ecount(1) CHwConstantColorSource *pConstant
-        );
-
-    override HRESULT Set_Texture(
-        __in_ecount(1) CHwTexturedColorSource *pTexture
-        );
-
-    override HRESULT Set_RadialGradient(
-        __in_ecount(1) CHwRadialGradientColorSource *pRadialGradient
-        );
-
-    override HRESULT Mul_ConstAlpha(
-        CHwConstantAlphaColorSource *pAlphaColorSource
-        );
-
-    override HRESULT Mul_AlphaMask(
-        __in_ecount(1) CHwTexturedColorSource *pAlphaMaskColorSource
-        );
-
-    override HRESULT Add_Lighting(
-        __in_ecount(1) CHwLightingColorSource *pLightingSource
-        );
-
-protected:
-
-    override HRESULT Mul_BlendColorsInternal(
-        __in_ecount(1) CHwColorComponentSource *pBlendColorSource
-        );
-
-private:
-
-    void FinalizeBlendOperations(
-        MilCompositingMode::Enum eCompositingMode
-        );
-
-    HRESULT AddFFPipelineItem(
-        HwBlendOp eBlendOp,
-        HwBlendArg hbaSrc1,
-        HwBlendArg hbaSrc2,
-        MilVertexFormatAttribute mvfaSourceLocation,
-        __in_ecount_opt(1) CHwColorSource *pHwColorSource
-        );
-
-private:
-    CHwFFPipeline *m_pHP;
 };
 
 

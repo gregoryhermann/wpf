@@ -118,10 +118,7 @@ CD3DGlyphRunPainter::Paint(
 
         if (fClearType)
         {
-            m_pfnDrawRectangle = m_pDevice->CanDrawTextUsingPS20()
-                ? sc_pfnDrawRectangle_CVertM1_CT_1Pass
-                : sc_pfnDrawRectangle_CVertM3_1Pass;
-
+            m_pfnDrawRectangle = sc_pfnDrawRectangle_CVertM1_CT_1Pass;
             IFC(m_pDevice->SetRenderState_Text_ClearType_SolidBrush(m_data.color, pars.pGlyphRun->GetGammaIndex()));
         }
         else
@@ -566,7 +563,7 @@ public:
     SetTextures(CD3DDeviceLevel1* pDevice, const VertexFillData* pData)
     {
         HRESULT hr = S_OK;
-        IFC( pDevice->SetD3DTexture(0, pData->pMaskTexture));
+        IFC( pDevice->SetTexture(0, pData->pMaskTexture));
         IFC( pDevice->DisableTextureTransform(0));
     Cleanup:
         return hr;
@@ -581,7 +578,7 @@ public:
     {
         HRESULT hr = S_OK;
         IFC( pDevice->SetClearTypeOffsets(pData->ds, pData->dt) );
-        IFC( pDevice->SetD3DTexture(0, pData->pMaskTexture) );
+        IFC( pDevice->SetTexture(0, pData->pMaskTexture) );
         IFC( pDevice->DisableTextureTransform(0) );
     Cleanup:
         return hr;
@@ -624,7 +621,7 @@ public:
         //
         pData->m_pHwColorSource->ResetForPipelineReuse();
         IFC( pData->m_pHwColorSource->SendDeviceStates(0, 0) );
-        IFC( pDevice->SetD3DTexture(1, pData->pMaskTexture));
+        IFC( pDevice->SetTexture(1, pData->pMaskTexture));
         IFC( pDevice->DisableTextureTransform(1));
     Cleanup:
         return hr;
@@ -664,11 +661,11 @@ public:
     SetTextures(CD3DDeviceLevel1* pDevice, const VertexFillData* pData)
     {
         HRESULT hr = S_OK;
-        IFC( pDevice->SetD3DTexture(0, pData->pMaskTexture) );
+        IFC( pDevice->SetTexture(0, pData->pMaskTexture) );
         IFC( pDevice->DisableTextureTransform(0) );
-        IFC( pDevice->SetD3DTexture(1, pData->pMaskTexture) );
+        IFC( pDevice->SetTexture(1, pData->pMaskTexture) );
         IFC( pDevice->DisableTextureTransform(1) );
-        IFC( pDevice->SetD3DTexture(2, pData->pMaskTexture) );
+        IFC( pDevice->SetTexture(2, pData->pMaskTexture) );
         IFC( pDevice->DisableTextureTransform(2) );
 Cleanup:
         return hr;

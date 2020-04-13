@@ -296,12 +296,15 @@ CHwShaderPipelineBuilder::FinalizeOperations(
 
 HRESULT
 CHwShaderPipelineBuilder::GetHwShader(
+    D3DVertexType vertexType,
     __deref_out_ecount(1) CHwPipelineShader **ppHwShader
     )
 {
     HRESULT hr = S_OK;
     
+
     IFC(m_pCache->GetHwShader(
+        vertexType,
         m_pHPNoRef->m_rgItem.GetDataBuffer(),
         m_pHPNoRef->m_rgItem.GetCount(),
         ppHwShader
@@ -879,15 +882,6 @@ Cleanup:
     RRETURN(hr);
 }
 
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CHwFFPipelineBuilder::Mul_BlendColorsInternal
-//
-//  Synopsis:
-//      Multiplies the pipeline by a set of blend colors.
-//
-//------------------------------------------------------------------------------
 HRESULT
 CHwShaderPipelineBuilder::Mul_BlendColorsInternal(
     __in_ecount(1) CHwColorComponentSource *pBlendColorSource
@@ -927,36 +921,6 @@ CHwShaderPipelineBuilder::Mul_BlendColorsInternal(
         DBG_PARAM_COMMA(NULL)
         NULL
         );
-
-Cleanup:
-    RRETURN(hr);
-}
-
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CHwShaderPipelineBuilder::Add_Lighting
-//
-//  Synopsis:
-//      Adds an adds a lighting colorsource.
-//
-//------------------------------------------------------------------------------
-HRESULT
-CHwShaderPipelineBuilder::Add_Lighting(
-    __inout_ecount(1) CHwLightingColorSource *pLightingSource
-    )
-{
-    HRESULT hr = S_OK;
-
-    IFC(SetupHwLighting(
-        pLightingSource->GetNormalScale(),
-        pLightingSource->GetLightingPass(),
-        pLightingSource->GetNumDirectionalLights(),
-        pLightingSource->GetNumPointLights(),
-        pLightingSource->GetNumSpotLights(),
-        pLightingSource
-        ));
 
 Cleanup:
     RRETURN(hr);
@@ -1248,6 +1212,34 @@ Cleanup:
     RRETURN(hr);
 }
 
+//+-----------------------------------------------------------------------------
+//
+//  Member:
+//      CHwShaderPipelineBuilder::Add_Lighting
+//
+//  Synopsis:
+//      Adds an adds a lighting colorsource.
+//
+//------------------------------------------------------------------------------
+HRESULT
+CHwShaderPipelineBuilder::Add_Lighting(
+    __inout_ecount(1) CHwLightingColorSource *pLightingSource
+    )
+{
+    HRESULT hr = S_OK;
+
+    IFC(SetupHwLighting(
+        pLightingSource->GetNormalScale(),
+        pLightingSource->GetLightingPass(),
+        pLightingSource->GetNumDirectionalLights(),
+        pLightingSource->GetNumPointLights(),
+        pLightingSource->GetNumSpotLights(),
+        pLightingSource
+        ));
+
+Cleanup:
+    RRETURN(hr);
+}
 
 //+-----------------------------------------------------------------------------
 //

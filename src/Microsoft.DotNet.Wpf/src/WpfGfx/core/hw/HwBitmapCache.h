@@ -111,13 +111,6 @@ public:
         __deref_out_ecount(1) CHwDeviceBitmapColorSource **ppbcs
         );
 
-    HRESULT CreateBitBltColorSource(
-        MilPixelFormat::Enum fmt,
-        __in_ecount(1) CMilRectU const &rcBoundsRequired,
-        bool fIsDependent,
-        __deref_inout_ecount(1) CHwDeviceBitmapColorSource * &pbcs
-        );
-
 private:
 
     DECLARE_METERHEAP_ALLOC(ProcessHeap, Mt(CHwBitmapCache));

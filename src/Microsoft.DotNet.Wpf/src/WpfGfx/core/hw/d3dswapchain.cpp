@@ -40,9 +40,8 @@ MtExtern(CD3DSwapChainWithSwDC);
 
 HRESULT 
 CD3DSwapChain::Create(
-    __inout_ecount(1) CD3DResourceManager *pResourceManager,
-    __inout_ecount(1) IDirect3DSwapChain9 *pID3DSwapChain,
-    UINT BackBufferCount,
+    __inout_ecount(1) CD3DDeviceLevel1 *pDevice,
+    __inout_ecount(1) IDXGISwapChain *pDXGISwapChain,
     __in_ecount_opt(1) CMILDeviceContext const *pPresentContext,    
     __deref_out_ecount(1) CD3DSwapChain **ppSwapChain
     )
@@ -56,51 +55,22 @@ CD3DSwapChain::Create(
     //      code is also in CD3DSwapChainWithSwDC  
     //
 
-    if (BackBufferCount == 0)
-    {
-        D3DPRESENT_PARAMETERS d3dpp;
+    D3DPRESENT_PARAMETERS d3dpp;
 
-        IFC(pID3DSwapChain->GetPresentParameters(&d3dpp));
+    DXGI_SWAP_CHAIN_DESC swapChainDesc;
+    IFC(pDXGISwapChain->GetDesc(&swapChainDesc));
 
-        BackBufferCount = d3dpp.BackBufferCount;
-    }
+    UINT backBufferCount = swapChainDesc.BufferCount;
 
     //
     // Create the swap chain wrapper
     //
 
-    if (pPresentContext)
-    {
-        Assert(!pPresentContext->PresentWithHAL());
+    *ppSwapChain = new(backBufferCount) CD3DSwapChain(
+        pDXGISwapChain,
+        backBufferCount
+    );
 
-        HDC hdcPresentVia = NULL;
-
-        IFC(pPresentContext->CreateCompatibleDC(&hdcPresentVia));
-
-        *ppSwapChain = new(BackBufferCount) CD3DSwapChainWithSwDC(
-            hdcPresentVia,
-            BackBufferCount,
-            pID3DSwapChain
-            );
-
-        //
-        // If the swapchain was not successfully allocated, then it has not
-        // taken ownership of the DC and the DC must now be deleted.  Otherwise
-        // let the swapchain own it.
-        //
-        if (!*ppSwapChain)
-        {
-            DeleteDC(hdcPresentVia);
-        }
-    }
-    else
-    {
-        *ppSwapChain = new(BackBufferCount) CD3DSwapChain(
-            pID3DSwapChain,
-            BackBufferCount,
-            NULL // prgBackBuffers
-            );
-    }
     IFCOOM(*ppSwapChain);
     (*ppSwapChain)->AddRef(); // CD3DSwapChain::ctor sets ref count == 0
 
@@ -108,7 +78,7 @@ CD3DSwapChain::Create(
     // Call init
     //
 
-    IFC((*ppSwapChain)->Init(pResourceManager));
+    IFC((*ppSwapChain)->Init(pDevice));
 
 Cleanup:
     if (FAILED(hr))
@@ -170,25 +140,13 @@ void * __cdecl CD3DSwapChain::operator new(
 #pragma warning( disable : 4355 )
 
 CD3DSwapChain::CD3DSwapChain(
-    __inout_ecount(1) IDirect3DSwapChain9 *pD3DSwapChain,
-    __in_range(>, 0) __out_range(==, this->m_cBackBuffers) UINT cBackBuffers,
-    __out_ecount_full_opt(cBackBuffers) CD3DSurface * * const prgBackBuffers
-        // required for subclasses
+    __inout_ecount(1) IDXGISwapChain *pDXGISwapChain,
+    __in_range(>, 0) __out_range(==, this->m_cBackBuffers) UINT cBackBuffers
     )
-    : m_pD3DSwapChain(pD3DSwapChain),
-      m_pD3DSwapChainEx(NULL),
-      m_cBackBuffers(cBackBuffers),
-      m_rgBackBuffers(
-            prgBackBuffers
-          ? prgBackBuffers
-          : reinterpret_cast<CD3DSurface **>(reinterpret_cast<BYTE *>(this) + sizeof(*this))
-            )
+    : m_pDXGISwapChain(pDXGISwapChain),
+      m_cBackBuffers(cBackBuffers)
 {
-    RtlZeroMemory(m_rgBackBuffers, m_cBackBuffers * sizeof(*m_rgBackBuffers));
-    m_pD3DSwapChain->AddRef();
-    
-    IGNORE_HR(m_pD3DSwapChain->QueryInterface(IID_IDirect3DSwapChain9Ex,
-                                              reinterpret_cast<void **>(&m_pD3DSwapChainEx)));
+    m_pDXGISwapChain->AddRef();
 
 }
 
@@ -203,13 +161,7 @@ CD3DSwapChain::CD3DSwapChain(
 //-----------------------------------------------------------------------------
 CD3DSwapChain::~CD3DSwapChain()
 {
-    for (UINT i = 0; i < m_cBackBuffers; i++)
-    {
-        ReleaseInterfaceNoNULL(m_rgBackBuffers[i]);
-    }
-
-    ReleaseInterfaceNoNULL(m_pD3DSwapChain);
-    ReleaseInterfaceNoNULL(m_pD3DSwapChainEx);
+    ReleaseInterfaceNoNULL(m_pDXGISwapChain);
 }
 
 //+----------------------------------------------------------------------------
@@ -221,38 +173,17 @@ CD3DSwapChain::~CD3DSwapChain()
 //-----------------------------------------------------------------------------
 HRESULT 
 CD3DSwapChain::Init(
-    __inout_ecount(1) CD3DResourceManager *pResourceManager
-    )
+    __inout_ecount(1) CD3DDeviceLevel1* pDevice)
 {
     HRESULT hr = S_OK;
 
-    Assert(pResourceManager);
+    m_pDevice = pDevice;
 
     //
     // Init the base class
     //
 
-    CD3DResource::Init(pResourceManager, 0);
-
-    //
-    // Store array of back buffers
-    //
-
-    for (UINT i = 0; i < m_cBackBuffers; i++)
-    {
-        D3DSurface *pD3DBackBuffer = NULL;
-
-        IFC(m_pD3DSwapChain->GetBackBuffer(i,  D3DBACKBUFFER_TYPE_MONO, &pD3DBackBuffer));
-
-        MIL_THR(CD3DSurface::Create(pResourceManager, pD3DBackBuffer, &m_rgBackBuffers[i]));
-
-        ReleaseInterfaceNoNULL(pD3DBackBuffer);
-
-        if (FAILED(hr))
-        {
-            goto Cleanup;
-        }
-    }
+    CD3DResource::Init(pDevice->GetResourceManager(), 0);
 
 Cleanup:
     RRETURN(hr);
@@ -268,7 +199,7 @@ Cleanup:
 HRESULT 
 CD3DSwapChain::GetBackBuffer(
     __in_range(<, this->m_cBackBuffers) UINT iBackBuffer,
-    __deref_out_ecount(1) CD3DSurface **ppBackBuffer
+    __deref_out_ecount(1) CD3DTexture **ppBackBuffer
     ) const
 {
     HRESULT hr = S_OK;
@@ -280,8 +211,13 @@ CD3DSwapChain::GetBackBuffer(
         IFC(WGXERR_INVALIDPARAMETER);
     }
 
-    *ppBackBuffer = m_rgBackBuffers[iBackBuffer];
-    (*ppBackBuffer)->AddRef();
+    D3DTexture* pTexture = nullptr;
+    m_pDXGISwapChain->GetBuffer(0, __uuidof(pTexture), (void**)&pTexture);
+
+    CD3DVidMemOnlyTexture* pVidMemOnlyTexture = nullptr;
+    MIL_THR(CD3DVidMemOnlyTexture::Create(pTexture, false, m_pDevice, &pVidMemOnlyTexture));
+    *ppBackBuffer = pVidMemOnlyTexture;
+    ReleaseInterface(pTexture);
 
 Cleanup:
     RRETURN(hr);
@@ -309,14 +245,7 @@ CD3DSwapChain::ReleaseD3DResources()
     Assert(IsValid() == m_fResourceValid);
 
     // This context is protected so it is safe to release the D3D resource
-    ReleaseInterface((*const_cast<IDirect3DSwapChain9 **>(&m_pD3DSwapChain)));
-    ReleaseInterface((*const_cast<IDirect3DSwapChain9Ex **>(&m_pD3DSwapChainEx)));
-
-    // Also release reference to wrapper resources for each of the back buffers.
-    for (UINT i = 0; i < m_cBackBuffers; i++)
-    {
-        ReleaseInterface(m_rgBackBuffers[i]);
-    }
+    ReleaseInterface(m_pDXGISwapChain);
 
     return;
 }
@@ -337,15 +266,7 @@ CD3DSwapChain::GetDC(
     __deref_out HDC *phdcBackBuffer
     ) const
 {
-    HRESULT hr = S_OK;
-
-    UNREFERENCED_PARAMETER(rcDirty);
-
-    Assert(iBackBuffer < m_cBackBuffers);
-
-    IFC(m_rgBackBuffers[iBackBuffer]->GetDC(
-        phdcBackBuffer
-        ));
+    HRESULT hr = E_NOTIMPL;
 
 Cleanup:
     RRETURN(hr);
@@ -367,9 +288,7 @@ CD3DSwapChain::ReleaseDC(
     __in HDC hdcBackBuffer
     ) const
 {
-    RRETURN(m_rgBackBuffers[iBackBuffer]->ReleaseDC(
-        hdcBackBuffer
-        ));
+    return S_OK;
 }
 
 

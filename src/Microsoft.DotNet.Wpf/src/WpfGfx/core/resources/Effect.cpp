@@ -84,56 +84,22 @@ CMilEffectDuce::CreateIntermediateRT(
     __in CD3DDeviceLevel1 *pD3DDevice, 
     __in UINT uWidth, 
     __in UINT uHeight, 
-    __in D3DFORMAT d3dfmtTarget,
+    __in DXGI_FORMAT dxgiFormatTarget,
     __out CD3DVidMemOnlyTexture **ppVidMemOnlyTexture)
 {  
     HRESULT hr = S_OK;
 
-    D3DSURFACE_DESC sdLevel0;
-    sdLevel0.Format = d3dfmtTarget;
-    sdLevel0.Type = D3DRTYPE_TEXTURE;
-    sdLevel0.Usage = D3DUSAGE_RENDERTARGET;
-    // We have to use default pool since we don't have drivers
-    // that supported DDI management features needed for MANAGED
-    // render targets.
-    sdLevel0.Pool = D3DPOOL_DEFAULT;
-    sdLevel0.MultiSampleType = D3DMULTISAMPLE_NONE;
-    sdLevel0.MultiSampleQuality = 0;
-    sdLevel0.Width = uWidth;
-    sdLevel0.Height = uHeight;
-
-    //
-    // Get the required texture characteristics
-    //
-
-    IFC(pD3DDevice->GetMinimalTextureDesc(
-        &sdLevel0,
-        TRUE,
-        GMTD_NONPOW2CONDITIONAL_OK | GMTD_IGNORE_FORMAT
-        ));
-
-    //
-    // Check if dimensions were too big
-    //
-    if (hr == S_FALSE)
-    {
-        IFC(WGXERR_UNSUPPORTED_OPERATION);
-    }
-
-    //
-    // Check if we changed size
-    //
-    if (sdLevel0.Width != uWidth || sdLevel0.Height != uHeight)
-    {
-        IFC(WGXERR_UNSUPPORTED_OPERATION);
-    }
+    D3D11_TEXTURE2D_DESC desc = { 0 };
+    desc.Format = dxgiFormatTarget;
+    desc.Width = uWidth;
+    desc.Height = uHeight;
 
     //
     // Create the texture
     //
 
     IFC(CD3DVidMemOnlyTexture::Create(
-        &sdLevel0,          // pSurfDesc
+        &desc,          // pSurfDesc
         1,                              // uLevels
         false,                  // fIsEvictable
         pD3DDevice,
@@ -191,8 +157,7 @@ CMilEffectDuce::SetupVertexTransform(
 
         // Get the projection matrix saved in the device state.
         CMILMatrix matWorldToProjection;
-        IFC(pDevice->GetTransform(
-            D3DTS_PROJECTION,
+        IFC(pDevice->GetProjectionTransform(
             &matWorldToProjection
             ));
 
@@ -256,41 +221,24 @@ CMilEffectDuce::SetSamplerState(
     // Set the address mode to clamp for effects.
     if (setAddressMode)
     {
-        IFC(pDevice->SetSamplerState(
-            uSamplerRegister, 
-            D3DSAMP_ADDRESSU, 
-            D3DTADDRESS_CLAMP));
-
-        IFC(pDevice->SetSamplerState(
-            uSamplerRegister, 
-            D3DSAMP_ADDRESSV, 
-            D3DTADDRESS_CLAMP));
+        IFC(pDevice->SetSamplerWrapState(
+            uSamplerRegister,
+            MilBitmapWrapMode::Extend,
+            MilBitmapWrapMode::Extend));
     }
 
     // Set the sampling mode to bilinear or nearest neighbor.
     if (useBilinear)
     {
-        IFC(pDevice->SetSamplerState(
-            uSamplerRegister, 
-            D3DSAMP_MINFILTER, 
-            D3DTEXF_LINEAR));
-
-        IFC(pDevice->SetSamplerState(
-            uSamplerRegister, 
-            D3DSAMP_MAGFILTER,
-            D3DTEXF_LINEAR));
+        IFC(pDevice->SetSamplerScalingState(
+            uSamplerRegister,
+            MilBitmapScalingMode::Linear));
     }
     else
     {
-        IFC(pDevice->SetSamplerState(
-            uSamplerRegister, 
-            D3DSAMP_MINFILTER, 
-            D3DTEXF_POINT));
-
-        IFC(pDevice->SetSamplerState(
-            uSamplerRegister, 
-            D3DSAMP_MAGFILTER,
-            D3DTEXF_POINT));
+        IFC(pDevice->SetSamplerScalingState(
+            uSamplerRegister,
+            MilBitmapScalingMode::NearestNeighbor));
     }
     
 Cleanup:

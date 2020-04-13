@@ -72,7 +72,7 @@ protected:
 private:
 
     // Can be NULL as the update packet can contain NULL
-    CInteropDeviceBitmap *m_pInteropDeviceBitmap;
+    class CInteropDeviceBitmap *m_pInteropDeviceBitmap;
 
     // Only used on synchronous channels or when software fallback is enabled. When this is !NULL, 
     // m_pInteropDeviceBitmap is not rendered.

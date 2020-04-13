@@ -56,7 +56,7 @@ ExternTag(tagWireframe);
 #define    MILRS_UNKNOWN 0x7fffffff
 #define   MILTOP_UNKNOWN D3DTOP_FORCE_DWORD
 #define  MILTEXF_UNKNOWN D3DTEXF_FORCE_DWORD
-#define MILBLEND_UNKNOWN D3DBLEND_FORCE_DWORD
+#define MILBLEND_UNKNOWN (D3D11_BLEND)0x7fffffff
 
 //+-----------------------------------------------------------------------------
 //
@@ -84,8 +84,8 @@ struct AlphaBlendMode
         struct
         {
             DWORD AlphaBlendEnable;    // D3DRS_ALPHABLENDENABLE
-            D3DBLEND SrcBlend;         // D3DRS_SRCBLEND
-            D3DBLEND DestBlend;        // D3DRS_DESTBLEND
+            D3D11_BLEND SrcBlend;         // D3DRS_SRCBLEND
+            D3D11_BLEND DestBlend;        // D3DRS_DESTBLEND
         };
         DWORD m_dwValues[ABM_NUM];
     };
@@ -236,9 +236,9 @@ CD3DRenderState::sc_abmUnknown =
 
 CD3DRenderState::sc_abmSrcCopy =
 {
-    /* D3DRENDERSTATE_ALPHABLENDENABLE   */ FALSE           ,
-    /* D3DRENDERSTATE_SRCBLEND           */ D3DBLEND_ONE    ,  // Unused
-    /* D3DRENDERSTATE_DESTBLEND          */ D3DBLEND_ZERO   ,  // Unused
+    /* D3DRENDERSTATE_ALPHABLENDENABLE   */ FALSE,
+    /* D3DRENDERSTATE_SRCBLEND           */ D3D11_BLEND_ONE ,  // Unused
+    /* D3DRENDERSTATE_DESTBLEND          */ D3D11_BLEND_ZERO,  // Unused
 },
 
 // "SrcOver" - the most common alpha blend. The source and destination use
@@ -246,9 +246,9 @@ CD3DRenderState::sc_abmSrcCopy =
 
 CD3DRenderState::sc_abmSrcOverPremultiplied =
 {
-    /* D3DRENDERSTATE_ALPHABLENDENABLE   */ TRUE ,
-    /* D3DRENDERSTATE_SRCBLEND           */ D3DBLEND_ONE         ,
-    /* D3DRENDERSTATE_DESTBLEND          */ D3DBLEND_INVSRCALPHA ,
+    /* D3DRENDERSTATE_ALPHABLENDENABLE   */ TRUE,
+    /* D3DRENDERSTATE_SRCBLEND           */ D3D11_BLEND_ONE,
+    /* D3DRENDERSTATE_DESTBLEND          */ D3D11_BLEND_INV_SRC_ALPHA ,
 },
 
 // "SrcUnder" - not the most common, but merely the opposite of SrcOver.
@@ -256,9 +256,9 @@ CD3DRenderState::sc_abmSrcOverPremultiplied =
 
 CD3DRenderState::sc_abmSrcUnderPremultiplied =
 {
-    /* D3DRENDERSTATE_ALPHABLENDENABLE   */ TRUE ,
-    /* D3DRENDERSTATE_SRCBLEND           */ D3DBLEND_INVDESTALPHA,
-    /* D3DRENDERSTATE_DESTBLEND          */ D3DBLEND_ONE         ,
+    /* D3DRENDERSTATE_ALPHABLENDENABLE   */ TRUE,
+    /* D3DRENDERSTATE_SRCBLEND           */ D3D11_BLEND_INV_DEST_ALPHA,
+    /* D3DRENDERSTATE_DESTBLEND          */ D3D11_BLEND_ONE,
 },
 
 // "SrcAlphaMultiply."  Multiplies the destination by the source
@@ -266,9 +266,9 @@ CD3DRenderState::sc_abmSrcUnderPremultiplied =
 
 CD3DRenderState::sc_abmSrcAlphaMultiply =
 {
-    /* D3DRENDERSTATE_ALPHABLENDENABLE   */ TRUE ,
-    /* D3DRENDERSTATE_SRCBLEND           */ D3DBLEND_ZERO        ,
-    /* D3DRENDERSTATE_DESTBLEND          */ D3DBLEND_SRCALPHA    ,
+    /* D3DRENDERSTATE_ALPHABLENDENABLE   */ TRUE,
+    /* D3DRENDERSTATE_SRCBLEND           */ D3D11_BLEND_ZERO,
+    /* D3DRENDERSTATE_DESTBLEND          */ D3D11_BLEND_SRC_ALPHA,
 },
 
 // "SrcInverseAlphaMultiply."  Like SrcOver but without adding the source.
@@ -276,8 +276,8 @@ CD3DRenderState::sc_abmSrcAlphaMultiply =
 CD3DRenderState::sc_abmSrcInverseAlphaMultiply =
 {
     /* D3DRENDERSTATE_ALPHABLENDENABLE   */ TRUE ,
-    /* D3DRENDERSTATE_SRCBLEND           */ D3DBLEND_ZERO        ,
-    /* D3DRENDERSTATE_DESTBLEND          */ D3DBLEND_INVSRCALPHA ,
+    /* D3DRENDERSTATE_SRCBLEND           */ D3D11_BLEND_ZERO        ,
+    /* D3DRENDERSTATE_DESTBLEND          */ D3D11_BLEND_INV_SRC_ALPHA ,
 },
 
 // "SrcOver" but with the source color using non-premultiplied alpha. (The
@@ -286,8 +286,8 @@ CD3DRenderState::sc_abmSrcInverseAlphaMultiply =
 CD3DRenderState::sc_abmSrcOver_SrcNonPremultiplied =
 {
     /* D3DRENDERSTATE_ALPHABLENDENABLE   */ TRUE ,
-    /* D3DRENDERSTATE_SRCBLEND           */ D3DBLEND_SRCALPHA    ,
-    /* D3DRENDERSTATE_DESTBLEND          */ D3DBLEND_INVSRCALPHA ,
+    /* D3DRENDERSTATE_SRCBLEND           */ D3D11_BLEND_SRC_ALPHA    ,
+    /* D3DRENDERSTATE_DESTBLEND          */ D3D11_BLEND_INV_SRC_ALPHA ,
 },
 
 // "SrcOver" but with the source color using non-premultiplied alpha and
@@ -297,8 +297,8 @@ CD3DRenderState::sc_abmSrcOver_SrcNonPremultiplied =
 CD3DRenderState::sc_abmSrcOver_InverseAlpha_SrcNonPremultiplied =
 {
     /* D3DRENDERSTATE_ALPHABLENDENABLE   */ TRUE ,
-    /* D3DRENDERSTATE_SRCBLEND           */ D3DBLEND_INVSRCALPHA ,
-    /* D3DRENDERSTATE_DESTBLEND          */ D3DBLEND_SRCALPHA    ,
+    /* D3DRENDERSTATE_SRCBLEND           */ D3D11_BLEND_INV_SRC_ALPHA,
+    /* D3DRENDERSTATE_DESTBLEND          */ D3D11_BLEND_SRC_ALPHA,
 },
 
 // Source color is accepted as vector alpha;
@@ -310,8 +310,8 @@ CD3DRenderState::sc_abmSrcOver_InverseAlpha_SrcNonPremultiplied =
 CD3DRenderState::sc_abmSrcVectorAlphaWithBlendFactor =
 {
     /* D3DRENDERSTATE_ALPHABLENDENABLE   */ TRUE ,
-    /* D3DRENDERSTATE_SRCBLEND           */ D3DBLEND_BLENDFACTOR ,
-    /* D3DRENDERSTATE_DESTBLEND          */ D3DBLEND_INVSRCCOLOR ,
+    /* D3DRENDERSTATE_SRCBLEND           */ D3D11_BLEND_BLEND_FACTOR ,
+    /* D3DRENDERSTATE_DESTBLEND          */ D3D11_BLEND_INV_SRC_COLOR ,
 },
 
 // Source color is accepted as vector alpha;
@@ -320,8 +320,8 @@ CD3DRenderState::sc_abmSrcVectorAlphaWithBlendFactor =
 CD3DRenderState::sc_abmSrcVectorAlpha =
 {
     /* D3DRENDERSTATE_ALPHABLENDENABLE   */ TRUE ,
-    /* D3DRENDERSTATE_SRCBLEND           */ D3DBLEND_ZERO        ,
-    /* D3DRENDERSTATE_DESTBLEND          */ D3DBLEND_INVSRCCOLOR ,
+    /* D3DRENDERSTATE_SRCBLEND           */ D3D11_BLEND_ZERO        ,
+    /* D3DRENDERSTATE_DESTBLEND          */ D3D11_BLEND_INV_SRC_COLOR ,
 },
 
 // The source and destination are added together. Used in 2-pass ClearType, to
@@ -332,15 +332,15 @@ CD3DRenderState::sc_abmSrcVectorAlpha =
 CD3DRenderState::sc_abmAddSourceColor =
 {
     /* D3DRENDERSTATE_ALPHABLENDENABLE   */ TRUE ,
-    /* D3DRENDERSTATE_SRCBLEND           */ D3DBLEND_ONE         ,
-    /* D3DRENDERSTATE_DESTBLEND          */ D3DBLEND_ONE         ,
+    /* D3DRENDERSTATE_SRCBLEND           */ D3D11_BLEND_ONE         ,
+    /* D3DRENDERSTATE_DESTBLEND          */ D3D11_BLEND_ONE         ,
 },
 
 CD3DRenderState::sc_abmSrcAlphaWithInvDestColor =
 {
     /* D3DRENDERSTATE_ALPHABLENDENABLE   */ TRUE ,
-    /* D3DRENDERSTATE_SRCBLEND           */ D3DBLEND_INVDESTCOLOR,
-    /* D3DRENDERSTATE_DESTBLEND          */ D3DBLEND_SRCALPHA    ,
+    /* D3DRENDERSTATE_SRCBLEND           */ D3D11_BLEND_INV_DEST_COLOR,
+    /* D3DRENDERSTATE_DESTBLEND          */ D3D11_BLEND_SRC_ALPHA    ,
 };
 
 //------------------------------------------------------------------------------
@@ -610,7 +610,11 @@ CD3DRenderState::CD3DRenderState()
         m_pPixelShaders[i] = NULL;
     }
 
+    m_pPassthroughPixelShader = nullptr;
+    m_pPassthroughVertexShader = nullptr;
     m_pStateManager = NULL;
+    m_fCanDrawText = TRUE;
+    m_fDrawTextUsingPS20 = TRUE;
 }
 
 //+-----------------------------------------------------------------------------
@@ -629,6 +633,9 @@ CD3DRenderState::~CD3DRenderState()
     {
         ReleaseInterface(m_pPixelShaders[i]);
     }
+
+    ReleaseInterface(m_pPassthroughPixelShader);
+    ReleaseInterface(m_pPassthroughVertexShader);
 
     ReleaseInterface(m_pStateManager);
 }
@@ -698,7 +705,6 @@ CD3DRenderState::ResetState()
     return m_pStateManager->SetDefaultState(
         m_pDeviceNoRef->CanHandleBlendFactor(),
         m_pDeviceNoRef->SupportsScissorRect(),
-        m_pDeviceNoRef->GetMaxStreams(),
         m_pDeviceNoRef->GetMaxDesiredAnisotropicFilterLevel()
         );
 }
@@ -730,52 +736,26 @@ CD3DRenderState::Init(
 
     m_pDeviceNoRef = pDevice; // No AddRef because it would be a circular reference.
 
-    dwMaxTextureBlendStages = min(
-        DWORD(MIL_TEXTURE_STAGE_COUNT),
-        m_pDeviceNoRef->GetMaxTextureBlendStages()
-        );
-
     IFC(CHwRenderStateManager::Create(
         pD3DDevice,
-        dwMaxTextureBlendStages,
+        1,
         m_pDeviceNoRef->CanHandleBlendFactor(),
         m_pDeviceNoRef->SupportsScissorRect(),
-        m_pDeviceNoRef->GetMaxStreams(),
         m_pDeviceNoRef->GetMaxDesiredAnisotropicFilterLevel(),
         &m_pStateManager
         ));
 
     m_pStateManager->InvalidateScissorRect();
 
-    m_fDrawTextUsingPS20 = FALSE;
-
     // If pixel shaders are not available then prohibit HW accelerated text rendering.
     // (it will go through SW fallback)
-    m_fCanDrawText = pDevice->GetPixelShaderVersion() >= D3DPS_VERSION(1,1)
-                     && pDevice->GetMaxTextureBlendStages() >= 4
-                     && pDevice->CanHandleBlendFactor()
-                     && !IsTagEnabled(tagDisableHWText);
 
-    if (m_fCanDrawText)
-    {
-        // InitAlphaTextures() should be called prior to InitPixelShaders that
-        // depends on alpha texture format
-        if (FAILED(InitAlphaTextures()))
-        {
-            // the device does not support required texture formats:
-            // don't fail, just reject HW accelerated text
-            m_fCanDrawText = FALSE;
-        }
-    }
-
-    if (m_fCanDrawText)
-    {
-        m_fDrawTextUsingPS20 = pDevice->GetPixelShaderVersion() >= D3DPS_VERSION(2,0);
-        IFC(InitPixelShaders());
-    }
+    // InitAlphaTextures() should be called prior to InitPixelShaders that
+    // depends on alpha texture format
+    IFC(InitAlphaTextures());
+    IFC(InitPixelShaders());
 
     // Choose text filtering mode depending on dbg settings.
-
 
     m_pTextFilterMode = &sc_fmLinear;
 
@@ -795,75 +775,45 @@ Cleanup:
 
 HRESULT CD3DRenderState::SetFilterMode(
     DWORD dwSampler,
-    __in_ecount(1) const FilterMode *pfmNew
+    __in_ecount(1) const FilterMode* pfmNew
+)
+{
+    //Assert(0);
+    return S_OK;
+}
+
+HRESULT CD3DRenderState::SetDepthStencilTextureInternal(
+    __in_ecount(1) CD3DTexture *pDepthStencilTexture
     )
 {
-    Assert(dwSampler < MIL_SAMPLER_COUNT);
-    AssertMsg(
-        (pfmNew && (pfmNew != &sc_fmUnknown)),
-        "Trying to set an undefined filter mode");
-
     HRESULT hr = S_OK;
 
-    for (int i = 0; i < FilterMode::FM_NUM; i++)
+    ID3D11DepthStencilView* pD3DViewNoRef = nullptr;
+    
+    if (pDepthStencilTexture != nullptr)
     {
-        DWORD newValue = pfmNew->Value(i);
+        pD3DViewNoRef = pDepthStencilTexture->GetDepthStencilViewNoAddRef();
+    }
 
-        IFC(m_pStateManager->SetSamplerStateInline(
-            dwSampler,
-            pfmNew->Type(i),
-            newValue
-            ));
+    if (pD3DViewNoRef)
+    {
+        IFC(m_pStateManager->SetDepthStencilInline(pD3DViewNoRef, 
+                                                   pDepthStencilTexture->D3DSurface0Desc().Width, 
+                                                   pDepthStencilTexture->D3DSurface0Desc().Height)
+            );
+    }
+    else
+    {
+        IFC(m_pStateManager->SetDepthStencilInline(nullptr,
+            0,
+            0)
+        );
     }
 
 Cleanup:
     RRETURN(hr);
 }
 
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DRenderState::SetDepthStencilBufferInternal
-//
-//  Synopsis:
-//      Grabs the d3d surface and then forwards the call to the state manager.
-//
-//------------------------------------------------------------------------------
-HRESULT
-CD3DRenderState::SetDepthStencilSurfaceInternal(
-    __in_ecount_opt(1) CD3DSurface *pDepthStencilBuffer
-    )
-{
-    HRESULT hr = S_OK;
-    D3DSurface *pD3DSurfaceNoRef = NULL;
-    UINT uWidth = 0;
-    UINT uHeight = 0;
-    
-    if (pDepthStencilBuffer != NULL)
-    {
-        Assert(pDepthStencilBuffer->IsValid());
-
-        pD3DSurfaceNoRef = pDepthStencilBuffer->GetD3DSurfaceNoAddRef();
-
-        Assert(pD3DSurfaceNoRef);
-
-        pDepthStencilBuffer->GetSurfaceSize(
-            &uWidth,
-            &uHeight
-            );
-    }
-    
-    IFC(m_pStateManager->SetDepthStencilSurfaceInline(
-        pD3DSurfaceNoRef,
-        uWidth,
-        uHeight
-        ));
-
-Cleanup:            
-    
-    RRETURN(hr);
-}
 
 //+-----------------------------------------------------------------------------
 //
@@ -875,25 +825,145 @@ Cleanup:
 //
 //------------------------------------------------------------------------------
 HRESULT 
-CD3DRenderState::ReleaseUseOfDepthStencilSurfaceInternal(
-    __in_ecount(1) CD3DSurface *pDepthStencilBuffer
+CD3DRenderState::ReleaseUseOfDepthStencilTextureInternal(
+    __in_ecount(1) CD3DTexture *pDepthStencilTexture
     )
 {
     HRESULT hr = S_OK;
 
-    D3DSurface *pD3DSurfaceNoRef =
-        pDepthStencilBuffer->GetD3DSurfaceNoAddRef();
+    ID3D11DepthStencilView *pD3DViewNoRef = pDepthStencilTexture->GetDepthStencilViewNoAddRef();
 
-    if (pD3DSurfaceNoRef)
+    if (pD3DViewNoRef)
     {
         IFC(m_pStateManager->ReleaseUseOfDepthStencilBuffer(
-            pD3DSurfaceNoRef
+            pD3DViewNoRef
             ));
     }
 
 Cleanup:
     RRETURN(hr);
 }
+
+HRESULT CD3DRenderState::EnsureInputLayout(D3DVertexType vertexType, const void* pVertexShaderBytecode, size_t bytecodeLength)
+{
+    HRESULT hr = S_OK;
+    int vertexTypeIndex = static_cast<int>(vertexType);
+
+    if (m_pInputLayouts[vertexTypeIndex] == nullptr)
+    {
+        const D3D11_INPUT_ELEMENT_DESC* pLayoutToUse = nullptr;
+        DWORD cLayoutElements = 0;
+
+        static const D3D11_INPUT_ELEMENT_DESC xyzDUV2Layout[] =
+        {
+            { "SV_Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "COLOR",   0, DXGI_FORMAT_B8G8R8A8_UNORM, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+        };
+
+        static const D3D11_INPUT_ELEMENT_DESC xyzDUV6Layout[] =
+        {
+            { "SV_Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "COLOR",   0, DXGI_FORMAT_B8G8R8A8_UNORM, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT, 0, 32, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 3, DXGI_FORMAT_R32G32_FLOAT, 0, 40, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 4, DXGI_FORMAT_R32G32_FLOAT, 0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 5, DXGI_FORMAT_R32G32_FLOAT, 0, 56, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+        };
+
+        static const D3D11_INPUT_ELEMENT_DESC xyzDUV8Layout[] =
+        {
+            { "SV_Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "COLOR",   0, DXGI_FORMAT_B8G8R8A8_UNORM, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT, 0, 32, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 3, DXGI_FORMAT_R32G32_FLOAT, 0, 40, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 4, DXGI_FORMAT_R32G32_FLOAT, 0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 5, DXGI_FORMAT_R32G32_FLOAT, 0, 56, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 6, DXGI_FORMAT_R32G32_FLOAT, 0, 64, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 7, DXGI_FORMAT_R32G32_FLOAT, 0, 72, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+        };
+
+        static const D3D11_INPUT_ELEMENT_DESC xyzNDSUV4Layout[] =
+        {
+            { "SV_Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "COLOR",   0, DXGI_FORMAT_B8G8R8A8_UNORM, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "COLOR",   1, DXGI_FORMAT_B8G8R8A8_UNORM, 0, 28, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 32, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 40, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT, 0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 3, DXGI_FORMAT_R32G32_FLOAT, 0, 56, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+        };
+
+        static const D3D11_INPUT_ELEMENT_DESC hw3dGeometryDiffuseLayout[] =
+        {
+            { "SV_Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "COLOR",   0, DXGI_FORMAT_B8G8R8A8_UNORM, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        };
+
+        static const D3D11_INPUT_ELEMENT_DESC hw3dGeometryNormalLayout[] =
+        {
+            { "SV_Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        };
+
+        switch (vertexType)
+        {
+        case D3DVertexType::XYZDUV2:
+            pLayoutToUse = xyzDUV2Layout;
+            cLayoutElements = _countof(xyzDUV2Layout);
+            break;
+        case D3DVertexType::XYZDUV6:
+            pLayoutToUse = xyzDUV6Layout;
+            cLayoutElements = _countof(xyzDUV6Layout);
+            break;
+        case D3DVertexType::XYZDUV8:
+            pLayoutToUse = xyzDUV8Layout;
+            cLayoutElements = _countof(xyzDUV8Layout);
+            break;
+        case D3DVertexType::XYZNDSUV4:
+            pLayoutToUse = xyzNDSUV4Layout;
+            cLayoutElements = _countof(xyzNDSUV4Layout);
+            break;
+        case D3DVertexType::HW3DGeometryNormal:
+            pLayoutToUse = hw3dGeometryNormalLayout;
+            cLayoutElements = _countof(hw3dGeometryNormalLayout);
+            break;
+        case D3DVertexType::HW3DGeometryDiffuse:
+            pLayoutToUse = hw3dGeometryDiffuseLayout;
+            cLayoutElements = _countof(hw3dGeometryDiffuseLayout);
+            break;
+        }
+        
+        hr = m_pDeviceNoRef->GetDevice()->CreateInputLayout(
+          pLayoutToUse, cLayoutElements,
+          pVertexShaderBytecode,
+          bytecodeLength,
+          &m_pInputLayouts[vertexTypeIndex]);
+    }
+
+    RRETURN(hr);
+}
+
+HRESULT CD3DRenderState::SetInputLayoutFormat(D3DVertexType vertexType)
+{
+    HRESULT hr = S_OK;
+    int vertexTypeIndex = static_cast<int>(vertexType);
+
+    Assert(m_pInputLayouts[vertexTypeIndex] != nullptr);
+    IFC(m_pStateManager->SetInputLayoutInline(m_pInputLayouts[vertexTypeIndex]));
+
+Cleanup:
+    RRETURN(hr);
+}
+
 
 #if DBG
 //+-----------------------------------------------------------------------------
@@ -965,7 +1035,8 @@ VOID CD3DRenderState::AssertFilterMode(
 //------------------------------------------------------------------------------
 
 HRESULT CD3DRenderState::SetAlphaBlendMode(
-    __in_ecount(1) const AlphaBlendMode *pabmNew
+    __in_ecount(1) const AlphaBlendMode *pabmNew,
+    DWORD dwBlendFactor
     )
 {
     AssertMsg(
@@ -974,12 +1045,24 @@ HRESULT CD3DRenderState::SetAlphaBlendMode(
 
     HRESULT hr = S_OK;
 
-    for (int i = 0; i < AlphaBlendMode::ABM_NUM; i++)
-    {
-        DWORD newValue = pabmNew->Value(i);
+    D3D11_BLEND_DESC blendDesc = { 0 };
 
-        IFC(SetRenderState(pabmNew->Type(i), newValue));
+    blendDesc.RenderTarget[0].BlendEnable = pabmNew->AlphaBlendEnable;
+    blendDesc.RenderTarget[0].SrcBlend = pabmNew->SrcBlend;
+    blendDesc.RenderTarget[0].DestBlend = pabmNew->DestBlend;
+    blendDesc.RenderTarget[0].BlendOp                = D3D11_BLEND_OP_ADD;
+
+    blendDesc.RenderTarget[0].SrcBlendAlpha          = pabmNew->SrcBlend;
+    blendDesc.RenderTarget[0].DestBlendAlpha         = pabmNew->DestBlend;
+    blendDesc.RenderTarget[0].BlendOpAlpha           = D3D11_BLEND_OP_ADD;
+    blendDesc.RenderTarget[0].RenderTargetWriteMask  = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+    if (blendDesc.RenderTarget[0].DestBlendAlpha == D3D11_BLEND_INV_SRC_COLOR)
+    {
+        blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
     }
+
+    SetBlendState(blendDesc, dwBlendFactor);
 
 Cleanup:
     RRETURN(hr);
@@ -1038,86 +1121,6 @@ VOID CD3DRenderState::AssertAlphaBlendMode()
 #endif
 }
 #endif
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DRenderState::SetTextureStageOperation
-//
-//  Synopsis:
-//      Set the texture operation for a given texture stage.
-//
-//------------------------------------------------------------------------------
-
-HRESULT
-CD3DRenderState::SetTextureStageOperation(
-    DWORD dwStage,
-    __in_ecount(1) const TextureStageOperation *ptsoNew
-    )
-{
-    AssertMsg(
-        (ptsoNew && (ptsoNew != &sc_tsoUnknown)),
-        "Trying to set an undefined texture stage operation");
-    Assert(dwStage < MIL_TEXTURE_STAGE_COUNT);
-    AssertTextureStageOperation(dwStage);
-
-    HRESULT hr = S_OK;
-
-    // When a stage is disabled, D3DTSS_COLOROP is D3DTOP_DISABLE, but
-    // m_ptsoCurrent[dwStage] still describes the current values for the other
-    // states.
-    //
-    // m_fTextureStageDisabled[dwStage] records whether we're in this situation
-    // or not.
-
-    // Texture stages should not be disabled in this way - use
-    // DisableTextureStage instead.
-    Assert(ptsoNew->m_opColor != D3DTOP_DISABLE);
-
-    // Set D3DTSS_COLOROP
-
-    IFC(m_pStateManager->SetTextureStageStateInline(dwStage, D3DTSS_COLOROP, ptsoNew->m_opColor) );
-
-    for (int i = 0; i < TextureStageOperation::TSO_NUM; i++)
-    {
-        DWORD newValue = ptsoNew->Value(i);
-
-        IFC(m_pStateManager->SetTextureStageStateInline(dwStage, ptsoNew->Type(i), newValue) );
-    }
-
-    // [agodfrey] Is this required? Workitem #1743 covers the need to not
-    // hold onto textures for longer than necessary. And this doesn't work
-    // if the previous primitive used multiple stages or a pixel shader.
-
-    // If the new operation doesn't use a texture, we'll make sure that the
-    // texture for this stage is set to NULL. Otherwise, the caller must set
-    // the texture later using CD3DRenderState::SetTexture.
-
-    if (!ptsoNew->m_fUsesTexture)
-    {
-        // We only need to do anything if the previous operation is undefined or uses a texture
-
-        //   NULL unused textures immediately?
-        //   Should we instead require NULL to be the default texture for
-        //   all stages (i.e. the caller must NULL out the texture before
-        //   returning)?
-        //
-        // Right now, if the previous primitive used more texture stages, we
-        // won't remember to NULL out the texture for the additional texture
-        // stages. We also don't NULL the texture in DisableTextureStage.
-        //
-        // Likewise - when a pixel shader is used, we don't NULL out its texture,
-
-        //   Pixel shaders use textures
-        //   This test doesn't work when some primitives use pixel shaders.
-
-
-        IFC(m_pStateManager->SetTextureInline(dwStage, NULL) );
-    }
-
-Cleanup:
-    RRETURN(hr);
-}
 
 #if DBG
 //+-----------------------------------------------------------------------------
@@ -1412,152 +1415,12 @@ CD3DRenderState::SetRenderState_AlphaSolidBrush()
     HRESULT hr = S_OK;
 
     IFC(SetAlphaBlendMode(&sc_abmSrcOverPremultiplied));
-    IFC(SetPixelShader(NULL));
-    IFC(SetVertexShader(NULL));
+    IFC(SetPixelShader(m_pPassthroughPixelShader));
+    IFC(SetVertexShader(m_pPassthroughVertexShader));
 
-    IFC(SetTextureStageOperation(0, &sc_tsoDiffuse));
-    IFC(m_pStateManager->DisableTextureStage(1));
+    //IFC(SetTextureStageOperation(0, &sc_tsoDiffuse));
 
     // FilterMode: Unused
-
-Cleanup:
-    RRETURN(hr);
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DRenderState::SetRenderState_Texture
-//
-//  Synopsis:
-//      Set up the pipeline to draw from a texture
-//
-//  blendMode notes:
-//      TBM_COPY: for using when texels are fully opaque (or texture has no alpha)
-//      TBM_APPLY_PREMULTIPLIED: most common case, assuming the texture has alpha
-//                               and it's color values are already multiplied by alpha.
-//      TBM_APPLY_VECTOR_ALPHA and TBM_ADD_COLORS:
-//        these two guys are for doing the same as TBM_APPLY_PREMULTIPLIED do,
-//        but when alpha values are vectors (i.e. alphaR, alphaG and alphaB).
-//        Since normal texture can't keep six numbers per pixel, we are forced
-//        to use two textures and do blending in two passes. First is controlled
-//        by TBM_APPLY_VECTOR_ALPHA that accepts color values as alphas,
-//        and the second by TBM_ADD_COLORS.
-//
-//------------------------------------------------------------------------------
-
-HRESULT
-CD3DRenderState::SetRenderState_Texture(
-    TextureBlendMode blendMode,
-    TextureBlendArgument eBlendArgument,
-    MilBitmapInterpolationMode::Enum interpolationMode,
-    UINT cMasks
-    )
-{
-    HRESULT hr = S_OK;
-
-    const FilterMode *pfm = NULL;
-    const TextureStageOperation *ptso = NULL;
-    const AlphaBlendMode *pabm = NULL;
-
-    switch (interpolationMode)
-    {
-    case MilBitmapInterpolationMode::NearestNeighbor:
-        pfm = &sc_fmNearest;
-        break;
-
-    case MilBitmapInterpolationMode::Linear:
-        pfm = &sc_fmLinear;
-        break;
-
-    case MilBitmapInterpolationMode::TriLinear:
-        pfm = &sc_fmTriLinear;
-        break;
-
-    default:
-        AssertMsg(false, "MIL-HW: Unsupported interpolation mode.\n");
-        IFC(E_FAIL);
-    }
-
-    switch (eBlendArgument)
-    {
-    case TBA_None:
-        ptso = &sc_tsoSelectTexture;
-        break;
-
-    case TBA_Diffuse:
-        ptso = &sc_tsoTextureXCurrentRGB;
-        break;
-
-    case TBA_Specular:
-        ptso = &sc_tsoTextureXSpecularRGB;
-        break;
-
-    default:
-        AssertMsg(false, "MIL_HW: Unsupported diffuse blend mode.\n");
-    }
-
-    switch(blendMode)
-    {
-    case TBM_COPY:
-        pabm = &sc_abmSrcCopy;
-        break;
-
-    case TBM_APPLY_VECTOR_ALPHA:
-        pabm = &sc_abmSrcVectorAlpha;
-        break;
-
-    case TBM_ADD_COLORS:
-        pabm = &sc_abmAddSourceColor;
-        break;
-
-    default:
-        Assert(blendMode == TBM_DEFAULT);
-        pabm = &sc_abmSrcOverPremultiplied;
-        break;
-
-    }
-
-    IFC(SetPixelShader(NULL));
-    IFC(SetVertexShader(NULL));
-
-    Assert(pfm);
-    IFC(SetFilterMode(0, pfm));
-
-    Assert(pabm);
-    IFC(SetAlphaBlendMode(pabm));
-
-    Assert(ptso);
-    IFC(SetTextureStageOperation(0, ptso));
-
-    IFC(m_pStateManager->SetTextureStageState(
-        0,
-        D3DTSS_TEXTURETRANSFORMFLAGS,
-        D3DTTFF_DISABLE
-        ));
-
-
-    Assert(cMasks + 1 <= m_pDeviceNoRef->GetMaxTextureBlendStages());
-    for (UINT i = 1; i <= cMasks; i++)
-    {
-        // Same filter mode == correct behavior?
-        IFC(SetFilterMode(i, pfm));
-
-        IFC(SetTextureStageOperation(
-            i,
-            &sc_tsoMaskTextureXCurrent
-            ));
-
-        IFC(m_pStateManager->SetTextureStageState(
-            i,
-            D3DTSS_TEXTURETRANSFORMFLAGS,
-            D3DTTFF_DISABLE
-            ));
-    }
-
-    // disabling the color stage of texture stage cMasks+1 will disable all subsequent texture stages
-    IFC(m_pStateManager->DisableTextureStage(cMasks+1));
-    IFC(m_pStateManager->SetTextureStageStateInline(cMasks+1, D3DTSS_COLOROP, D3DTOP_DISABLE));
 
 Cleanup:
     RRETURN(hr);
@@ -1579,32 +1442,7 @@ CD3DRenderState::InitAlphaTextures()
 {
     HRESULT hr = S_OK;
 
-    // If the device supports alpha-only textures, adjust to
-    // use them always.
-    if (m_pDeviceNoRef->SupportsD3DFMT_A8())
-    {
-        m_alphaTextureFormat = D3DFMT_A8;
-    }
-
-    // If the device is capable to work with L8 textures, go this way.
-    // Pixel shaders are assumed available.
-    else if (m_pDeviceNoRef->SupportsD3DFMT_L8())
-    {
-        m_alphaTextureFormat = D3DFMT_L8;
-    }
-
-    // When the device supports P8 textures, try to do so.
-    // P8 can work with or without pixel shaders.
-    else if (m_pDeviceNoRef->SupportsD3DFMT_P8())
-    {
-        m_alphaTextureFormat = D3DFMT_P8;
-        IFC( m_pDeviceNoRef->SetLinearPalette() );
-    }
-
-    else
-    {
-        hr = E_FAIL;
-    }
+    m_alphaTextureFormat = DXGI_FORMAT_A8_UNORM;
 
 Cleanup:
     //no RRETURN, E_FAIL is legal
@@ -1621,6 +1459,38 @@ Cleanup:
 //
 //------------------------------------------------------------------------------
 
+static const char c_szPassthroughVertexShaderSource[] =
+"struct VertexShaderOutput\n"
+"{\n"
+"    float2 UV0 : TEXCOORD0;\n"
+"    float2 UV1 : TEXCOORD1;\n"
+"    float4 Diffuse : COLOR;\n"
+"    float4 Position : SV_Position;\n"
+"};\n"
+"\n"
+"matrix g_viewProjTransform;\n"
+"VertexShaderOutput VertexShaderImpl(\n"
+"   float4 Position : SV_Position,\n"
+"   float4 Diffuse : COLOR,\n"
+"   float2 UV0 : TEXCOORD0,\n"
+"   float2 UV1 : TEXCOORD1\n"
+"   )\n"
+"{\n"
+"   VertexShaderOutput Output = (VertexShaderOutput)0;"
+"   Output.UV0 = UV0;"
+"   Output.UV1 = UV1;"
+"   Output.Diffuse = Diffuse;"
+"   Output.Position = mul(Position, g_viewProjTransform);"
+"   return Output;\n"
+"}";
+
+static const char c_szPassthroughPixelShaderSource[] =
+"float4 PixelShaderImpl(float4 Col : COLOR0) : SV_Target\n"
+"{\n"
+"    return Col;\n"
+"}\n";
+
+
 HRESULT
 CD3DRenderState::InitPixelShaders()
 {
@@ -1628,40 +1498,10 @@ CD3DRenderState::InitPixelShaders()
 
     UINT rgResourceIds[PXS_NUM];
 
-    if (m_fDrawTextUsingPS20)
-    {
-        if (m_alphaTextureFormat == D3DFMT_L8)
-        {
-            rgResourceIds[PXS_CTSB] = g_PixelShader_Text20L_CTSB_P0;
-            rgResourceIds[PXS_GSSB] = g_PixelShader_Text20L_GSSB_P0;
-            rgResourceIds[PXS_CTTB] = g_PixelShader_Text20L_CTTB_P0;
-            rgResourceIds[PXS_GSTB] = g_PixelShader_Text20L_GSTB_P0;
-        }
-        else
-        {
-            rgResourceIds[PXS_CTSB] = g_PixelShader_Text20A_CTSB_P0;
-            rgResourceIds[PXS_GSSB] = g_PixelShader_Text20A_GSSB_P0;
-            rgResourceIds[PXS_CTTB] = g_PixelShader_Text20A_CTTB_P0;
-            rgResourceIds[PXS_GSTB] = g_PixelShader_Text20A_GSTB_P0;
-        }
-    }
-    else
-    {
-        if (m_alphaTextureFormat == D3DFMT_L8)
-        {
-            rgResourceIds[PXS_CTSB] = g_PixelShader_Text11L_CTSB_P0;
-            rgResourceIds[PXS_GSSB] = g_PixelShader_Text11L_GSSB_P0;
-            rgResourceIds[PXS_CTTB] = g_PixelShader_Text11L_CTTB_P0;
-            rgResourceIds[PXS_GSTB] = g_PixelShader_Text11L_GSTB_P0;
-        }
-        else
-        {
-            rgResourceIds[PXS_CTSB] = g_PixelShader_Text11A_CTSB_P0;
-            rgResourceIds[PXS_GSSB] = g_PixelShader_Text11A_GSSB_P0;
-            rgResourceIds[PXS_CTTB] = g_PixelShader_Text11A_CTTB_P0;
-            rgResourceIds[PXS_GSTB] = g_PixelShader_Text11A_GSTB_P0;
-        }
-    }
+    rgResourceIds[PXS_CTSB] = g_PixelShader_Text20A_CTSB_P0;
+    rgResourceIds[PXS_GSSB] = g_PixelShader_Text20A_GSSB_P0;
+    rgResourceIds[PXS_CTTB] = g_PixelShader_Text20A_CTTB_P0;
+    rgResourceIds[PXS_GSTB] = g_PixelShader_Text20A_GSTB_P0;
 
     C_ASSERT(ARRAYSIZE(m_pPixelShaders) == PXS_NUM);
     
@@ -1672,6 +1512,19 @@ CD3DRenderState::InitPixelShaders()
             &m_pPixelShaders[i]
             ));
     }
+
+    IFC(m_pDeviceNoRef->CompilePipelineVertexShader(
+            D3DVertexType::XYZDUV2,
+            c_szPassthroughVertexShaderSource,
+            _countof(c_szPassthroughVertexShaderSource),
+            &m_pPassthroughVertexShader
+        ));
+
+    IFC(m_pDeviceNoRef->CompilePipelinePixelShader(
+            c_szPassthroughPixelShaderSource,
+            _countof(c_szPassthroughPixelShaderSource),
+            &m_pPassthroughPixelShader
+        ));
 
 Cleanup:
     return hr;
@@ -1706,63 +1559,41 @@ CD3DRenderState::SetRenderState_Text_ClearType_SolidBrush(
         ));
 
     IFC(SetPixelShader(m_pPixelShaders[PXS_CTSB]));
-    IFC(SetVertexShader(NULL));
+    IFC(SetVertexShader(m_pPassthroughVertexShader));
 
     IFC(SetAlphaBlendMode(&sc_abmSrcVectorAlphaWithBlendFactor));
     IFC(SetFilterMode(0, m_pTextFilterMode));
 
-    if (m_fDrawTextUsingPS20)
-    {
-        //
-        // The shader outputs alpha values rather than colors. We pass the brush
-        // alpha to the shader in a constant register, and the shader then combines
-        // that with the ClearType alphas to produce the 4 final alpha values for
-        // the 4 channels (alpha included, so there's an "alpha alpha").
-        //
-        // The actual brush color is passed to the blend stage as the blend factor.
-        // The blend mode used here uses D3DRS_BLENDFACTOR as the source coefficient
-        // and (1 - source) as the destination coefficient, giving
-        //     output = (BlendFactor)(Source) + (1 - Source)(Destination)
-        //            = (Brush)(ShaderAlphas) + (1 - ShaderAlphas)(Destination)
-        //
-        // So r = (r_brush)(alpha_r) + (1 - alpha_r)(r_destination)
-        //    g = (g_brush)(alpha_g) + (1 - alpha_g)(g_destination)
-        //    b = (b_brush)(alpha_b) + (1 - alpha_b)(b_destination)
-        //    a = (a_brush)(alpha_a) + (1 - alpha_a)(a_destination)
-        //
-        // Note that the equation for "a" is double counting the brush alpha. The
-        // brush alpha is already included in the alpha values calculated by the
-        // shader (i.e. "alpha_a" already includes "a_brush"). Multiplying the shader
-        // output by "a_brush" again would be wrong and would produce a lower (more
-        // transparent) value for alpha. So we force the value of "a_brush" passed in
-        // through D3DRS_BLENDFACTOR to be 0xFF here to prevent double counting it.
-        //
-        IFC(SetRenderState(
-            D3DRS_BLENDFACTOR,
-            dwForegroundColor | 0xFF000000
-            ));
+    //
+    // The shader outputs alpha values rather than colors. We pass the brush
+    // alpha to the shader in a constant register, and the shader then combines
+    // that with the ClearType alphas to produce the 4 final alpha values for
+    // the 4 channels (alpha included, so there's an "alpha alpha").
+    //
+    // The actual brush color is passed to the blend stage as the blend factor.
+    // The blend mode used here uses D3DRS_BLENDFACTOR as the source coefficient
+    // and (1 - source) as the destination coefficient, giving
+    //     output = (BlendFactor)(Source) + (1 - Source)(Destination)
+    //            = (Brush)(ShaderAlphas) + (1 - ShaderAlphas)(Destination)
+    //
+    // So r = (r_brush)(alpha_r) + (1 - alpha_r)(r_destination)
+    //    g = (g_brush)(alpha_g) + (1 - alpha_g)(g_destination)
+    //    b = (b_brush)(alpha_b) + (1 - alpha_b)(b_destination)
+    //    a = (a_brush)(alpha_a) + (1 - alpha_a)(a_destination)
+    //
+    // Note that the equation for "a" is double counting the brush alpha. The
+    // brush alpha is already included in the alpha values calculated by the
+    // shader (i.e. "alpha_a" already includes "a_brush"). Multiplying the shader
+    // output by "a_brush" again would be wrong and would produce a lower (more
+    // transparent) value for alpha. So we force the value of "a_brush" passed in
+    // through D3DRS_BLENDFACTOR to be 0xFF here to prevent double counting it.
+    //
+    IFC(SetRenderState(
+        D3DRS_BLENDFACTOR,
+        dwForegroundColor | 0xFF000000
+        ));
 
-        IFC(SetConstantRegisters_SolidBrush_PS20(dwForegroundColor, gammaIndex));
-    }
-    else
-    {
-        // We should not be using the ps11 shaders anymore
-        Assert(false);
-        
-        //
-        // The fix for the double-counting bug mentioned above was only made to the ps20 shaders,
-        // so ps11 remains unchanged
-        //
-        IFC(SetRenderState(
-            D3DRS_BLENDFACTOR,
-            dwForegroundColor
-            ));
-
-        IFC(SetConstantRegisters_SolidBrush_PS11(dwForegroundColor, gammaIndex));
-
-        IFC(SetFilterMode(1, m_pTextFilterMode));
-        IFC(SetFilterMode(2, m_pTextFilterMode));
-    }
+    IFC(SetConstantRegisters_SolidBrush_PS20(dwForegroundColor, gammaIndex));
 
 Cleanup:
     RRETURN(hr);
@@ -1797,7 +1628,7 @@ CD3DRenderState::SetRenderState_Text_ClearType_TextureBrush(
         ));
 
     IFC(SetPixelShader(m_pPixelShaders[PXS_CTTB]));
-    IFC(SetVertexShader(NULL));
+    IFC(SetVertexShader(m_pPassthroughVertexShader));
 
     IFC(SetConstantRegisters_TexturedBrush(gammaIndex, flEffectAlpha));
 
@@ -1839,57 +1670,37 @@ CD3DRenderState::SetRenderState_Text_GreyScale_SolidBrush(
         ));
 
     IFC(SetPixelShader(m_pPixelShaders[PXS_GSSB]));
-    IFC(SetVertexShader(NULL));
+    IFC(SetVertexShader(m_pPassthroughVertexShader));
 
-    IFC(SetAlphaBlendMode(&sc_abmSrcVectorAlphaWithBlendFactor));
+    Assert(m_fDrawTextUsingPS20);
+
+    //
+    // The shader outputs alpha values rather than colors. We pass the brush
+    // alpha to the shader in a constant register, and the shader then produces
+    // the final alpha value used in all 4 channels.
+    //
+    // The actual brush color is passed to the blend stage as the blend factor.
+    // The blend mode used here uses D3DRS_BLENDFACTOR as the source coefficient
+    // and (1 - source) as the destination coefficient, giving
+    //     output = (BlendFactor)(Source) + (1 - Source)(Destination)
+    //            = (Brush)(ShaderAlphas) + (1 - ShaderAlphas)(Destination)
+    //
+    // So r = (r_brush)(alpha) + (1 - alpha)(r_destination)
+    //    g = (g_brush)(alpha) + (1 - alpha)(g_destination)
+    //    b = (b_brush)(alpha) + (1 - alpha)(b_destination)
+    //    a = (a_brush)(alpha) + (1 - alpha)(a_destination)
+    //
+    // Note that the equation for "a" is double counting the brush alpha. The
+    // brush alpha is already included in the alpha value calculated by the
+    // shader (i.e. "alpha" already includes "a_brush"). Multiplying the shader
+    // output by "a_brush" again would be wrong and would produce a lower (more
+    // transparent) value for alpha. So we force the value of "a_brush" passed in
+    // through D3DRS_BLENDFACTOR to be 0xFF here to prevent double counting it.
+    //
+    IFC(SetAlphaBlendMode(&sc_abmSrcVectorAlphaWithBlendFactor, dwForegroundColor | 0xFF000000));
     IFC(SetFilterMode(0, m_pTextFilterMode));
 
-    if (m_fDrawTextUsingPS20)
-    {
-        //
-        // The shader outputs alpha values rather than colors. We pass the brush
-        // alpha to the shader in a constant register, and the shader then produces
-        // the final alpha value used in all 4 channels.
-        //
-        // The actual brush color is passed to the blend stage as the blend factor.
-        // The blend mode used here uses D3DRS_BLENDFACTOR as the source coefficient
-        // and (1 - source) as the destination coefficient, giving
-        //     output = (BlendFactor)(Source) + (1 - Source)(Destination)
-        //            = (Brush)(ShaderAlphas) + (1 - ShaderAlphas)(Destination)
-        //
-        // So r = (r_brush)(alpha) + (1 - alpha)(r_destination)
-        //    g = (g_brush)(alpha) + (1 - alpha)(g_destination)
-        //    b = (b_brush)(alpha) + (1 - alpha)(b_destination)
-        //    a = (a_brush)(alpha) + (1 - alpha)(a_destination)
-        //
-        // Note that the equation for "a" is double counting the brush alpha. The
-        // brush alpha is already included in the alpha value calculated by the
-        // shader (i.e. "alpha" already includes "a_brush"). Multiplying the shader
-        // output by "a_brush" again would be wrong and would produce a lower (more
-        // transparent) value for alpha. So we force the value of "a_brush" passed in
-        // through D3DRS_BLENDFACTOR to be 0xFF here to prevent double counting it.
-        //
-        IFC(SetRenderState(
-            D3DRS_BLENDFACTOR,
-            dwForegroundColor | 0xFF000000
-            ));
-        IFC(SetConstantRegisters_SolidBrush_PS20(dwForegroundColor, gammaIndex));
-    }
-    else
-    {
-        // We should not be using the ps11 shaders anymore
-        Assert(false);
-
-        //
-        // The fix for the double-counting bug mentioned above was only made to the ps20 shaders,
-        // so ps11 remains unchanged
-        //
-        IFC(SetRenderState(
-            D3DRS_BLENDFACTOR,
-            dwForegroundColor
-            ));
-        IFC(SetConstantRegisters_SolidBrush_PS11(dwForegroundColor, gammaIndex));
-    }
+    IFC(SetConstantRegisters_SolidBrush_PS20(dwForegroundColor, gammaIndex));
 
 Cleanup:
     RRETURN(hr);
@@ -1924,7 +1735,7 @@ CD3DRenderState::SetRenderState_Text_GreyScale_TextureBrush(
         ));
 
     IFC(SetPixelShader(m_pPixelShaders[PXS_GSTB]));
-    IFC(SetVertexShader(NULL));
+    IFC(SetVertexShader(m_pPassthroughVertexShader));
 
     IFC(SetAlphaBlendMode(&sc_abmSrcOverPremultiplied));
 
@@ -2019,6 +1830,92 @@ CD3DRenderState::SetColorChannelBlue()
 
 Cleanup:
     RRETURN(hr);
+}
+
+HRESULT 
+CD3DRenderState::SetRasterizerState(const D3D11_RASTERIZER_DESC& rasterizerDesc)
+{
+    HRESULT hr = S_OK;
+    auto it = m_compiledRasterizerStates.find(rasterizerDesc);
+    if (it == m_compiledRasterizerStates.end())
+    {
+        ID3D11RasterizerState* pRasterizerState = nullptr;
+        
+        hr = m_pDeviceNoRef->GetDevice()->CreateRasterizerState(&rasterizerDesc, &pRasterizerState);
+        m_compiledRasterizerStates[rasterizerDesc] = pRasterizerState;
+
+        it = m_compiledRasterizerStates.find(rasterizerDesc);
+    }
+    m_pDeviceNoRef->GetDeviceContext()->RSSetState(it->second);
+
+    return hr;
+}
+
+HRESULT 
+CD3DRenderState::SetDepthStencilState(const D3D11_DEPTH_STENCIL_DESC& depthStencilDesc)
+{
+    HRESULT hr = S_OK;
+    auto it = m_compiledDepthStencilStates.find(depthStencilDesc);
+    if (it == m_compiledDepthStencilStates.end())
+    {
+        ID3D11DepthStencilState* pDepthStencilState = nullptr;
+
+        hr = m_pDeviceNoRef->GetDevice()->CreateDepthStencilState(&depthStencilDesc, &pDepthStencilState);
+        m_compiledDepthStencilStates[depthStencilDesc] = pDepthStencilState;
+
+        it = m_compiledDepthStencilStates.find(depthStencilDesc);
+    }
+    m_pDeviceNoRef->GetDeviceContext()->OMSetDepthStencilState(it->second, 0);
+
+    return hr;
+}
+
+HRESULT 
+CD3DRenderState::SetSamplerState(UINT samplerIdx, const D3D11_SAMPLER_DESC& samplerDesc)
+{
+    HRESULT hr = S_OK;
+    auto it = m_compiledSamplerStates.find(samplerDesc);
+    if (it == m_compiledSamplerStates.end())
+    {
+        ID3D11SamplerState* pSamplerState = nullptr;
+
+        hr = m_pDeviceNoRef->GetDevice()->CreateSamplerState(&samplerDesc, &pSamplerState);
+        m_compiledSamplerStates[samplerDesc] = pSamplerState;
+
+        it = m_compiledSamplerStates.find(samplerDesc);
+    }
+    m_pDeviceNoRef->GetDeviceContext()->PSSetSamplers(samplerIdx, 1, &it->second);
+
+    return hr;
+}
+
+HRESULT 
+CD3DRenderState::SetBlendState(const D3D11_BLEND_DESC& blendDesc, DWORD dwBlendFactor)
+{
+    HRESULT hr = S_OK;
+    auto it = m_compiledBlendStates.find(blendDesc);
+    if (it == m_compiledBlendStates.end())
+    {
+        ID3D11BlendState* pBlendState = nullptr;
+
+        hr = m_pDeviceNoRef->GetDevice()->CreateBlendState(&blendDesc, &pBlendState);
+        m_compiledBlendStates[blendDesc] = pBlendState;
+
+        it = m_compiledBlendStates.find(blendDesc);
+    }
+
+    FLOAT blendFactor[4] = {
+        ((dwBlendFactor >> 0) & 0xFF) / 255.0f,
+        ((dwBlendFactor >> 8) & 0xFF) / 255.0f,
+        ((dwBlendFactor >> 16) & 0xFF) / 255.0f,
+        ((dwBlendFactor >> 24) & 0xFF) / 255.0f
+    };
+
+    UINT sampleMask   = 0xffffffff;
+    
+    m_pDeviceNoRef->GetDeviceContext()->OMSetBlendState(it->second, blendFactor, sampleMask);
+
+    return hr;
 }
 
 //+-----------------------------------------------------------------------------

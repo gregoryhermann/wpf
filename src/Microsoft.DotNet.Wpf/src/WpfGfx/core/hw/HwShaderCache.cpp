@@ -212,6 +212,7 @@ Cleanup:
 
 HRESULT
 CHwShaderCache::GetHwShader(
+    D3DVertexType vertexType,
     __in_ecount(uNumPipelineItems) const HwPipelineItem *rgShaderItem,
     UINT uNumPipelineItems,
     __deref_out_ecount(1) CHwPipelineShader **ppHwShader
@@ -237,6 +238,7 @@ CHwShaderCache::GetHwShader(
             // We don't have the shader cached, so try to build it
             //
             hr = m_pDeviceNoRef->DerivePipelineShader(
+                vertexType,
                 rgShaderItem,
                 uNumPipelineItems,
                 &pReturnShader

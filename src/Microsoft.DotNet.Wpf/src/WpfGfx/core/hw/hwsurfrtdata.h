@@ -72,12 +72,6 @@ public:
         return m_uCacheIndex;
     }
 
-    // Fallback Software rasterizer
-    HRESULT GetSoftwareFallback(
-        __deref_out_ecount(1) CHwSoftwareFallback ** const ppISoftwareFallback,
-        HRESULT hrReasonForFallback
-        );
-
     void ResetPerPrimitiveResourceUsage();
 
     // Extract a cached HW brush or get a new one
@@ -118,6 +112,7 @@ public:
         );
 
     HRESULT DerivePipelineShader(
+        D3DVertexType vertexType,
         __in_ecount(uNumPipelineItems) HwPipelineItem const * rgShaderPipelineItems,
         UINT uNumPipelineItems,
         __deref_out_ecount(1) CHwPipelineShader ** const ppHwShader
@@ -210,9 +205,6 @@ private:
 
     DynArray<MilPoint2F> m_rgPoints;
     DynArray<BYTE>      m_rgTypes;
-
-    // Fallback Software rasterizer
-    CHwSoftwareFallback *m_pswFallback;
 
     CHwSolidColorTextureSourcePool m_solidColorTextureSourcePool;
     CHwBoxColorSource *m_pScratchHwBoxColorSource;

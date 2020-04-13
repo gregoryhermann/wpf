@@ -47,7 +47,7 @@ public:
     //
 
     STDMETHOD(ResetDevice)(
-        /* [in] */ D3DDeviceContext *pDevice,
+        /* [in] */ IDirect3DDevice9 *pDevice,
         /* [in] */ UINT Reason);
 
     STDMETHOD(OpenDeviceHandle)(
@@ -61,7 +61,7 @@ public:
 
     STDMETHOD(LockDevice)(
         /* [in] */ HANDLE hDevice,
-        /* [out] */ D3DDeviceContext **ppDevice,
+        /* [out] */ IDirect3DDevice9 **ppDevice,
         /* [in] */ BOOL fBlock);
 
     STDMETHOD(UnlockDevice)(

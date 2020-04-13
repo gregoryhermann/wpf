@@ -18,7 +18,6 @@
 //  - data obtained from SystemParametersInfo call.
 //
 //  System settings dependent data includes:
-//  - IDirect3D9 object;
 //  - redundant rendering data: gamma lookup tables, text rendering modes, etc.
 //
 //  Common feature of the data in question is that it is almost constant.
@@ -166,6 +165,12 @@ struct DisplaySettings
 
 MtExtern(CDisplaySet);
 
+struct DXGIAdapterInfo
+{
+    DXGI_ADAPTER_DESC adapterDesc;
+    DXGI_OUTPUT_DESC outputDesc;
+};
+
 //+------------------------------------------------------------------------
 //
 // Class:       CDisplaySet
@@ -251,16 +256,6 @@ public:
     bool DangerousHasDisplayStateChanged() const;
     bool IsNonLocalDisplayPresent() const { return m_fNonLocalDevicePresent; }
 
-    HRESULT GetD3DObjectNoRef(
-        __deref_out_ecount(1) IDirect3D9 **pID3D
-        ) const;
-
-    __out_ecount(1) IDirect3D9* D3DObject() const {return m_pID3D;}
-    __out_ecount(1) IDirect3D9Ex* D3DExObject() const {return m_pID3DEx;}
-
-    // Get HRESULT to detect why D3DObject() returned NULL.
-    HRESULT GetD3DInitializationError() const {return m_hrD3DInitialization;}
-
     UINT GetNumD3DRecognizedAdapters() const { return m_uD3DAdapterCount; }
 
     __outro_ecount(1) CMILSurfaceRect const &GetBounds() const;
@@ -311,6 +306,8 @@ public:
                                      __deref_out_ecount(1) EnhancedContrastTable **ppTable
                                      ) const;
 
+    const DXGIAdapterInfo& GetDisplayAdapterInfo(UINT displayIndex) const { return m_displayAdapters[displayIndex]; }
+
 public:
     HRESULT EnsureSwRastIsRegistered() const;
 
@@ -324,10 +321,6 @@ private:
 
     mutable volatile LONG m_cRef;
 
-    IDirect3D9* m_pID3D;
-    IDirect3D9Ex *m_pID3DEx;
-
-    HRESULT m_hrD3DInitialization;
     mutable HRESULT m_hrSwRastRegistered;
 
     UINT m_uD3DAdapterCount;
@@ -338,7 +331,6 @@ private:
     //
     mutable ULONG m_ulDisplayUniquenessLoader;
     mutable ULONG m_ulDisplayUniquenessEx;
-
 
     bool m_fNonLocalDevicePresent;
 
@@ -367,6 +359,8 @@ private:
     /// support querying thread DPI_AWARENESS_CONTEXT value
     /// </remarks>
     DpiAwarenessContextValue m_defaultDpiAwarenessContextValue;
+
+    std::vector<DXGIAdapterInfo> m_displayAdapters;
 };
 
 MtExtern(CDisplay);
@@ -403,14 +397,9 @@ private:
         __in_ecount(1) LPCRECT prcMonitor
         );
 
-    HRESULT ReadMode(
-        __in_ecount_opt(1) IDirect3D9 *pID3D,
-        __in_ecount_opt(1) IDirect3D9Ex *pID3DEx
-        );
+    HRESULT ReadMode();
 
-    void ReadGraphicsAccelerationCaps(
-        __in_ecount(1) IDirect3D9 *pID3D
-        );
+    void ReadGraphicsAccelerationCaps();
 
     bool IsEquivalentTo(
         __in_ecount(1) CDisplay const * pDisplay
@@ -456,16 +445,6 @@ public:
     UINT GetRefreshRate() const {return m_DisplayMode.RefreshRate;}
     __outro_ecount(1) CMILSurfaceRect const &GetDisplayRect() const;
     __outro_ecount(1) DisplaySettings const * GetDisplaySettings() const {return &m_settings;}
-    
-    __out_ecount(1) IDirect3D9* D3DObject() const
-    {
-        return m_pDisplaySet->D3DObject();
-    }
-
-    __out_ecount_opt(1) IDirect3D9Ex* D3DExObject() const
-    {
-        return m_pDisplaySet->D3DExObject();
-    }
 
     LUID GetLUID() const { return m_luidD3DAdapter;}
     __out HMONITOR GetHMONITOR() const { return m_hMonitor; }

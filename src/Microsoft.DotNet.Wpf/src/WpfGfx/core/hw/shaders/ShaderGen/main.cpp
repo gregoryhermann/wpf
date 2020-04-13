@@ -29,10 +29,10 @@ int __cdecl main()
     CResourceGen codeGen;
     IFC(codeGen.Initialize("..\\Shaders.rc", "..\\Shaders.h", 100));
 
-    IFC(codeGen.CompileEffect(L"hlslTextShaders11A.fx", "Text11A"));
-    IFC(codeGen.CompileEffect(L"hlslTextShaders11L.fx", "Text11L"));
-    IFC(codeGen.CompileEffect(L"hlslTextShaders20A.fx", "Text20A"));
-    IFC(codeGen.CompileEffect(L"hlslTextShaders20L.fx", "Text20L"));
+    IFC(codeGen.CompileEffect(L"ctsb.hlsl", "CTSB", "Text20A"));
+    IFC(codeGen.CompileEffect(L"cttb.hlsl", "CTTB", "Text20A"));
+    IFC(codeGen.CompileEffect(L"gssb.hlsl", "GSSB", "Text20A"));
+    IFC(codeGen.CompileEffect(L"gstb.hlsl", "GSTB", "Text20A"));
 
 
 Cleanup:

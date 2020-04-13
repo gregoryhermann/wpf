@@ -1,7 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
-
+#pragma once
 
 //+-----------------------------------------------------------------------------
 //
@@ -95,6 +95,17 @@
 #define NUM_OF_VERTEX_TEXTURE_COORDS(VertexType) \
     ARRAYSIZE(((VertexType*)0)->ptTx)
 
+enum class D3DVertexType
+{
+    XYZDUV2,
+    XYZDUV6,
+    XYZDUV8,
+    XYZNDSUV4,
+    HW3DGeometryNormal,
+    HW3DGeometryDiffuse,
+    Count
+};
+
 
 // class CD3DVertexXYZDUV2
 //
@@ -120,7 +131,7 @@ public:
         MilPoint2F ptTx[2];
     };
 
-    enum {Format = D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2};
+    static D3DVertexType Format() { return D3DVertexType::XYZDUV2; }
 
     __outro_ecount(1) const MilPoint2F &UV0() const { return ptTx[0]; }
     __outro_ecount(1) const MilPoint2F &UV1() const { return ptTx[1]; }
@@ -193,7 +204,7 @@ public:
         MilPoint2F ptTx[4];
     };
     
-    enum {Format = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_DIFFUSE | D3DFVF_SPECULAR | D3DFVF_TEX4};
+    static D3DVertexType Format() { return D3DVertexType::XYZNDSUV4; }
 
     MIL_FORCEINLINE __outro_ecount(1) const D3DVECTOR &GetNormal() const { return Normal; }
     MIL_FORCEINLINE void SetNormal(__in_ecount(1) const D3DVECTOR &_Normal) { Normal = _Normal; }
@@ -239,7 +250,7 @@ public:
         MilPoint2F ptTx[6];
     };
 
-    enum {Format = D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX6};
+    static D3DVertexType Format() { return D3DVertexType::XYZDUV6; }
 
     __outro_ecount(1) const MilPoint2F &UV0() const { return ptTx[0]; }
     __outro_ecount(1) const MilPoint2F &UV1() const { return ptTx[1]; }
@@ -281,7 +292,7 @@ public:
 //
 struct CD3DVertexXYZDUV8
 {
-    enum {Format = D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX8};
+    static D3DVertexType Format() { return D3DVertexType::XYZDUV6; }
 
     union {
         struct {

@@ -34,16 +34,6 @@ MtExtern(CD3DDeviceLevel1);
 #define GPUMARKER_FLAGS_MARKERS_TESTED              0x10
 #define GPUMARKER_FLAGS_MARKER_CONSUMED             0x100
 
-//------------------------------------------------------------------------------
-//
-// D3DPOOL_MANAGED is not allowed with D3DDeviceContextEx. This define is the back
-// door for MilCore to use managed pool behavior until MilCore stops using
-// managed resources with D3DDeviceContextEx.
-//
-//------------------------------------------------------------------------------
-
-#define D3DPOOL_MANAGED_INTERNAL ((D3DPOOL)6)
-
 //+-----------------------------------------------------------------------------
 //
 //  Defines:
@@ -103,7 +93,8 @@ public:
     DECLARE_METERHEAP_CLEAR(ProcessHeap, Mt(CD3DDeviceLevel1));
 
     static HRESULT Create(
-        __inout_ecount(1) D3DDeviceContext *pID3DDevice,
+        __inout_ecount(1) D3DDevice* pID3DDevice,
+        __inout_ecount(1) D3DDeviceContext *pID3DDeviceContext,
         __in_ecount(1) const CDisplay *pPrimaryDisplay,
         __in_ecount(1) IMILPoolManager *pManager,
         DWORD dwBehaviorFlags,
@@ -148,6 +139,10 @@ public:
                                         // provided protection.
         ) const;
 
+
+    D3DDevice* GetDevice() { return m_pD3DDevice; }
+    D3DDeviceContext* GetDeviceContext() { return m_pD3DDeviceContext; }
+
     //+-------------------------------------------------------------------------
     //
     //  Member:
@@ -163,7 +158,17 @@ public:
     bool IsEnsuringCorrectMultithreadedRendering() const
         { return m_csDeviceEntry.IsValid(); }
 
-
+    // TODO, return the right answer
+    bool IsSWDevice() const { return false; }
+    bool IsHWDevice() const { return !IsSWDevice(); }
+    bool Is128BitFPTextureSupported() const { return true; }
+    bool SupportsBorderColor() const { return true; }
+    bool CanMaskColorChannels() const { return true; }
+    bool CanHandleBlendFactor() const { return true; }
+    UINT GetMaxTextureWidth() const { return D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION; }
+    UINT GetMaxTextureHeight() const { return D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION; }
+    bool SupportsNonPow2Unconditionally() const { return true; }
+    bool SupportsNonPow2Conditionally() const { return false; }
     //+-------------------------------------------------------------------------
     //
     //  Macro:
@@ -223,28 +228,9 @@ public:
         AssertEntry((Device).m_oDbgEntryCheck); \
         Assert(!((Device).IsEntered()))
 
-    //+-------------------------------------------------------------------------
-    //
-    //  Member:
-    //      InitializeIMediaDeviceConsumer
-    //
-    //  Synopsis:
-    //      Provide a clean mechanism for video code to break the abstraction
-    //      and get at the underlying device. This is necessary because WMP has
-    //      no knowledge of CD3DDeviceLevel1
-    //
-    //--------------------------------------------------------------------------
-    void InitializeIMediaDeviceConsumer(
-        __in_ecount(1) IMediaDeviceConsumer *pIMediaDeviceConsumer
-        );
-
-    HRESULT CheckRenderTargetFormat(
-        D3DFORMAT fmtRenderTarget,
-        __deref_opt_out_ecount(1) HRESULT const ** const pphrTestGetDC = NULL
-        );
 
     void AssertRenderFormatIsTestedSuccessfully(
-        D3DFORMAT fmtRenderTarget
+        DXGI_FORMAT fmtRenderTarget
         );
 
     HRESULT Set3DTransforms(
@@ -254,148 +240,110 @@ public:
         __in_ecount(1) CMatrix<CoordinateSpace::Projection3D,CoordinateSpace::Device> const &matHomogeneousTo2DDevice
         );
 
-    HRESULT SetRenderTarget(__in_ecount(1) CD3DSurface *pD3DSurface);
+    HRESULT SetRenderTarget(__in_ecount(1) CD3DTexture *pD3DTexture);
 
     void ReleaseUseOfRenderTarget(
-        __in_ecount(1) const CD3DSurface *pD3DRenderTargetSurface
-        );
-
-    HRESULT GetSwapChain(
-        UINT uGroupAdapterOrdinal,
-        __deref_out_ecount(1) CD3DSwapChain ** const ppSwapChain
+        __in_ecount(1) const CD3DTexture *pD3DRenderTarget
         );
 
     void MarkUnusable(
         bool fMayBeMultithreadedCall
         );
 
-    HRESULT CreateAdditionalSwapChain(
-        __in_ecount_opt(1) CMILDeviceContext const *pMILDC,
-        __in_ecount(1) D3DPRESENT_PARAMETERS *pD3DPresentParams,
-        __deref_out_ecount(1) CD3DSwapChain ** const ppSwapChain
-        );
-
     HRESULT CreateRenderTarget(
         UINT uiWidth,
         UINT uiHeight,
-        D3DFORMAT d3dfmtSurface,
-        D3DMULTISAMPLE_TYPE d3dMultiSampleType,
-        DWORD dwMultisampleQuality,
-        bool fLockable,
-        __deref_out_ecount(1) CD3DSurface ** const ppD3DSurface
+        DXGI_FORMAT dxgiFmt,
+        UINT uiMultisampleCount,
+        UINT uiMultisampleQuality,
+        __deref_out_ecount(1) CD3DTexture ** const ppD3DTexture
         );
 
     HRESULT CreateRenderTargetUntracked(
         UINT uiWidth,
         UINT uiHeight,
-        D3DFORMAT d3dfmtSurface,
-        D3DMULTISAMPLE_TYPE d3dMultiSampleType,
-        DWORD dwMultisampleQuality,
-        bool fLockable,
-        __deref_out_ecount(1) D3DSurface ** const ppD3DSurface
-        );
-
-    HRESULT GetRenderTargetData(
-        __in_ecount(1) D3DSurface *pSourceSurface,
-        __in_ecount(1) D3DSurface *pDestinationSurface
+        DXGI_FORMAT dxgiFmt,
+        UINT uiMultisampleCount,
+        UINT uiMultisampleQuality,
+        __deref_out_ecount(1) D3DTexture ** const ppD3DTexture
         );
 
     HRESULT CreateVertexBuffer(
         UINT Length,
-        DWORD Usage,
-        DWORD FVF,
-        D3DPOOL Pool,
+        D3D11_USAGE Usage,
+        UINT uiCpuAccessFlags,
         __deref_out_ecount(1) D3DVertexBuffer ** const ppVertexBuffer
         );
 
     HRESULT CreateIndexBuffer(
         UINT Length,
-        DWORD Usage,
-        D3DFORMAT Format,
-        D3DPOOL Pool,
-        __deref_out_ecount(1) D3DIndexBuffer ** const ppIndexBuffer
-        );
-
-    HRESULT CreateStateBlock(
-        D3DSTATEBLOCKTYPE d3dStateBlockType,
-        __deref_out_ecount(1) IDirect3DStateBlock9 ** const ppStateBlock
-        );
-
-    HRESULT ComposeRects(
-        __in_ecount(1) D3DSurface* pSource,
-        __inout_ecount(1) D3DSurface* pDestination,
-        __in_ecount(1) D3DVertexBuffer* pSrcRectDescriptors,
-        UINT NumRects,
-        __in_ecount(1) D3DVertexBuffer* pDstRectDescriptors,
-        D3DCOMPOSERECTSOP Operation
-        );
+        D3D11_USAGE Usage,
+        UINT uiCpuAccessFlags,
+        __deref_out_ecount(1) D3DIndexBuffer** const ppIndexBuffer
+    );
 
     HRESULT CreateTexture(
-        __in_ecount(1) const D3DSURFACE_DESC *pSurfDesc,
+        __in_ecount(1) const D3D11_TEXTURE2D_DESC* pTextureDesc,
         UINT uLevels,
-        __deref_out_ecount(1) D3DTexture ** const ppD3DTexture,
-        __deref_opt_inout_ecount(1) HANDLE * const pSharedHandle = NULL
+        __deref_out_ecount(1) D3DTexture ** const ppD3DTexture
         );
 
     HRESULT CreatePixelShaderFromResource(
         UINT uResourceId,
-        __deref_out_ecount(1) IDirect3DPixelShader9 ** const ppPixelShader
+        __deref_out_ecount(1) ID3D11PixelShader** const ppPixelShader
         );
 
     HRESULT CreateVertexShaderFromResource(
+        D3DVertexType vertexType,
         UINT uResourceId,
-        __deref_out_ecount(1) IDirect3DVertexShader9 ** const ppVertexShader
+        __deref_out_ecount(1) ID3D11VertexShader** const ppVertexShader
         );
         
     HRESULT CompilePipelineVertexShader(
+        D3DVertexType vertexType,
         __in_bcount(cbHLSLSource) PCSTR pHLSLSource,
         UINT cbHLSLSource,
-        __deref_out_ecount(1) IDirect3DVertexShader9 ** const ppVertexShader
+        __deref_out_ecount(1) ID3D11VertexShader** const ppVertexShader
         );
 
     HRESULT CompilePipelinePixelShader(
         __in_bcount(cbHLSLSource) PCSTR pHLSLSource,
         UINT cbHLSLSource,
-        __deref_out_ecount(1) IDirect3DPixelShader9 ** const ppPixelShader
+        __deref_out_ecount(1) ID3D11PixelShader** const ppPixelShader
         );
 
     HRESULT CreateVertexShader(
+        D3DVertexType vertexType,
         __in const DWORD *pdwfnVertexShader,
-        __deref_out_ecount(1) IDirect3DVertexShader9 ** const ppOutShader
+        __in DWORD cbVertexShader,
+        __deref_out_ecount(1) ID3D11VertexShader** const ppOutShader
         );
 
     HRESULT CreatePixelShader(
         __in const DWORD *pdwfnPixelShader,
-        __deref_out_ecount(1) IDirect3DPixelShader9 **const ppOutShader
+        __in DWORD cbPixelShader,
+        __deref_out_ecount(1) ID3D11PixelShader**const ppOutShader
         );
 
-
     HRESULT CreateLockableTexture(
-        __in_ecount(1) const D3DSURFACE_DESC *pSurfDesc,
+        __in_ecount(1) const D3D11_TEXTURE2D_DESC*pSurfDesc,
         __deref_out_ecount(1) CD3DLockableTexture ** const ppLockableTexture
         );
 
-    HRESULT CreateSysMemUpdateSurface(
+    HRESULT CreateSysMemUpdateTexture(
         UINT uWidth,
         UINT uHeight,
-        D3DFORMAT fmtTexture,
+        DXGI_FORMAT fmtTexture,
         __in_xcount_opt(uWidth * uHeight * D3DFormatSize(fmtTexture)) void *pvPixels,
-        __deref_out_ecount(1) D3DSurface ** const ppD3DSysMemSurface
-        );
-
-    HRESULT CreateSysMemReferenceTexture(
-        __in_ecount(1) const D3DSURFACE_DESC *pSurfDesc,
-        __in_xcount(
-            pSurfDesc->Width * pSurfDesc->Height
-            * D3DFormatSize(pSurfDesc->Format)
-            ) void *pvPixels,
         __deref_out_ecount(1) D3DTexture ** const ppD3DSysMemTexture
         );
 
-    HRESULT UpdateSurface(
-        __in_ecount(1) D3DSurface *pD3DSysMemSrcSurface,
+    HRESULT UpdateTextureRegion(
+        __in_ecount(1) D3DTexture * pD3DSysMemSrcTexture,
+        UINT srcSubresource,
         __in_ecount_opt(1) const RECT *pSourceRect,
-        __inout_ecount(1) D3DSurface *pD3DPoolDefaultDestSurface,
+        __inout_ecount(1) D3DTexture * pD3DPoolDefaultDestTexture,
+        UINT destSubresource,
         __in_ecount_opt(1) const POINT *pDestPoint
         );
 
@@ -404,36 +352,12 @@ public:
         __inout_ecount(1) D3DTexture *pD3DPoolDefaultDestTexture
         );
 
-    HRESULT StretchRect(
-        __in_ecount(1) CD3DSurface *pSourceSurface,
-        __in_ecount_opt(1) const RECT *pSourceRect,
-        __inout_ecount(1) CD3DSurface *pDestSurface,
-        __in_ecount_opt(1) const RECT *pDestRect,
-        D3DTEXTUREFILTERTYPE Filter
-        )
-    {
-        return StretchRect(
-            pSourceSurface,
-            pSourceRect,
-            pDestSurface->ID3DSurface(),
-            pDestRect,
-            Filter
-            );
-    }
-
-    HRESULT StretchRect(
-        __in_ecount(1) CD3DSurface *pSourceSurface,
-        __in_ecount_opt(1) const RECT *pSourceRect,
-        __inout_ecount(1) D3DSurface *pDestSurface,
-        __in_ecount_opt(1) const RECT *pDestRect,
-        D3DTEXTUREFILTERTYPE Filter
-        );
-
     HRESULT CreateDepthBuffer(
         UINT uWidth,
         UINT uHeight,
-        D3DMULTISAMPLE_TYPE MultisampleType,
-        __deref_out_ecount(1) CD3DSurface ** const ppSurface
+        UINT uiMultisampleCount,
+        UINT uiMultisampleQuality,
+        __deref_out_ecount(1) CD3DTexture ** const ppTexture
         );
 
     void CleanupFreedResources();
@@ -448,41 +372,33 @@ public:
         );
 
     HRESULT SetTexture(
-        DWORD dwTextureStage,
+        UINT uiSlot,
         __inout_ecount_opt(1) CD3DTexture *pD3DTexture
         );
 
-    HRESULT
-    SetD3DTexture(
-        DWORD dwTextureStage,
-        __in_ecount_opt(1) D3DTexture *pD3DTexture
+    HRESULT SetDepthStencilTexture(
+        __in_ecount_opt(1) CD3DTexture *pTexture
         );
 
-    HRESULT DisableTextureTransform(DWORD dwTextureStage);
-
-    HRESULT SetLinearPalette();
-
-    HRESULT SetDepthStencilSurface(
-        __in_ecount_opt(1) CD3DSurface *pD3DSurface
+    void ReleaseUseOfDepthStencilTexture(
+        __in_ecount_opt(1) CD3DTexture *pTexture
         );
 
-    void ReleaseUseOfDepthStencilSurface(
-        __in_ecount_opt(1) CD3DSurface *pSurface
-        );
-
-    HRESULT Clear(
+    HRESULT ClearColor(
         DWORD dwCount,
-        __in_ecount_opt(dwCount) const D3DRECT* pRects,
-        DWORD dwFlags,
-        D3DCOLOR d3dColor,
-        FLOAT rZValue,
-        int iStencilValue
+        __in_ecount_opt(dwCount) const D3D11_RECT* pRects,
+        DWORD colorRGBA
         );
+
+     HRESULT ClearDepthStencil(
+         FLOAT rZValue,
+         int iStencilValue
+         );
 
     HRESULT ColorFill(
-        __inout_ecount(1) D3DSurface *pSurface,
+        __inout_ecount(1) CD3DTexture *pTexture,
         __in_ecount_opt(1) const RECT *pRect,
-        D3DCOLOR color
+        DWORD colorRGBA
         );
 
     CD3DResourceManager *GetResourceManager()
@@ -490,25 +406,10 @@ public:
         return &m_resourceManager;
     }
 
-    HRESULT RenderTexture(
-        __in_ecount(1) CD3DTexture *pD3DTexture,
-        __in_ecount(1) const MilPointAndSizeL &rcDestination,
-        TextureBlendMode blendMode
-        );
-
     HRESULT CopyD3DTexture(
         __in_ecount(1) D3DTexture *pD3DSourceTexture,
         __inout_ecount(1) D3DTexture *pD3DDestinationTexture
         );
-
-    HRESULT GetMinimalTextureDesc(
-        __inout_ecount(1) D3DSURFACE_DESC *pd3dsd,
-        bool fPalUsesAlpha,
-        DWORD dwFlags
-        ) const
-    {
-        return ::GetMinimalTextureDesc(m_pD3DDevice, m_d3ddm.Format, &m_caps, pd3dsd, fPalUsesAlpha, dwFlags);
-    }
 
     HRESULT GetSupportedTextureFormat(
         MilPixelFormat::Enum fmtBitmapSource,          // Current format of bitmap
@@ -521,7 +422,7 @@ public:
                                                             // the bitmap
         ) const;
 
-    D3DMULTISAMPLE_TYPE GetSupportedMultisampleType(
+    DXGI_SAMPLE_DESC GetSupportedMultisampleType(
         MilPixelFormat::Enum fmtDestinationSurface        // Format of target surface
         ) const;
 
@@ -544,49 +445,14 @@ public:
     //
 
     TierType GetTier() const { return m_Tier; }
-    bool IsLDDMDevice() const {return HwCaps::IsLDDMDevice(m_caps);}
-    bool IsHALDevice() const {return m_caps.DeviceType == D3DDEVTYPE_HAL;}
-    bool IsSWDevice() const {return HwCaps::IsSWDevice(m_caps);}
-    BOOL CanAutoGenMipMap() const {return m_caps.Caps2 & D3DCAPS2_CANAUTOGENMIPMAP;}
-
-    bool CanStretchRectGenMipMap() const { return (m_caps.StretchRectFilterCaps & D3DPTFILTERCAPS_MINFLINEAR) != 0; }
-    bool CanStretchRectFromTextures() const { return (m_caps.DevCaps2 & D3DDEVCAPS2_CAN_STRETCHRECT_FROM_TEXTURES) != 0; }
-    bool CanMaskColorChannels() const { return HwCaps::CanMaskColorChannels(m_caps); }
-    bool CanHandleBlendFactor() const { return HwCaps::CanHandleBlendFactor(m_caps); }
-    bool SupportsD3DFMT_A8() const { return m_fSupportsD3DFMT_A8; }
-    bool SupportsD3DFMT_P8() const { return m_fSupportsD3DFMT_P8; }
-    bool SupportsD3DFMT_L8() const { return m_fSupportsD3DFMT_L8; }
-    bool SupportsBorderColor() const { return (m_caps.TextureAddressCaps & D3DPTADDRESSCAPS_BORDER) != 0; }
-    bool SupportsAnisotropicFiltering() const { return GetMaxDesiredAnisotropicFilterLevel() > 1; }
-    bool SupportsNonPow2Conditionally() const { return (m_caps.TextureCaps & D3DPTEXTURECAPS_NONPOW2CONDITIONAL) && (m_caps.TextureCaps & D3DPTEXTURECAPS_POW2); }
-    bool SupportsNonPow2Unconditionally() const { return !(m_caps.TextureCaps & D3DPTEXTURECAPS_NONPOW2CONDITIONAL) && !(m_caps.TextureCaps & D3DPTEXTURECAPS_POW2); }
-
     bool ShouldAttemptMultisample() const 
     {
-        // If a previous attempt to render multisampled failed, do not continue to attempt multisampling
-        return !m_fMultisampleFailed &&
-            (GetTier() >= MIL_TIER(2,0));
+        return true;
     }
 
-    void SetMultisampleFailed() { m_fMultisampleFailed = true; }
-
-    bool SupportsTextureCap(DWORD dwTextureCap) const
-    {
-        Assert(((dwTextureCap-1) & dwTextureCap) == 0); // Check for single cap
-        return (m_caps.TextureCaps & dwTextureCap) != 0;
-    }
-    DWORD GetMaxStreams() const {return m_caps.MaxStreams;}
-    DWORD GetMaxTextureBlendStages() const {return m_caps.MaxTextureBlendStages;}
-    DWORD GetMaxSimultaneousTextures() const {return m_caps.MaxSimultaneousTextures;}
-    DWORD GetMaxTextureWidth() const {return m_caps.MaxTextureWidth;}
-    DWORD GetMaxTextureHeight() const {return m_caps.MaxTextureHeight;}
-    DWORD GetVertexShaderVersion() const {return m_caps.VertexShaderVersion;}
-    DWORD GetPixelShaderVersion() const {return m_caps.PixelShaderVersion;}
     __range(1,UINT_MAX) DWORD GetMaxDesiredAnisotropicFilterLevel() const 
     {
-        Assert(m_caps.MaxAnisotropy > 0);
-
-        return (m_caps.MaxAnisotropy > 4) ? 4 : m_caps.MaxAnisotropy;
+        return 4;
     }
 
     __out_ecount(1) CHwD3DVertexBuffer *Get3DVertexBuffer()
@@ -595,19 +461,7 @@ public:
     __out_ecount(1) CHwD3DIndexBuffer *Get3DIndexBuffer()
         { return m_pHwIndexBuffer; }
 
-    BOOL SupportsScissorRect() const {return m_caps.RasterCaps & D3DPRASTERCAPS_SCISSORTEST;}
-
-    BOOL SupportsLinearTosRGBPresentation() const {return m_caps.Caps3 & D3DCAPS3_LINEAR_TO_SRGB_PRESENTATION;}
-
-    __out_ecount(1) const FilterMode *GetSupportedAnistotropicFilterMode() const { return m_pCachedAnisoFilterMode; }
-
-#if DBG==1
-    bool IsPureDevice() const { return (m_dwD3DBehaviorFlags & D3DCREATE_PUREDEVICE) != 0; }
-#endif
-
-    bool IsExtendedDevice() const { return (m_pD3DDeviceEx != NULL); }
-
-    D3DPOOL GetManagedPool() const {return m_ManagedPool;}
+    BOOL SupportsScissorRect() const {return TRUE;}
 
     CD3DGlyphBank* GetGlyphBank()
     {
@@ -620,7 +474,7 @@ public:
 
         m_vbBufferDUV2.Clear();
 
-        return SetFVF(CD3DVertexXYZDUV2::Format);
+        return SetInputLayoutFormat(CD3DVertexXYZDUV2::Format());
     }
 
     HRESULT StartPrimitive(CD3DVertexBufferDUV6 **ppOutBuffer)
@@ -628,7 +482,7 @@ public:
         m_vbBufferDUV6.Clear();
 
         *ppOutBuffer = &m_vbBufferDUV6;
-        return SetFVF(CD3DVertexXYZDUV6::Format);
+        return SetInputLayoutFormat(CD3DVertexXYZDUV6::Format());
     }
 
     HRESULT StartPrimitive(CD3DVertexBufferXYZNDSUV4 **ppOutBuffer)
@@ -636,10 +490,10 @@ public:
         m_vbBufferXYZNDSUV4.Clear();
 
         *ppOutBuffer = &m_vbBufferXYZNDSUV4;
-        return SetFVF(CD3DVertexXYZNDSUV4::Format);
+        return SetInputLayoutFormat(CD3DVertexXYZNDSUV4::Format());
     }
 
-    HRESULT EndPrimitiveFan(__in_ecount(1) CD3DVertexBuffer *pBuffer)
+    HRESULT EndPrimitiveFan(__in_ecount(1) CD3DVertexBuffer * pBuffer)
     {
         return FlushBufferFan(pBuffer);
     }
@@ -653,12 +507,6 @@ public:
     {
         return &m_vBufferXYZRHWDUV8;
     }
-
-    HRESULT DrawBox(
-        __in_ecount(1) const MilPointAndSize3F *pbox,
-        const D3DFILLMODE d3dFillMode,
-        const DWORD dwColor
-        );
 
     HRESULT DrawIndexedTriangleList(
         UINT uBaseVertexIndex,
@@ -687,17 +535,16 @@ public:
         );
 
     HRESULT DrawPrimitiveUP(
-        D3DPRIMITIVETYPE primitiveType,
+        D3D11_PRIMITIVE_TOPOLOGY primitiveType,
         UINT uPrimitiveCount,
         __in_xcount(
             //
             // Vertex counts are:
             //
-            // D3DPT_LINELIST - PrimitiveCount*2
-            // D3DPT_TRIANGLESTRIP - PrimitiveCount+2
-            // D3DPT_TRIANGLEFAN - PrimitiveCount+2
+            // D3D_PRIMITIVE_TOPOLOGY_LINELIST - PrimitiveCount*2
+            // D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP - PrimitiveCount+2
             //
-            uVertexStreamZeroStride * ((primitiveType == D3DPT_LINELIST) ? uPrimitiveCount*2 : uPrimitiveCount+2)
+            uVertexStreamZeroStride * ((primitiveType == D3D_PRIMITIVE_TOPOLOGY_LINELIST) ? uPrimitiveCount*2 : uPrimitiveCount+2)
             ) const void* pVertexStreamZeroData,
         UINT uVertexStreamZeroStride
         );
@@ -710,17 +557,6 @@ public:
     HRESULT CheckDeviceState(
         __in_opt HWND hwnd
         );
-
-    BOOL SupportsGetScanLine() const {return m_caps.Caps & D3DCAPS_READ_SCANLINE;}
-
-    HRESULT GetRasterStatus(
-        UINT uSwapChain,
-        D3DRASTER_STATUS *pRasterStatus
-        )
-    {
-        Assert(SupportsGetScanLine());
-        return m_pD3DDevice->GetRasterStatus(uSwapChain, pRasterStatus);
-    }
 
     HRESULT WaitForVBlank(
         UINT uSwapChain
@@ -757,7 +593,6 @@ public:
 
 #if DBG==1
     static void DbgTraceDeviceCreationFailure(UINT uAdapter, __in PCSTR szMessage, HRESULT hrError);
-    const D3DDeviceContext* DbgGetID3DDevice9() const { return m_pD3DDevice; }
 #endif
 
 private:
@@ -767,45 +602,9 @@ private:
         );
 
     HRESULT Init(
-        __inout_ecount(1) D3DDeviceContext *pID3DDevice,
+        __inout_ecount(1) D3DDevice *pID3DDevice,
+        __inout_ecount(1) D3DDeviceContext *pID3DDeviceContext,
         __in_ecount(1) CDisplay const *pDisplay
-        );
-
-    void GatherSupportedTextureFormats(
-        __in_ecount(1) IDirect3D9 *pID3D
-        );
-
-    D3DMULTISAMPLE_TYPE GetMaxMultisampleTypeWithDepthSupport(
-        __in_ecount(1) IDirect3D9 *pd3d9,
-        D3DFORMAT d3dfmtTarget,
-        D3DFORMAT d3dfmtDepth,
-        D3DMULTISAMPLE_TYPE MaxMultisampleType
-        ) const;
-
-    void GatherSupportedMultisampleTypes(
-        __in_ecount(1) IDirect3D9 *pd3d9
-        );
-
-    HRESULT GetRenderTargetFormatTestEntry(
-        D3DFORMAT fmtRenderTarget,
-        __deref_out_ecount(1) TargetFormatTestStatus * &pFormatTestEntry
-        );
-
-    HRESULT TestRenderTargetFormat(
-        D3DFORMAT fmtRenderTarget,
-        __inout_ecount(1) TargetFormatTestStatus *pFormatTestEntry
-        );
-
-    HRESULT TestLevel1Device(
-        );
-
-    void TestGetDC(
-        __inout_ecount(1) CD3DSurface * const pD3DSurface,
-        __inout_ecount(1) TargetFormatTestStatus * const pFormatTestEntry
-        );
-
-    HRESULT CheckBadDeviceDrivers(
-        __in_ecount(1) const CDisplay *pDisplay
         );
 
     HRESULT BeginScene();
@@ -816,24 +615,8 @@ private:
         );
 
     HRESULT FlushBufferFan(
-        __in_ecount(1) CD3DVertexBuffer *
-        );
-
-    HRESULT DrawLargePrimitiveUP(
-        D3DPRIMITIVETYPE primitiveType,
-        UINT uPrimitiveCount,
-        __in_xcount(
-            //
-            // Vertex counts are:
-            //
-            // D3DPT_LINELIST - PrimitiveCount*2
-            // D3DPT_TRIANGLESTRIP - PrimitiveCount+2
-            // D3DPT_TRIANGLEFAN - PrimitiveCount+2
-            //
-            uVertexStreamZeroStride * ((primitiveType == D3DPT_LINELIST) ? uPrimitiveCount*2 : uPrimitiveCount+2)
-            ) const void* pVertexStreamZeroData,
-        UINT uVertexStreamZeroStride
-        );
+        __in_ecount(1) CD3DVertexBuffer*
+    );
 
     void UpdateMetrics(
         UINT uNumVertices,
@@ -874,17 +657,8 @@ private:
         return hr;
     }
 
-    HRESULT PresentWithGDI(
-        __in_ecount(1) CD3DSwapChain const *pD3DSwapChain,
-        __in_ecount_opt(1) CMILSurfaceRect const *prcSource,
-        __in_ecount_opt(1) CMILSurfaceRect const *prcDest,
-        __in_ecount(1) CMILDeviceContext const * pMILDC,
-        __in_ecount_opt(1) RGNDATA const * pDirtyRegion,
-        __out_ecount(1) bool *pfPresentProcessed
-        );
-
     HRESULT PresentWithD3D(
-        __inout_ecount(1) IDirect3DSwapChain9 *pD3DSwapChain,
+        __inout_ecount(1) IDXGISwapChain *pSwapChain,
         __in_ecount_opt(1) CMILSurfaceRect const *prcSource,
         __in_ecount_opt(1) CMILSurfaceRect const *prcDest,
         __in_ecount(1) CMILDeviceContext const *pMILDC,
@@ -943,59 +717,26 @@ private:
     DWORD m_dwThreadId;
 
     // D3D objects
-    D3DDeviceContext *m_pD3DDevice;
-    D3DDeviceContextEx *m_pD3DDeviceEx;
-
-    TargetFormatTestStatus m_RenderTargetTestStatusX8R8G8B8;
-    TargetFormatTestStatus m_RenderTargetTestStatusA8R8G8B8;
-    TargetFormatTestStatus m_RenderTargetTestStatusA2R10G10B10;
+    D3DDevice        *m_pD3DDevice;
+    D3DDeviceContext *m_pD3DDeviceContext;
 
     // Active render target set on device
-    CD3DSurface *m_pCurrentRenderTargetNoRef;
+    CD3DTexture *m_pCurrentRenderTargetNoRef;
     // Hint for what depth buffer to release when releasing a RT from use.
     // It is meaningless unless m_pCurrentRenderTargetNoRef is not NULL.
-    CD3DSurface *m_pDepthStencilBufferForCurrentRTNoRef;
-
+    CD3DTexture *m_pDepthStencilBufferForCurrentRTNoRef;
 
     LUID m_luidD3DAdapter;
-    D3DCAPS9 m_caps;
     TierType m_Tier;
     DWORD const m_dwD3DBehaviorFlags;
 
-    const FilterMode *m_pCachedAnisoFilterMode; // What level of aniso this device supports.
-
-    // This is false initially, and can be set on failure to prevent future attempts to multisample.
-    bool m_fMultisampleFailed;
-
-    // caps that are missed in m_caps:
-    bool m_fSupportsD3DFMT_A8;
-    bool m_fSupportsD3DFMT_P8;
-    bool m_fSupportsD3DFMT_L8;
-
-    MilPixelFormat::Enum m_fmtSupportFor128bppPRGBAFloat;
-    MilPixelFormat::Enum m_fmtSupportFor128bppRGBFloat;
-    MilPixelFormat::Enum m_fmtSupportFor32bppBGR101010;
-    MilPixelFormat::Enum m_fmtSupportFor32bppPBGRA;
-    MilPixelFormat::Enum m_fmtSupportFor32bppBGR;
-
-    D3DMULTISAMPLE_TYPE m_multisampleTypeFor32bppBGR;
-    D3DMULTISAMPLE_TYPE m_multisampleTypeFor32bppPBGRA;
-    D3DMULTISAMPLE_TYPE m_multisampleTypeFor32bppBGR101010;
-
     bool m_fInScene;
-
-    // Set to true once the device has been marked unusable and then given a
-    // chance to destroy resources and notify its manager.
-    bool m_fDeviceLostProcessed;
 
     // HRESULT indicating whether the display is invalid
     HRESULT m_hrDisplayInvalid;
 
-    // Adaptor display mode
-    D3DDISPLAYMODEEX m_d3ddm;   // ::Size's value indicates the valid fields
-
     // Current render target desc
-    D3DSURFACE_DESC m_desc;
+    D3D11_TEXTURE2D_DESC m_desc;
 
     // Vertex Buffers
     CD3DVertexBufferDUV2 m_vbBufferDUV2;
@@ -1011,9 +752,6 @@ private:
 
     CHwTVertexBuffer<CD3DVertexXYZDUV2>     m_vBufferXYZDUV2;
     CHwTVertexBuffer<CD3DVertexXYZDUV8>     m_vBufferXYZRHWDUV8;
-
-    //CHwTVertexBuffer<CD3DVertexXYZDUV6>     m_vBufferXYZDUV6;
-    //CHwTVertexBuffer<CD3DVertexXYZNDSUV4>   m_vBufferXYZNDSUV4;
 
     //
     // Custom VB/IB management
@@ -1034,15 +772,9 @@ private:
     // Glyph rendering
     CD3DGlyphBank m_glyphBank;
 
-    // Dummy back buffer for use when there is no current render target
-    D3DSurface *m_pD3DDummyBackBuffer;
-
     // Per frame metrics
     DWORD m_dwMetricsVerticesPerFrame;
     DWORD m_dwMetricsTrianglesPerFrame;
-
-    D3DPOOL m_ManagedPool;
-
 
     // Last marker id specified
     ULONGLONG m_ullLastMarkerId;
@@ -1061,10 +793,6 @@ private:
     UINT m_uNumSuccessfulPresentsSinceMarkerFlush;
 
     DWORD m_dwGPUMarkerFlags;
-
-    //  Is there  HW VBlank support
-    bool m_fHWVBlankTested;
-    bool m_fHWVBlank;
 
     UINT m_presentFailureWindowMessage;
 
@@ -1119,16 +847,15 @@ private:
 
 public: 
     // Shader effect pipeline pereration.
-    HRESULT PrepareShaderEffectPipeline(bool useVS30);
+    HRESULT PrepareShaderEffectPipeline();
     HRESULT SetPassThroughPixelShader();
     HRESULT SetRenderTargetForEffectPipeline(__in_ecount(1) CD3DSurface *pD3DSurface);
-    bool Is128BitFPTextureSupported() const;
-private: 
+    HRESULT SetRenderTargetForEffectPipeline(__in_ecount(1) CD3DTexture* pD3DTexture);
+private:
 
-    IDirect3DVertexShader9* m_pEffectPipelineVertexShader20; // Vertex shader 2.0 for shader effects pipeline.
-    IDirect3DVertexShader9* m_pEffectPipelineVertexShader30; // Vertex shader 3.0 for shader effects pipeline.
+    ID3D11VertexShader* m_pEffectPipelineVertexShader; // Vertex shader for shader effects pipeline.
     D3DVertexBuffer* m_pEffectPipelineVertexBuffer; // Scratch buffer for the shader effects pipeline. 
-    IDirect3DPixelShader9* m_pEffectPipelinePassThroughPixelShader; // Pass-through pixel shader for shader effects pipelines.
+    ID3D11PixelShader* m_pEffectPipelinePassThroughPixelShader; // Pass-through pixel shader for shader effects pipelines.
 };
 
 //+-----------------------------------------------------------------------------

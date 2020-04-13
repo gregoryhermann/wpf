@@ -135,10 +135,11 @@ Cleanup:
 
 STDMETHODIMP
 CDXVAManagerWrapper::ResetDevice(
-    /* [in] */ D3DDeviceContext *pDevice,
+    /* [in] */ IDirect3DDevice9 *pDevice,
     /* [in] */ UINT resetToken)
 {
     HRESULT hr = S_OK;
+#ifndef DX11
     TRACEF(&hr);
 
     LogAVDataM(
@@ -172,6 +173,7 @@ CDXVAManagerWrapper::ResetDevice(
     }
 
 Cleanup:
+#endif
     RRETURN(hr);
 }
 
@@ -214,7 +216,7 @@ Cleanup:
 STDMETHODIMP
 CDXVAManagerWrapper::LockDevice(
     /* [in] */ HANDLE hDevice,
-    /* [out] */ D3DDeviceContext **ppDevice,
+    /* [out] */ IDirect3DDevice9 **ppDevice,
     /* [in] */ BOOL fBlock)
 {
     HRESULT hr = S_OK;

@@ -549,10 +549,7 @@ CMilDropShadowEffectDuce::ApplyEffect(
     rtUsage.wrapMode = MilBitmapWrapMode::Extend;
     
     CD3DVidMemOnlyTexture* pTextureNoRef_A = NULL;
-    CD3DSurface* pSurface_A = NULL;
-
     CD3DVidMemOnlyTexture* pTexture_B = NULL;
-    CD3DSurface* pSurface_B = NULL;
                     
     CMilBlurEffectDuce *pBlurEffect = NULL;
 
@@ -578,17 +575,14 @@ CMilDropShadowEffectDuce::ApplyEffect(
         pDevice, 
         static_cast<UINT>(uIntermediateWidth), 
         static_cast<UINT>(uIntermediateHeight), 
-        D3DFMT_A8R8G8B8,
+        DXGI_FORMAT_B8G8R8A8_UNORM,
         &pTexture_B));
 
     Assert(pTexture_B != NULL);
 
-    IFC(pTextureNoRef_A->GetD3DSurfaceLevel(0, &pSurface_A));
-    IFC(pTexture_B->GetD3DSurfaceLevel(0, &pSurface_B));
-
     //
     // Setup the vertex shader and vertex buffer on the device.
-    IFC(pDevice->PrepareShaderEffectPipeline(false /* use vs_2_0 */));
+    IFC(pDevice->PrepareShaderEffectPipeline());
 
     // Ensure the address mode is set to clamp for both samplers used by the drop shadow shader.
     // Set the sampling mode to nearest neighbor for all intermediate passes.
@@ -693,10 +687,7 @@ CMilDropShadowEffectDuce::ApplyEffect(
 
 Cleanup:
     ReleaseInterface(pBlurEffect);
-    
     ReleaseInterface(pTexture_B);
-    ReleaseInterface(pSurface_A);
-    ReleaseInterface(pSurface_B);
     
     RRETURN(hr);
 }

@@ -1,7 +1,5 @@
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="dogfood">
 
-  <Import Project="$(_NTDRIVE)$(_NTROOT)\wpf\src\Graphics\Microsoft.Wpf.Graphics.Settings.targets" />
-
   <PropertyGroup>
     <OutputName>ShaderGen</OutputName>
     <TargetType>PROGRAM</TargetType>
@@ -31,7 +29,5 @@
     <TargetLib Include="$(SdkLibPath)\ole32.lib" />
     <TargetLib Include="$(SdkLibPath)\d3dx9.lib" />
   </ItemGroup>
-
-  <Import Project="$(_NTDRIVE)$(_NTROOT)\tools\Microsoft.DevDiv.Native.targets" />
 
 </Project>

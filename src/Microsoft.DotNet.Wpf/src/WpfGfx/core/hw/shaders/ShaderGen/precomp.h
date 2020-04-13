@@ -7,7 +7,6 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
-#include <wpfsdl.h>
 //
 // System Includes
 //
@@ -15,13 +14,11 @@
 
 #include <objbase.h>
 #include <strsafe.h>
-#include <d3dx9.h>
 
 //
 // ShaderGen includes
 //
 #include "tools.h"
-#include "device.h"
 #include "codegen.h"
 #include "resourcegen.h"
 

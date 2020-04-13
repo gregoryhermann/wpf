@@ -1,7 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
-
+#include <d3dcompiler.h>
 
 //+-----------------------------------------------------------------------
 //
@@ -46,6 +46,7 @@ public:
         );
     HRESULT CompileEffect(
         __in WCHAR const *pszEffectFileName,
+        __in char const* pszTechniqueName,
         __in char const *pszEffectName
         );
     ~CCodeGen();
@@ -53,28 +54,18 @@ public:
     static char const sc_szTitle[];
 
 private:
-    HRESULT WriteEffect();
-    HRESULT WriteTechnique();
-    HRESULT WritePass();
     HRESULT WritePixelShader();
-    HRESULT WriteVertexShader();
     void WriteDwordArray(
-        __in DWORD const *pFunction
-        );
+        __in DWORD const* pFunction,
+        __in DWORD cbSize
+    );
 
 private:
-    D3DDeviceContext *m_pDevice;
     FILE *m_pFileCpp;
     FILE *m_pFileHpp;
-    ID3DXEffect *m_pEffect;
     char const *m_pszEffectName;
-
-    D3DXHANDLE m_hTechnique;
-    D3DXTECHNIQUE_DESC m_descTechnique;
-
-    D3DXHANDLE m_hPass;
-    D3DXPASS_DESC m_descPass;
-
+    char const* m_pszTechniqueName;
+    ID3DBlob* m_pShader;
     UINT m_cbTotal;
 };
 

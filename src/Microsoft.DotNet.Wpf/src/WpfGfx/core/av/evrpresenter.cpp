@@ -1353,6 +1353,7 @@ NewMixerDevice(
     )
 {
     HRESULT                         hr = S_OK;
+#ifndef DX11
     DBG_CODE(D3DDEVICE_CREATION_PARAMETERS   dcp);
     D3DDeviceContext       *pIMixerDevice = NULL;
 
@@ -1394,7 +1395,7 @@ Cleanup:
     ReleaseInterface(pIMixerDevice);
 
     EXPECT_SUCCESS(hr);
-
+#endif
     RRETURN(hr);
 }
 
@@ -3412,8 +3413,8 @@ EvrPresenter::AVSurfaceRenderer::GetHWDevice(
     }
 
     Assert(pDisplaySet->Display(adapter));
-    Assert(pDisplaySet->D3DObject());
 
+#if 0
     //
     // This may fail if D3D support is unavailable
     //
@@ -3425,6 +3426,7 @@ EvrPresenter::AVSurfaceRenderer::GetHWDevice(
             ppD3DDevice,
             NULL,
             NULL));
+#endif
 
 Cleanup:
 

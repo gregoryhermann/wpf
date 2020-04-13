@@ -92,7 +92,7 @@ CHwLinearGradientColorSource::SetBrushAndContext(
     CMILMatrix matSampleSpaceToTexture;
     CMILMatrix matXSpaceToTexture;
 
-    D3DTEXTUREADDRESS taU;
+    MilBitmapWrapMode::Enum wrapU;
 
     //
     // This brush is not referenced- we expect its lifetime to be
@@ -194,11 +194,11 @@ CHwLinearGradientColorSource::SetBrushAndContext(
     // Investigate using flip mode instead of duplicating texels.
     case MilGradientWrapMode::Flip:
     case MilGradientWrapMode::Tile:
-        taU = D3DTADDRESS_WRAP;
+        wrapU = MilBitmapWrapMode::Tile;
         break;
 
     case MilGradientWrapMode::Extend:
-        taU = D3DTADDRESS_CLAMP;
+        wrapU = MilBitmapWrapMode::Extend;
         break;
 
     default:
@@ -220,8 +220,8 @@ CHwLinearGradientColorSource::SetBrushAndContext(
 
     SetFilterAndWrapModes(
         MilBitmapInterpolationMode::Linear,
-        taU,
-        D3DTADDRESS_CLAMP
+        wrapU,
+        MilBitmapWrapMode::Extend
         );
 
 Cleanup:
@@ -253,12 +253,12 @@ CHwLinearGradientColorSource::FillGradientTexture(
     Assert(m_cRealizedTextureWidth >= 1);
     Assert(m_cRealizedTextureWidth <= MAX_GRADIENTTEXEL_COUNT);
 
-    IFC(m_vidMemManager.ReCreateAndLockSysMemSurface(
+    IFC(m_vidMemManager.ReCreateAndLockSysMemTexture(
         &rectTexture
         ));
 
     fLockedTexture = TRUE;
-    if (rectTexture.Pitch < static_cast<INT>(m_cRealizedTextureWidth * D3DFormatSize(D3DFMT_A8R8G8B8)))
+    if (rectTexture.Pitch < static_cast<INT>(m_cRealizedTextureWidth * D3DFormatSize(DXGI_FORMAT_B8G8R8A8_UNORM)))
     {
         RIPW(L"Unexpected: The texture created is not big enough for the gradient.");
         IFC(WGXERR_INSUFFICIENTBUFFER);
@@ -280,7 +280,7 @@ Cleanup:
 
     if (fLockedTexture)
     {
-        MIL_THR_SECONDARY(m_vidMemManager.UnlockSysMemSurface());
+        MIL_THR_SECONDARY(m_vidMemManager.UnlockSysMemTexture());
     }
 
     RRETURN(hr);
@@ -382,11 +382,11 @@ CHwLinearGradientColorSource::Realize(
 
         m_vidMemManager.SetRealizationParameters(
             m_pDevice,
-            D3DFMT_A8R8G8B8,
+            DXGI_FORMAT_B8G8R8A8_UNORM,
             m_cDesiredTextureWidth,
             1, // uHeight
             eMipMapLevel
-            DBG_COMMA_PARAM(TextureAddressingAllowsConditionalNonPower2Usage(GetTAU(), GetTAV()))
+            DBG_COMMA_PARAM(TextureAddressingAllowsConditionalNonPower2Usage(GetWrapU(), GetWrapV()))
             );
 
         m_cRealizedTextureWidth = m_cDesiredTextureWidth;
@@ -396,7 +396,7 @@ CHwLinearGradientColorSource::Realize(
     Assert(m_vidMemManager.HasRealizationParameters());
 
     if (m_fColorsNeedUpdating
-        || !m_vidMemManager.IsSysMemSurfaceValid()
+        || !m_vidMemManager.IsSysMemTextureValid()
         )
     {
         //

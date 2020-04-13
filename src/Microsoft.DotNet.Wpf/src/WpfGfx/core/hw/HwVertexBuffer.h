@@ -121,13 +121,13 @@ public:
 
     //+------------------------------------------------------------------------
     //
-    //  Member:    SendVertexFormat
+    //  Member:    SendInputLayout
     //
     //  Synopsis:  Send contained vertex format to device
     //
     //-------------------------------------------------------------------------
 
-    virtual HRESULT SendVertexFormat(
+    virtual HRESULT SendInputLayout(
         __inout_ecount(1) CD3DDeviceLevel1 *pDevice
         ) const PURE;
 
@@ -144,6 +144,7 @@ public:
         ) const PURE;
 
     virtual BOOL IsEmpty() const PURE;
+    virtual D3DVertexType GetVertexType() const PURE;
 
 public:
     class Builder;
@@ -306,17 +307,17 @@ public:
 
     //+------------------------------------------------------------------------
     //
-    //  Member:    SendVertexFormat
+    //  Member:    SendInputLayout
     //
-    //  Synopsis:  Send contained vertex format to device
+    //  Synopsis:  Send contained input layout to device
     //
     //-------------------------------------------------------------------------
 
-    HRESULT SendVertexFormat(
+    HRESULT SendInputLayout(
         __inout_ecount(1) CD3DDeviceLevel1 *pDevice
         ) const
     {
-        RRETURN(THR(pDevice->SetFVF(TVertex::Format)));
+        RRETURN(THR(pDevice->SetInputLayoutFormat(TVertex::Format())));
     }
 
     //+------------------------------------------------------------------------
@@ -363,7 +364,7 @@ public:
             Assert(m_rgVerticesNonIndexedTriList.GetCount() %3 == 0);
             
             IFC(pDevice->DrawPrimitiveUP(
-                D3DPT_TRIANGLELIST,
+                D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
                 m_rgVerticesNonIndexedTriList.GetCount() / 3, // primitive count
                 m_rgVerticesNonIndexedTriList.GetDataBuffer(),
                 sizeof(TVertex)
@@ -394,7 +395,7 @@ public:
             pVertex++;
 
             IFC(pDevice->DrawPrimitiveUP(
-                D3DPT_TRIANGLESTRIP,
+                D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP,
                 uVertexCount - 4, // primitive count
                 pVertex,
                 sizeof(TVertex)
@@ -408,7 +409,7 @@ public:
         if (m_rgVerticesLineList.GetCount() > 0)
         {
             IFC(pDevice->DrawPrimitiveUP(
-                D3DPT_LINELIST,
+                D3D11_PRIMITIVE_TOPOLOGY_LINELIST,
                 m_rgVerticesLineList.GetCount() / 2, // primitive count
                 m_rgVerticesLineList.GetDataBuffer(),
                 sizeof(TVertex)
@@ -556,6 +557,12 @@ protected:
             && (m_rgVerticesTriStrip.GetCount() == 0)
             && (m_rgVerticesNonIndexedTriList.GetCount() == 0);
     }
+
+    virtual D3DVertexType GetVertexType() const override
+    {
+        return TVertex::Format();
+    }
+
 
 public:
     class Builder;
@@ -760,6 +767,8 @@ public:
         return m_iViewportTop;
     }
         
+    virtual D3DVertexType GetVertexType() const PURE;
+
     //
     // Currently all CHwVertexBuffer::Builder are supposed to be allocated via
     // a CBufferDispenser.
@@ -1024,6 +1033,8 @@ public:
         __deref_opt_out_ecount_opt(1) CHwVertexBuffer **ppVertexBuffer
         );
             
+    override D3DVertexType GetVertexType() const   { return TVertex::Format(); }
+
 private:
 
     // Helpers that do AddTrapezoid.  Same parameters

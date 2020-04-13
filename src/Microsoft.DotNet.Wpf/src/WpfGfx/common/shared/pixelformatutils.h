@@ -91,14 +91,14 @@ BOOL HasAlphaChannel(REFWICPixelFormatGUID fmt);
 BOOL IsPremultipliedFormOf(MilPixelFormat::Enum fmt1, MilPixelFormat::Enum fmt2);
 BOOL IsNoAlphaFormOf(MilPixelFormat::Enum fmt1, MilPixelFormat::Enum fmt2);
 
-D3DFORMAT
+DXGI_FORMAT
 PixelFormatToD3DFormat(
     MilPixelFormat::Enum pixelFormat
     );
 
 MilPixelFormat::Enum
 D3DFormatToPixelFormat(
-    D3DFORMAT d3dFmt,
+    DXGI_FORMAT dxgiFormat,
     BOOL bPremultiplied
     );
 
@@ -108,7 +108,7 @@ ARGB Premultiply(ARGB argb);
 void Unpremultiply(__inout_ecount(1) MilColorF *pColor);
 void Premultiply(__inout_ecount(1) MilColorF *pColor);
 
-UINT D3DFormatSize(D3DFORMAT d3dFmt);
+UINT D3DFormatSize(DXGI_FORMAT dxgiFormat);
 
 //
 //

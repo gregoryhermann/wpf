@@ -86,15 +86,10 @@ CHwShader::DrawMesh3D(
     if (CHwShaderPipeline::CanRunWithDevice(pD3DDevice))
     {
         hr = ShaderDrawMesh3D(pD3DDevice, pMesh3D, pContextState);
-
-        if (FAILED(hr))
-        {
-            IFC(FixedFunctionDrawMesh3D(pD3DDevice, pMesh3D, pContextState));
-        }
     }
     else
     {
-        IFC(FixedFunctionDrawMesh3D(pD3DDevice, pMesh3D, pContextState));
+        Assert(0);
     }
 
 Cleanup:
@@ -188,111 +183,6 @@ Cleanup:
 //+-----------------------------------------------------------------------------
 //
 //  Member:
-//      CHwShader::FixedFunctionDrawMesh3D
-//
-//  Synopsis:
-//      Draws the mesh using the fixed function pipeline
-//
-//------------------------------------------------------------------------------
-
-HRESULT
-CHwShader::FixedFunctionDrawMesh3D(
-    __inout_ecount(1) CD3DDeviceLevel1 *pD3DDevice,
-    __inout_ecount(1) CMILMesh3D *pMesh3D,
-    __inout_ecount(1) CContextState *pContextState
-    )
-{    
-    HRESULT hr = S_OK;
-    CHwFFPipeline Pipeline(pD3DDevice);
-
-    //
-    // Our shaders can support multiple passes
-    //
-    UINT uNumPasses = GetNumPasses();
-
-    //
-    // This will actually calculate the lighting only if the mesh's
-    // lighting cache is invalid. The LightData was properly initialized
-    // above at the render walker level.
-    //
-    IFC(pMesh3D->PrecomputeLighting(
-        &pContextState->WorldTransform3D,
-        &pContextState->ViewTransform3D, 
-        &pContextState->LightData
-        ));
-
-    //
-    // Get a reference to the color stream required by the shader.
-    // Note: no copy is done here (pdwColors is const)
-    //
-    const DWORD *pdwColors;
-    size_t cbColors = 0;
-
-    // For Diffuse/Specular vertex colors should be precomputed by lighting.
-    // For Emissive we initialize this to the Emissive material color.
-    // This default value should never affect rendering.
-    DWORD dwDefaultColor = 0xFFFFFFFF;
-    
-    switch(GetRequiredLightingValues())
-    {
-        case LV_Specular:
-            pMesh3D->GetSpecularColors(pdwColors, cbColors);
-            break;
-
-        case LV_Diffuse:
-            pMesh3D->GetDiffuseColors(pdwColors, cbColors);
-            break;
-
-        case LV_Emissive:
-        {
-            MilColorF emissiveColor = pContextState->LightData.GetMaterialEmissiveColor();
-            dwDefaultColor = Convert_MilColorF_sRGB_To_D3DCOLOR_ZeroAlpha(&emissiveColor);
-            
-            __fallthrough; // continue; -- We intentionally fall through to the default case.
-        }
-        
-        default:
-            pdwColors = NULL;
-            cbColors = 0;
-            break;
-    }
-
-    for (UINT i = 0; i < uNumPasses; i++)
-    {
-        // Future Consideration:   mesh -> card perf
-        // See comment on ShaderDrawMesh3D
-        CHw3DGeometryRenderer<DWORD> renderer(&pContextState->LightData);
-
-        IFC(SetupPassVirtual(
-            &renderer,
-            &Pipeline,
-            i
-            ));
-
-        // 
-        // See comment on ShaderDrawMesh3D
-        IFC(Pipeline.Execute());
-
-        IFC(renderer.Render(
-            pMesh3D,
-            pdwColors,
-            cbColors,
-            dwDefaultColor,
-            pD3DDevice
-            ));
-
-        Pipeline.ReleaseExpensiveResources();    
-    }
-
-Cleanup:
-    Pipeline.ReleaseExpensiveResources(); 
-    
-    RRETURN(hr);
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
 //      CHwShader::DrawHwVertexBuffer
 //
 //  Synopsis:
@@ -319,7 +209,7 @@ CHwShader::DrawHwVertexBuffer(
 
     if (!fUse3DTransforms)
     {
-        IFC(pD3DDevice->Set2DTransformForFixedFunction());
+        IFC(pD3DDevice->Set2DTransformForVertexShader());
     }
 
     UINT uNumPasses;
@@ -366,7 +256,7 @@ CHwShader::DrawHwVertexBuffer(
     // Mark end of geometry data and retrieve realized vertex buffer
     IFC(pShaderShapeBuilder->EndBuilding(&pVertexBuffer));
 
-    IFC(pVertexBuffer->SendVertexFormat(pD3DDevice));
+    IFC(pVertexBuffer->SendInputLayout(pD3DDevice));
 
     //
     // Our shaders can support multiple passes

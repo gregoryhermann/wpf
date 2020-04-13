@@ -211,27 +211,8 @@ CInteropDeviceBitmap::GetUpdateMethod(
     HRESULT hr = S_OK;
     FrontBufferUpdateMethod method = Software;
 
-    D3DCAPS9 caps;
-    IFC(pID3DDevice->GetDeviceCaps(&caps));
+    method = BitBlt;
 
-    if ((caps.DevCaps2 & D3DDEVCAPS2_CAN_STRETCHRECT_FROM_TEXTURES) == D3DDEVCAPS2_CAN_STRETCHRECT_FROM_TEXTURES)
-    {
-        if (pID3DDeviceEx && (caps.Caps2 & D3DCAPS2_CANSHARERESOURCE) == D3DCAPS2_CANSHARERESOURCE)
-        {
-            method = SharedSurface;
-        }
-        else if (!WPFUtils::OSVersionHelper::IsWindowsVistaOrGreater())
-        {
-            HDC hdc;
-            IFC(pID3DSurface->GetDC(&hdc));
-            IFC(pID3DSurface->ReleaseDC(hdc));
-
-            // Failure of GetDC or ReleaseDC will skip this assignment
-            method = BitBlt;
-        }
-    }
-
-Cleanup:
     return method;
 }
 
@@ -258,6 +239,7 @@ CInteropDeviceBitmap::Create(
     __deref_out CInteropDeviceBitmap **ppInteropDeviceBitmap
     )
 {
+#if 0
     HRESULT hr = S_OK;
 
     D3DSurface *pID3DUserSurface = NULL;
@@ -383,6 +365,9 @@ Cleanup:
     CD3DDeviceManager::Release();
  
     RRETURN(hr);
+#else
+return E_NOTIMPL;
+#endif
 }
 
 //+-----------------------------------------------------------------------------
@@ -714,6 +699,7 @@ Cleanup:
 HRESULT
 CInteropDeviceBitmap::CreateFrontBuffer()
 {
+#if 0
     HRESULT hr = S_OK;
 
     const CDisplay *pDisplay = NULL;
@@ -815,6 +801,9 @@ Cleanup:
     NotifyAdapterStatusInternal(m_uAdapter, fSucceeded);
     
     RRETURN(hr);
+#else
+    return E_NOTIMPL;
+#endif
 }
 
 //+-----------------------------------------------------------------------------
@@ -834,6 +823,7 @@ CInteropDeviceBitmap::GetDisplayFromUserDevice(
     __deref_out const CDisplay **ppDisplay
     )
 { 
+#if 0
     Assert(m_pIUserSurface);
 
     HRESULT hr = S_OK;
@@ -858,6 +848,9 @@ Cleanup:
     ReleaseInterface(pDisplaySet);
 
     RRETURN(hr);
+#else
+    return E_NOTIMPL;
+#endif
 }
 
 
@@ -877,6 +870,7 @@ Cleanup:
 HRESULT 
 CInteropDeviceBitmap::UpdateFrontBuffer()
 {
+#if 0
     Assert(m_cUserDirtyRects > 0);
     
     HRESULT hr = S_OK;
@@ -904,6 +898,9 @@ CInteropDeviceBitmap::UpdateFrontBuffer()
 
 Cleanup:    
     RRETURN(hr);
+#else
+    return E_NOTIMPL;
+#endif
 }
 
 
@@ -926,6 +923,7 @@ CInteropDeviceBitmap::TryCreateDependentDeviceColorSource(
     __in CHwBitmapCache *pNewCache
     )
 {
+#if 0
     CGuard<CCriticalSection> oGuard(m_cs);
     
     HRESULT hr = S_OK;
@@ -1006,6 +1004,9 @@ Cleanup:
     ReleaseInterfaceNoNULL(pDBCS);
 
     return fCreated;
+#else
+    return false;
+#endif
 }
 
 
@@ -1064,6 +1065,7 @@ Cleanup:
 HRESULT
 CInteropDeviceBitmap::CopyToSoftwareBitmap(__deref_inout IWGXBitmap **ppBitmap)
 {
+#if 0
     CGuard<CCriticalSection> oGuard(m_cs);
 
     HRESULT hr = S_OK;
@@ -1123,6 +1125,9 @@ Cleanup:
     ReleaseInterface(pSystemMemoryBitmap);
 
     RRETURN(hr);
+#else
+    return E_NOTIMPL;
+#endif
 }
 
 //+-----------------------------------------------------------------------------

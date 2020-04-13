@@ -27,7 +27,7 @@ public:
         __deref_out_ecount(1) CD3DSurface **ppSurface
         );
 
-    D3DSURFACE_DESC const &Desc() const { return m_d3dsd; }
+    DXGI_SURFACE_DESC const &Desc() const { return m_d3dsd; }
 
     //
     // IDirect3DSurface methods
@@ -39,13 +39,21 @@ public:
         DWORD Flags
         )
     {
+#ifndef DX11
         return ID3DSurface()->LockRect(pLockedRect, pRect, Flags);
+#else
+        return E_FAIL;
+#endif
     }
 
     HRESULT UnlockRect(
         )
     {
+#ifndef DX11
         return ID3DSurface()->UnlockRect();
+#else
+        return E_FAIL;
+#endif
     }
 
 
@@ -73,18 +81,12 @@ public:
         HDC hdc
         )
     {
+#ifndef DX11
         return ID3DSurface()->ReleaseDC(hdc);
+#else
+        return ID3DSurface()->ReleaseDC(nullptr);
+#endif
     }
-
-    HRESULT ReadIntoSysMemBuffer(
-        __in_ecount(1) const CMilRectU &rcSource,
-        UINT cClipRects,
-        __in_ecount_opt(cClipRects) const CMilRectU *rgClipRects,
-        MilPixelFormat::Enum fmtBitmapOut,
-        UINT nStrideOut,
-        DBG_ANALYSIS_PARAM_COMMA(UINT cbBufferOut)
-        __out_bcount_full(cbBufferOut) BYTE *pbBufferOut
-        );
 
 protected:
     CD3DSurface(__inout_ecount(1) D3DSurface * pD3DSurface);
@@ -116,7 +118,7 @@ protected:
     //  of CD3DResource objects.
     D3DSurface * const m_pD3DSurface;
 
-    D3DSURFACE_DESC m_d3dsd;
+    DXGI_SURFACE_DESC m_d3dsd;
 };
 
 

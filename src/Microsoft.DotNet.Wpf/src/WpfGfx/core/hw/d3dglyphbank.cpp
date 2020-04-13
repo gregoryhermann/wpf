@@ -27,7 +27,7 @@
 
 MtDefine(CD3DGlyphBank, CD3DDeviceLevel1, "CD3DGlyphBank");
 MtDefine(D3DResource_GlyphTank, MILHwMetrics, "Approximate glyph tank size");
-MtDefine(D3DResource_GlyphBankTempSurface, MILHwMetrics, "Approximate glyph bank temporary surface size");
+MtDefine(D3DResource_GlyphBankTempTexture, MILHwMetrics, "Approximate glyph bank temporary surface size");
 
 #define GLYPHRUNCOUNT_THRESHOLD 20
 
@@ -109,9 +109,9 @@ CD3DGlyphBank::~CD3DGlyphBank()
         D3DLOG_INC(tmpTanksDestroyed)
     }
 
-    if (m_pTempSurface)
+    if (m_pTempTexture)
     {
-        m_pTempSurface->Release();
+        m_pTempTexture->Release();
     }
 }
 
@@ -140,10 +140,10 @@ CD3DGlyphBank::CollectGarbage()
 
     // Free system memory occupied by m_pTempSurface,
     // if it is "too big" (yet another heuristic).
-    if (m_pTempSurface != NULL && m_pTempSurface->IsExpensive())
+    if (m_pTempTexture != NULL && m_pTempTexture->IsExpensive())
     {
-        m_pTempSurface->DestroyAndRelease();
-        m_pTempSurface = NULL;
+        m_pTempTexture->DestroyAndRelease();
+        m_pTempTexture = NULL;
     }
 }
 
@@ -321,23 +321,25 @@ HRESULT CD3DGlyphBank::RectFillAlpha(
     )
 {
     HRESULT hr = S_OK;
-    D3DLOCKED_RECT lockedRect;
 
     UINT uWidth = srcRect.right - srcRect.left;
     UINT uHeight = srcRect.bottom - srcRect.top;
 
     RECT rcTemp = {0, 0, uWidth, uHeight};
-    D3DSurface* pTankSurface = pTank->GetSurfaceNoAddref();
-    D3DSurface* pTempSurface = NULL;
+    CD3DTexture* pTankTexture = pTank->GetTextureNoAddref();
+    D3DTexture* pTempTexture = NULL;
 
-    IFC( EnsureTempSurface(uWidth, uHeight, &pTempSurface) );
+    IFC( EnsureTempTexture(uWidth, uHeight, &pTempTexture) );
 
     int srcPitch = fullDataRect.right - fullDataRect.left;
+    
+    D3DDeviceContext* pContext = m_pDevice->GetDeviceContext();
 
-    IFC(pTempSurface->LockRect(&lockedRect, &rcTemp, 0 ) );
-
-    BYTE *pDst00 = (BYTE*)lockedRect.pBits
-                 - lockedRect.Pitch*srcRect.top
+    D3D11_MAPPED_SUBRESOURCE mappedResource;
+    pContext->Map(pTempTexture, 0, D3D11_MAP_WRITE, 0, &mappedResource);
+    LONG mappedPitch = (LONG)mappedResource.RowPitch;
+    BYTE *pDst00 = (BYTE*)mappedResource.pData
+                 - (mappedPitch*srcRect.top)
                  - srcRect.left;
 
     // pDst00 points to the texel in destination that corresponds
@@ -352,7 +354,7 @@ HRESULT CD3DGlyphBank::RectFillAlpha(
     // fill top edge
     for (y = srcRect.top; y < fullDataRect.top; y++)
     {
-        BYTE *pDstRow = pDst00 + lockedRect.Pitch*y;
+        BYTE *pDstRow = pDst00 + mappedPitch*y;
         memset(pDstRow + srcRect.left, 0, srcRect.right - srcRect.left);
     }
 
@@ -364,7 +366,7 @@ HRESULT CD3DGlyphBank::RectFillAlpha(
     {
         for (; y < ymax; y++)
         {
-                  BYTE* pDstRow = pDst00 + lockedRect.Pitch*y;
+                  BYTE* pDstRow = pDst00 + mappedPitch*y;
             const BYTE* pSrcRow = pSrc00 +         srcPitch*y;
 
             memset(pDstRow + srcRect.left, 0, xmin - srcRect.left);
@@ -377,7 +379,7 @@ HRESULT CD3DGlyphBank::RectFillAlpha(
         // degenerate case: srcRect and fullDataRect have empty intersection
         for (; y < ymax; y++)
         {
-            BYTE* pDstRow = pDst00 + lockedRect.Pitch*y;
+            BYTE* pDstRow = pDst00 + mappedPitch*y;
             memset(pDstRow + srcRect.left, 0, srcRect.right - srcRect.left);
         }
     }
@@ -385,21 +387,24 @@ HRESULT CD3DGlyphBank::RectFillAlpha(
     // fill bottom edge
     for (; y < srcRect.bottom; y++)
     {
-        unsigned char *pDstRow = pDst00 + lockedRect.Pitch*y;
+        unsigned char *pDstRow = pDst00 + mappedPitch*y;
         memset(pDstRow + srcRect.left, 0, srcRect.right - srcRect.left);
     }
 
-    IFC( pTempSurface->UnlockRect() );
+    pContext->Unmap(pTempTexture, 0);
 
-    Assert(pTankSurface);
+    Assert(pTankTexture);
 
     // Transfer data from system memory to video memory.
-    IFC( m_pDevice->UpdateSurface(
-        pTempSurface,
-        &rcTemp,
-        pTankSurface,
-        &dstPoint
-        ));
+    D3D11_BOX srcBox;
+    srcBox.left = rcTemp.left;
+    srcBox.right = rcTemp.right;
+    srcBox.top = rcTemp.top;
+    srcBox.bottom = rcTemp.bottom;
+    srcBox.back = 1;
+    srcBox.front = 0;
+
+    pContext->CopySubresourceRegion(pTankTexture->GetD3DTextureNoRef(), 0, dstPoint.x, dstPoint.y, 0, pTempTexture, 0, &srcBox);
 
 Cleanup:
     return hr;
@@ -408,72 +413,68 @@ Cleanup:
 //+-----------------------------------------------------------------------------
 //
 //  Member:
-//      CD3DGlyphBank::EnsureTempSurface
+//      CD3DGlyphBank::EnsureTempTexture
 //
 //  Synopsis:
-//      Check whether temporary surface exists, is valid and big enough to serve
+//      Check whether temporary texture exists, is valid and big enough to serve
 //      pumping data to video memory. Create new one if necessary.
 //
 //------------------------------------------------------------------------------
-HRESULT CD3DGlyphBank::EnsureTempSurface(
+HRESULT CD3DGlyphBank::EnsureTempTexture(
     UINT uWidth,
     UINT uHeight,
-    __deref_out_ecount(1) D3DSurface **ppTempSurface
+    __deref_out_ecount(1) D3DTexture **ppTempTexture
     )
 {
-    Assert(ppTempSurface);
+    Assert(ppTempTexture);
 
     HRESULT hr = S_OK;
     D3DTexture *pTexture = NULL;
-    D3DSurface *pSurface = NULL;
 
-    if (m_pTempSurface == NULL
-        || !m_pTempSurface->IsValid()
-        || m_pTempSurface->GetWidth() < uWidth
-        || m_pTempSurface->GetHeight() < uHeight
+    if (m_pTempTexture == NULL
+        || !m_pTempTexture->IsValid()
+        || m_pTempTexture->GetWidth() < uWidth
+        || m_pTempTexture->GetHeight() < uHeight
         )
     {
-        D3DSURFACE_DESC sd;
+        D3D11_TEXTURE2D_DESC desc = { 0 };
 
-        if (m_pTempSurface)
+        if (m_pTempTexture)
         {
-            m_pTempSurface->DestroyAndRelease();
-            m_pTempSurface = NULL;
+            m_pTempTexture->DestroyAndRelease();
+            m_pTempTexture = NULL;
         }
 
         uWidth  = RoundToPow2(uWidth);
         uHeight = RoundToPow2(uHeight);
 
-        sd.Format = m_pDevice->GetAlphaTextureFormat();
-        sd.Type = D3DRTYPE_TEXTURE;
-        sd.Usage = 0;
-        sd.Pool = D3DPOOL_SYSTEMMEM;
-        sd.MultiSampleType = D3DMULTISAMPLE_NONE;
-        sd.MultiSampleQuality = 0;
-        sd.Width = uWidth;
-        sd.Height = uHeight;
+        desc.Format = m_pDevice->GetAlphaTextureFormat();
+        desc.Width = uWidth;
+        desc.Height = uHeight;
+        desc.ArraySize = 1;
+        desc.MipLevels = 1;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_STAGING;
+        desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
-        IFC( m_pDevice->CreateTexture(&sd, 1, &pTexture) );
+        IFC( m_pDevice->CreateTexture(&desc, 1, &pTexture) );
 
-        IFC( pTexture->GetSurfaceLevel(0, &pSurface) );
-
-        m_pTempSurface = new CD3DGlyphBankTemporarySurface(
-            pSurface,
+        m_pTempTexture = new CD3DGlyphBankTemporaryTexture(
+            pTexture,
             uWidth,
             uHeight,
             m_pResourceManager
             );
 
-        IFCOOM(m_pTempSurface);
+        IFCOOM(m_pTempTexture);
 
-        m_pTempSurface->AddRef();
+        m_pTempTexture->AddRef();
     }
 
-    *ppTempSurface = m_pTempSurface->GetSurfaceNoAddref();
+    *ppTempTexture = m_pTempTexture->GetTextureNoAddref();
 
 Cleanup:
     ReleaseInterfaceNoNULL(pTexture);
-    ReleaseInterfaceNoNULL(pSurface);
     return hr;
 }
 
@@ -498,23 +499,21 @@ CD3DGlyphBank::CreateTank(UINT uHeight, BOOL fPersistent)
     D3DTexture *pTexture = NULL;
     CD3DGlyphTank* pTank = 0;
 
-    D3DSURFACE_DESC sd;
-    sd.Format = m_pDevice->GetAlphaTextureFormat();
-    sd.Type = D3DRTYPE_TEXTURE;
-    sd.Usage = 0;
-    sd.Pool = D3DPOOL_DEFAULT;
-    sd.MultiSampleType = D3DMULTISAMPLE_NONE;
-    sd.MultiSampleQuality = 0;
-    sd.Width = m_uMaxTankWidth;
-    sd.Height = uHeight;
+    D3D11_TEXTURE2D_DESC desc = { 0 };
+    
+    desc.Format = m_pDevice->GetAlphaTextureFormat();
+    desc.Width = m_uMaxTankWidth;
+    desc.Height = uHeight;
+    desc.ArraySize = 1;
+    desc.SampleDesc.Count = 1;
+    desc.MipLevels = 1;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 
-    IFC( m_pDevice->CreateTexture(&sd, 1, &pTexture) );
-
-    IFC( pTexture->GetSurfaceLevel(0, &pSurface) );
+    IFC( m_pDevice->CreateTexture(&desc, 1, &pTexture) );
 
     pTank = new CD3DGlyphTank(
+        m_pDevice,
         pTexture,
-        pSurface,
         m_uMaxTankWidth,
         uHeight,
         m_pResourceManager
@@ -641,20 +640,18 @@ CD3DGlyphBank::ReleaseLazyTanks()
 //
 //------------------------------------------------------------------------------
 CD3DGlyphTank::CD3DGlyphTank(
+    __in_ecount(1) CD3DDeviceLevel1* pDevice,
     __in_ecount(1) D3DTexture* pTexture,
-    __in_ecount(1) D3DSurface* pSurface,
     UINT widTank,
     UINT heiTank,
     __in_ecount(1) IMILPoolManager *pManager
-    )
-    : m_pTexture(pTexture), m_pSurface(pSurface)
+    ) : m_pDevice(pDevice)
 {
     Assert(pTexture);
-    Assert(pSurface);
     Assert(pManager);
+    
+    CD3DVidMemOnlyTexture::Create(pTexture, false, pDevice, &m_pTexture);
 
-    m_pTexture->AddRef();
-    m_pSurface->AddRef();
     m_uWidth = widTank;
     m_uHeight = heiTank;
     m_rWidthReciprocal = 1.f/float(widTank);
@@ -691,7 +688,8 @@ CD3DGlyphTank::StubifyForReuseAndRelease()
     if (IsValid())
     {
         Assert(m_pManager);
-        pNewTank = new CD3DGlyphTank(m_pTexture, m_pSurface,
+        pNewTank = new CD3DGlyphTank(m_pDevice, 
+                                     m_pTexture->GetD3DTextureNoRef(),
                                      m_uWidth, m_uHeight,
                                      m_pManager);
     }
@@ -874,8 +872,7 @@ void CD3DGlyphTank::ReleaseD3DResources()
     Assert(IsValid() == m_fResourceValid);
 
     // This context is protected so it is safe to release the D3D resources
-    ReleaseInterface((*const_cast<D3DSurface **>(&m_pSurface)));
-    ReleaseInterface((*const_cast<D3DTexture **>(&m_pTexture)));
+    ReleaseInterface(m_pTexture);
 
     return;
 }
@@ -884,24 +881,24 @@ void CD3DGlyphTank::ReleaseD3DResources()
 //+-----------------------------------------------------------------------------
 //
 //  Member:
-//      CD3DGlyphBankTemporarySurface::CD3DGlyphBankTemporarySurface
+//      CD3DGlyphBankTemporaryTexture::CD3DGlyphBankTemporaryTexture
 //
 //  Synopsis:
 //      Constructor.
 //
 //------------------------------------------------------------------------------
-CD3DGlyphBankTemporarySurface::CD3DGlyphBankTemporarySurface(
-    __in_ecount(1) D3DSurface* pSurface,
+CD3DGlyphBankTemporaryTexture::CD3DGlyphBankTemporaryTexture(
+    __in_ecount(1) D3DTexture* pTexture,
     UINT uWidth,
     UINT uHeight,
     __in_ecount(1) IMILPoolManager *pManager
     )
-    : m_pSurface(pSurface), m_uWidth(uWidth), m_uHeight(uHeight)
+    : m_pTexture(pTexture), m_uWidth(uWidth), m_uHeight(uHeight)
 {
-    Assert(pSurface);
+    Assert(pTexture);
     Assert(pManager);
 
-    m_pSurface->AddRef();
+    m_pTexture->AddRef();
 
     CD3DResource::Init(pManager, uWidth * uHeight);
 }
@@ -909,13 +906,13 @@ CD3DGlyphBankTemporarySurface::CD3DGlyphBankTemporarySurface(
 //+-----------------------------------------------------------------------------
 //
 //  Member:
-//      CD3DGlyphBankTemporarySurface::~CD3DGlyphBankTemporarySurface
+//      CD3DGlyphBankTemporaryTexture::~CD3DGlyphBankTemporaryTexture
 //
 //  Synopsis:
 //      dtor
 //
 //------------------------------------------------------------------------------
-CD3DGlyphBankTemporarySurface::~CD3DGlyphBankTemporarySurface()
+CD3DGlyphBankTemporaryTexture::~CD3DGlyphBankTemporaryTexture()
 {
     ReleaseD3DResources();
 }
@@ -929,9 +926,9 @@ CD3DGlyphBankTemporarySurface::~CD3DGlyphBankTemporarySurface()
 //      Release video memory
 //
 //------------------------------------------------------------------------------
-void CD3DGlyphBankTemporarySurface::ReleaseD3DResources()
+void CD3DGlyphBankTemporaryTexture::ReleaseD3DResources()
 {
-    ReleaseInterface((*const_cast<D3DSurface **>(&m_pSurface)));
+    ReleaseInterface((*const_cast<D3DTexture**>(&m_pTexture)));
 }
 
 

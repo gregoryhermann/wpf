@@ -43,15 +43,15 @@ void CHwVidMemTextureManager::Initialize()
 {
     m_pDeviceNoRef = NULL;
 
-    m_pSysMemSurface = NULL;
+    m_pSysMemTexture = NULL;
 
     m_pVideoMemTexture = NULL;
 
-    ZeroMemory(&m_d3dsdRequiredForVidMem, sizeof(m_d3dsdRequiredForVidMem));
+    ZeroMemory(&m_descRequiredForVidMem, sizeof(m_descRequiredForVidMem));
     m_uLevelsForVidMem = 0;
 
 #if DBG
-    m_fDBGSysMemSurfaceIsLocked = false;
+    m_fDBGSysMemTextureIsLocked = false;
 #endif
 }
 
@@ -82,10 +82,10 @@ CHwVidMemTextureManager::~CHwVidMemTextureManager()
 void CHwVidMemTextureManager::Destroy()
 {
 #if DBG
-    Assert(!m_fDBGSysMemSurfaceIsLocked);
+    Assert(!m_fDBGSysMemTextureIsLocked);
 #endif
 
-    ReleaseInterfaceNoNULL(m_pSysMemSurface);
+    ReleaseInterfaceNoNULL(m_pSysMemTexture);
     ReleaseInterfaceNoNULL(m_pVideoMemTexture);
 }
 
@@ -117,7 +117,7 @@ CHwVidMemTextureManager::HasRealizationParameters() const
 void
 CHwVidMemTextureManager::SetRealizationParameters(
     __in_ecount(1) CD3DDeviceLevel1 *pDevice,
-    D3DFORMAT d3dFormat,
+    DXGI_FORMAT dxgiFormat,
     UINT uWidth,
     UINT uHeight,
     TextureMipMapLevel eMipMapLevel
@@ -129,7 +129,7 @@ CHwVidMemTextureManager::SetRealizationParameters(
     m_pDeviceNoRef = pDevice;
         
     ComputeTextureDesc(
-        d3dFormat,
+        dxgiFormat,
         uWidth,
         uHeight,
         eMipMapLevel
@@ -157,75 +157,67 @@ CHwVidMemTextureManager::PrepareForNewRealization()
 //+----------------------------------------------------------------------------
 //
 //  Member:    
-//      CHwVidMemTextureManager::ReCreateAndLockSysMemSurface
+//      CHwVidMemTextureManager::ReCreateAndLockSysMemTexture
 //
 //  Synopsis:  
 //      Creates system memory texture and locks it for updating
 //
 
 HRESULT
-CHwVidMemTextureManager::ReCreateAndLockSysMemSurface(
+CHwVidMemTextureManager::ReCreateAndLockSysMemTexture(
     __out_ecount(1) D3DLOCKED_RECT *pD3DLockedRect
     )
 {
     HRESULT hr = S_OK;
 
 #if DBG
-    Assert(!m_fDBGSysMemSurfaceIsLocked);
+    Assert(!m_fDBGSysMemTextureIsLocked);
 #endif
 
-    D3DSurface *pID3DSysMemSurface = NULL;
+    D3DTexture *pID3DSysMemTexture = NULL;
 
     //
     // Create the surface
     //
 
-    if (!IsSysMemSurfaceValid())
+    if (!IsSysMemTextureValid())
     {
-        ReleaseInterface(m_pSysMemSurface);
+        ReleaseInterface(m_pSysMemTexture);
 
-        IFC(m_pDeviceNoRef->CreateSysMemUpdateSurface(
-            m_d3dsdRequiredForVidMem.Width,
-            m_d3dsdRequiredForVidMem.Height,
-            m_d3dsdRequiredForVidMem.Format,
+        IFC(m_pDeviceNoRef->CreateSysMemUpdateTexture(
+            m_descRequiredForVidMem.Width,
+            m_descRequiredForVidMem.Height,
+            m_descRequiredForVidMem.Format,
             NULL, // pvPixels
-            &pID3DSysMemSurface
+            &pID3DSysMemTexture
             ));
-
-        IFC(CD3DSurface::Create(
+        
+        CD3DLockableTexture* pLockableTexture;
+        IFC(CD3DLockableTexture::Create(
             m_pDeviceNoRef->GetResourceManager(),
-            pID3DSysMemSurface,
-            &m_pSysMemSurface
+            m_pDeviceNoRef,
+            pID3DSysMemTexture,
+            &pLockableTexture
             ));
-
-        ReleaseInterface(pID3DSysMemSurface); // ownership transfered to m_pSysMemSurface
+        m_pSysMemTexture = pLockableTexture;
+        ReleaseInterface(pID3DSysMemTexture); // ownership transfered to m_pSysMemSurface
     }
 
     //
     // Lock the entire surface
     //
 
-    {
-        RECT rcTextureLock;
-
-        rcTextureLock.left = 0;
-        rcTextureLock.top = 0;
-        rcTextureLock.right = static_cast<LONG>(m_d3dsdRequiredForVidMem.Width);
-        rcTextureLock.bottom = static_cast<LONG>(m_d3dsdRequiredForVidMem.Height);
-
-        IFC(m_pSysMemSurface->LockRect(
-            pD3DLockedRect,
-            &rcTextureLock,
-            D3DLOCK_NO_DIRTY_UPDATE
-            ));
-    }
+    D3D11_MAPPED_SUBRESOURCE mappedSubresource;
+    m_pDeviceNoRef->GetDeviceContext()->Map(m_pSysMemTexture->GetD3DTextureNoRef(), 0, D3D11_MAP_READ, 0, &mappedSubresource);
+    pD3DLockedRect->pBits = mappedSubresource.pData;
+    pD3DLockedRect->Pitch = mappedSubresource.RowPitch;
 
 #if DBG
-    m_fDBGSysMemSurfaceIsLocked = true;
+    m_fDBGSysMemTextureIsLocked = true;
 #endif
 
 Cleanup:
-    ReleaseInterfaceNoNULL(pID3DSysMemSurface);
+    ReleaseInterfaceNoNULL(pID3DSysMemTexture);
     RRETURN(hr);
 }
 
@@ -241,20 +233,20 @@ Cleanup:
 //
 
 HRESULT
-CHwVidMemTextureManager::UnlockSysMemSurface(
+CHwVidMemTextureManager::UnlockSysMemTexture(
     )
 {
     HRESULT hr = S_OK;
     
-    Assert(IsSysMemSurfaceValid());
+    Assert(IsSysMemTextureValid());
 
 #if DBG
-    Assert(m_fDBGSysMemSurfaceIsLocked);
+    Assert(m_fDBGSysMemTextureIsLocked);
     // If the unlock fails, callers should not try to unlock again.
-    m_fDBGSysMemSurfaceIsLocked = false;
+    m_fDBGSysMemTextureIsLocked = false;
 #endif
 
-    IFC(m_pSysMemSurface->UnlockRect());
+    m_pDeviceNoRef->GetDeviceContext()->Unmap(m_pSysMemTexture->GetD3DTextureNoRef(), 0);
 
 Cleanup:
     RRETURN(hr);
@@ -279,7 +271,7 @@ CHwVidMemTextureManager::PushBitsToVidMemTexture()
 
     D3DSurface *pD3DVidMemSurface = NULL;
 
-    Assert(m_pSysMemSurface->IsValid());
+    Assert(m_pSysMemTexture->IsValid());
 
     //
     // Check to see if the video memory texture is already valid
@@ -298,7 +290,7 @@ CHwVidMemTextureManager::PushBitsToVidMemTexture()
     if (NULL == m_pVideoMemTexture)
     {
         IFC(CD3DVidMemOnlyTexture::Create(
-            &m_d3dsdRequiredForVidMem,
+            &m_descRequiredForVidMem,
             m_uLevelsForVidMem,
             true, // fIsEvictable
             m_pDeviceNoRef,
@@ -311,21 +303,7 @@ CHwVidMemTextureManager::PushBitsToVidMemTexture()
     // Get the surface from the texture
     //
 
-    IFC(m_pVideoMemTexture->GetID3DSurfaceLevel(
-        0, // uLevel
-        &pD3DVidMemSurface
-        ));
-
-    //
-    // Update the video memory surface
-    //
-
-    IFC(m_pDeviceNoRef->UpdateSurface(
-        m_pSysMemSurface->ID3DSurface(),
-        NULL, // pSourceRect (NULL -> update entire surface)
-        pD3DVidMemSurface,
-        NULL  // pDestinationPoint (NULL -> update entire surface)
-        ));
+    m_pDeviceNoRef->UpdateTexture(m_pSysMemTexture->GetD3DTextureNoRef(), m_pVideoMemTexture->GetD3DTextureNoRef());
 
     //
     // We've dirtied the 0 level and on some cards we need to update the other
@@ -353,42 +331,25 @@ Cleanup:
 
 void
 CHwVidMemTextureManager::ComputeTextureDesc(
-    D3DFORMAT d3dFormat,
+    DXGI_FORMAT dxgiFormat,
     UINT uWidth,
     UINT uHeight,
     TextureMipMapLevel eMipMapLevel
     DBG_COMMA_PARAM(bool bDbgConditionalNonPowTwoOkay)
     )
 {
-    m_d3dsdRequiredForVidMem.Format = d3dFormat;
-    m_d3dsdRequiredForVidMem.Type = D3DRTYPE_TEXTURE;
+    m_descRequiredForVidMem.Format = dxgiFormat;
     
-    CD3DTexture::DetermineUsageAndLevels(
+    CD3DTexture::DetermineLevels(
         m_pDeviceNoRef,
         eMipMapLevel,
         uWidth,
         uHeight,
-        OUT &m_d3dsdRequiredForVidMem.Usage,
         OUT &m_uLevelsForVidMem
         );
 
-    m_d3dsdRequiredForVidMem.Pool = D3DPOOL_DEFAULT;
-    m_d3dsdRequiredForVidMem.MultiSampleType = D3DMULTISAMPLE_NONE;
-    m_d3dsdRequiredForVidMem.MultiSampleQuality = 0;
-    m_d3dsdRequiredForVidMem.Width = uWidth;
-    m_d3dsdRequiredForVidMem.Height = uHeight;
-
-#if DBG
-    Assert(
-        m_pDeviceNoRef->GetMinimalTextureDesc(
-            &m_d3dsdRequiredForVidMem,
-            FALSE,
-            (GMTD_IGNORE_FORMAT | 
-             (bDbgConditionalNonPowTwoOkay ? GMTD_NONPOW2CONDITIONAL_OK : 0)
-             )
-            ) == S_OK
-        );
-#endif
+    m_descRequiredForVidMem.Width = uWidth;
+    m_descRequiredForVidMem.Height = uHeight;
 }
 
 

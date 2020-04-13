@@ -45,8 +45,8 @@ CHwSolidColorTextureSource::CHwSolidColorTextureSource(
 
     SetFilterAndWrapModes(
         MilBitmapInterpolationMode::Linear,
-        D3DTADDRESS_CLAMP,
-        D3DTADDRESS_CLAMP
+        MilBitmapWrapMode::Extend,
+        MilBitmapWrapMode::Extend
         );
 
     //
@@ -200,46 +200,21 @@ __checkReturn HRESULT
 CHwSolidColorTextureSource::CreateLockableTexture()
 {
     HRESULT hr = S_OK;
-    D3DSURFACE_DESC d3dsd;
+    D3D11_TEXTURE2D_DESC textureDesc = { 0 };
     CD3DLockableTexture *pTexture = NULL;
 
     Assert(m_pLockableTexture == NULL);
 
-    ZeroMemory(&d3dsd, sizeof(d3dsd));
-
     // Set up our surface format of 1x1 32 bpp Managed
 
-    d3dsd.Format = D3DFMT_A8R8G8B8;
-    d3dsd.Type = D3DRTYPE_TEXTURE;
-    d3dsd.Usage = 0;
-    d3dsd.Pool = m_pDevice->GetManagedPool();
-    d3dsd.MultiSampleType = D3DMULTISAMPLE_NONE;
-    d3dsd.MultiSampleQuality = 0;
-    d3dsd.Width = 1;
-    d3dsd.Height = 1;
-
-#if DBG
-    D3DSURFACE_DESC dbgTestDesc;
-
-    memcpy(&dbgTestDesc, &d3dsd, sizeof(D3DSURFACE_DESC));
-
-    IGNORE_HR(m_pDevice->GetMinimalTextureDesc(
-        &dbgTestDesc,
-        TRUE,
-        GMTD_CHECK_ALL
-        ));
-
-    if (SUCCEEDED(hr))
-    {
-        //
-        // GetMinimalTextureDesc shouldn't have changed the Surface Description.
-        //
-        Assert(memcmp(&dbgTestDesc, &d3dsd, sizeof(D3DSURFACE_DESC)) == 0);
-    }
-#endif
+    textureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    textureDesc.Width = 1;
+    textureDesc.Height = 1;
+    textureDesc.SampleDesc.Count = 1;
+    textureDesc.ArraySize = 1;
 
     IFC(m_pDevice->CreateLockableTexture(
-        &d3dsd, 
+        &textureDesc,
         &pTexture
         ));
     
@@ -286,7 +261,3 @@ CHwSolidColorTextureSource::FillTexture()
 Cleanup:
     RRETURN(hr);
 }
-
-
-
-

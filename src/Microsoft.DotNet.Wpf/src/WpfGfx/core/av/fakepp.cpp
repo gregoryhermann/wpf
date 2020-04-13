@@ -969,8 +969,8 @@ CFakePP::CreateDevice(
     }
 
     Assert(pDisplaySet->Display(0));
-    Assert(pDisplaySet->D3DObject());
 
+#if 0
     //
     // This may fail if D3D support is unavailable
     //
@@ -982,6 +982,7 @@ CFakePP::CreateDevice(
             ppD3DDevice,
             NULL,
             NULL));
+#endif
 
 Cleanup:
 
@@ -1073,11 +1074,13 @@ CFakePP::BeginRender(
 
     GetUnderlyingDevice(m_pCD3DDeviceLevel1, &pIDevice);
 
+#ifndef DX11
     IFC(pIDevice->ColorFill(
         pSurface,
         NULL,
         color
         ));
+#endif
 
     IFC(m_pMediaBuffer->GetBitmapSource(
     		false,  		// Not the synchronous channel

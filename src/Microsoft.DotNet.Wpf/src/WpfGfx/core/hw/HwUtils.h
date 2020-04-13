@@ -27,7 +27,7 @@ HRESULT CacheHwTextureOnBitmap(
     );
 
 HRESULT ReadRenderTargetIntoSysMemBuffer(
-    __in D3DSurface *pSourceSurface,
+    __in D3DTexture *pSourceTexture,
     __in const CMilRectU &rcCopy,
     MilPixelFormat::Enum fmtOut,
     UINT uStrideOut,

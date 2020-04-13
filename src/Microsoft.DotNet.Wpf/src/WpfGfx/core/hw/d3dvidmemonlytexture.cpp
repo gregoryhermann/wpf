@@ -28,7 +28,7 @@ MtDefine(D3DResource_VidMemOnlyTexture, MILHwMetrics, "Approximate vid-mem-only 
 //-------------------------------------------------------------------------
 HRESULT 
 CD3DVidMemOnlyTexture::Create(
-    __in_ecount(1) const D3DSURFACE_DESC *pSurfDesc,
+    __in_ecount(1) const D3D11_TEXTURE2D_DESC *pDesc,
     UINT uLevels,
     bool fIsEvictable,
     __inout_ecount(1) CD3DDeviceLevel1 *pDevice,
@@ -39,18 +39,15 @@ CD3DVidMemOnlyTexture::Create(
     HRESULT hr = S_OK;
 
     D3DTexture *pD3DTexture = NULL;
-    
-    Assert(pSurfDesc->Pool == D3DPOOL_DEFAULT);
 
     //
     // Allocate the D3D texture
     //
 
     IFC(pDevice->CreateTexture(
-        pSurfDesc,
+        pDesc,
         uLevels,
-        OUT &pD3DTexture,
-        IN OUT pSharedHandle
+        OUT &pD3DTexture
         ));
 
     //
@@ -104,9 +101,11 @@ CD3DVidMemOnlyTexture::Create(
     // Call Init
     //
 
-    IFC(pVidMemOnlyTexture->Init(pDevice->GetResourceManager(), pD3DExistingTexture));
-    
+    IFC(pVidMemOnlyTexture->Init(pDevice->GetResourceManager(), pDevice, pD3DExistingTexture));
+
+#ifndef DX11
     Assert(pVidMemOnlyTexture->m_sdLevel0.Pool == D3DPOOL_DEFAULT);
+#endif
 
     if (fIsEvictable)
     {
@@ -157,6 +156,7 @@ CD3DVidMemOnlyTexture::~CD3DVidMemOnlyTexture()
 HRESULT 
 CD3DVidMemOnlyTexture::Init(
     __inout_ecount(1) CD3DResourceManager *pResourceManager,
+    __in_ecount(1) CD3DDeviceLevel1* pDevice,
     __inout_ecount(1) D3DTexture *pD3DTexture
     )
 {
@@ -169,7 +169,7 @@ CD3DVidMemOnlyTexture::Init(
     // Let CD3DTexture handle the init
     //
 
-    IFC(CD3DTexture::Init(pResourceManager, pD3DTexture));
+    IFC(CD3DTexture::Init(pResourceManager, pDevice, pD3DTexture));
 
 Cleanup:
     RRETURN(hr);

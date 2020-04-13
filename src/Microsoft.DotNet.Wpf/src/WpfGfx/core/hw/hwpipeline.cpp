@@ -304,286 +304,6 @@ Cleanup:
 
 //+-----------------------------------------------------------------------------
 //
-//  Table:
-//      sc_tsoFromPipeOp
-//
-//  Synopsis:
-//      Table of texture stage operations for each of the valid combinations of
-//      pipeline operations
-//
-//------------------------------------------------------------------------------
-
-static const TextureStageOperation* sc_tsoFromPipeOp[HBO_Total][HBA_Total][HBA_Total] =
-{   // HBO_SelectSource
-    {
-//   hbaSrc2  None      Current     Diffuse     Specular    Texture
-// hbaSrc1
-/* None   */{ NULL,     NULL,       NULL,       NULL,       NULL},
-/* Current*/{ NULL,     NULL,       NULL,       NULL,       NULL},
-/* Diffuse*/{ &CD3DRenderState::sc_tsoDiffuse,
-                        NULL,       NULL,       NULL,       NULL},
-/*Specular*/{ NULL,     NULL,       NULL,       NULL,       NULL},
-/* Texture*/{ &CD3DRenderState::sc_tsoSelectTexture,
-                        NULL,       NULL,       NULL,       NULL},
-    },
-    // HBO_Multiply
-    {
-//   hbaSrc2  None      Current     Diffuse     Specular    Texture
-// hbaSrc1
-/* None   */{ NULL,     NULL,       NULL,       NULL,       NULL},
-/* Current*/{ NULL,     NULL,       NULL,       NULL,       &CD3DRenderState::sc_tsoPremulTextureXCurrent},
-/* Diffuse*/{ NULL,     NULL,       NULL,       NULL,       &CD3DRenderState::sc_tsoPremulTextureXDiffuse},
-/*Specular*/{ NULL,     NULL,       NULL,       NULL,       NULL},
-/* Texture*/{ NULL,     &CD3DRenderState::sc_tsoPremulTextureXCurrent,
-                                    &CD3DRenderState::sc_tsoPremulTextureXDiffuse,
-                                                NULL,       NULL},
-    },
-    // HBO_SelectSourceColorIgnoreAlpha
-    {
-//   hbaSrc2  None      Current     Diffuse     Specular    Texture
-// hbaSrc1
-/* None   */{ NULL,     NULL,       NULL,       NULL,       NULL},
-/* Current*/{ NULL,     NULL,       NULL,       NULL,       NULL},
-/* Diffuse*/{ NULL,     NULL,       NULL,       NULL,       NULL},
-/*Specular*/{ NULL,     NULL,       NULL,       NULL,       NULL},
-/* Texture*/{ &CD3DRenderState::sc_tsoOpaqueTextureXCurrent,
-                        NULL,       NULL,       NULL,       NULL},
-    },
-    // HBO_MultiplyColorIgnoreAlpha
-    {
-//   hbaSrc2  None      Current     Diffuse     Specular    Texture
-// hbaSrc1
-/* None   */{ NULL,     NULL,       NULL,       NULL,       NULL},
-/* Current*/{ NULL,     NULL,       NULL,       NULL,       &CD3DRenderState::sc_tsoOpaqueTextureXCurrent},
-/* Diffuse*/{ NULL,     NULL,       NULL,       NULL,       &CD3DRenderState::sc_tsoOpaqueTextureXDiffuse},
-/*Specular*/{ NULL,     NULL,       NULL,       NULL,       NULL},
-/* Texture*/{ NULL,     &CD3DRenderState::sc_tsoOpaqueTextureXCurrent,
-                                    &CD3DRenderState::sc_tsoOpaqueTextureXDiffuse,
-                                                NULL,       NULL},
-    },
-    // HBO_BumpMap
-    {
-//   hbaSrc2  None      Current     Diffuse     Specular    Texture
-// hbaSrc1
-/* None   */{ NULL,     NULL,       NULL,       NULL,       &CD3DRenderState::sc_tsoBumpMapTexture},
-/* Current*/{ NULL,     NULL,       NULL,       NULL,       &CD3DRenderState::sc_tsoBumpMapTexture},
-/* Diffuse*/{ NULL,     NULL,       NULL,       NULL,       &CD3DRenderState::sc_tsoBumpMapTexture},
-/*Specular*/{ NULL,     NULL,       NULL,       NULL,       NULL},
-/* Texture*/{ &CD3DRenderState::sc_tsoBumpMapTexture,
-                        &CD3DRenderState::sc_tsoBumpMapTexture,
-                                    &CD3DRenderState::sc_tsoBumpMapTexture,
-                                                NULL,       NULL},
-    },
-    
-    // HBO_MultiplyByAlpha
-    {
-//   hbaSrc2  None      Current     Diffuse     Specular    Texture
-// hbaSrc1
-/* None   */{ NULL,     NULL,       NULL,       NULL,       NULL},
-/* Current*/{ NULL,     NULL,       NULL,       NULL,       NULL},
-/* Diffuse*/{ NULL,     NULL,       NULL,       NULL,       NULL},
-/*Specular*/{ NULL,     NULL,       NULL,       NULL,       NULL},
-/* Texture*/{ NULL,     &CD3DRenderState::sc_tsoMaskTextureXCurrent,
-                                    NULL,     NULL,       NULL},
-    },
-    
-    // HBO_MultiplyAlphaOnly
-    {
-//   hbaSrc2  None      Current     Diffuse     Specular    Texture
-// hbaSrc1
-/* None   */{ NULL,     NULL,       NULL,       NULL,       NULL},
-/* Current*/{ NULL,     NULL,       NULL,       NULL,       &CD3DRenderState::sc_tsoColorSelectTextureAlphaMultiplyCurrent},
-/* Diffuse*/{ NULL,     NULL,       NULL,       NULL,       &CD3DRenderState::sc_tsoColorSelectTextureAlphaMultiplyDiffuse},
-/*Specular*/{ NULL,     NULL,       NULL,       NULL,       NULL},
-/* Texture*/{ NULL,     &CD3DRenderState::sc_tsoColorSelectCurrentAlphaMultiplyTexture,
-                                    &CD3DRenderState::sc_tsoColorSelectDiffuseAlphaMultiplyTexture,
-                                                NULL,       NULL},
-    },
-};
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CHwFFPipeline::SendStageStates
-//
-//  Synopsis:
-//      Send all states needed to render to the device
-//
-
-HRESULT
-CHwFFPipeline::SendDeviceStates(
-    __in_ecount_opt(1) const CHwVertexBuffer *pVB
-    )
-{
-    HRESULT hr = S_OK;
-
-    for (UINT uFFItem = 0; uFFItem < m_rgItem.GetCount(); uFFItem++)
-    {
-        IFC(SendFFStageState(
-            m_rgItem[uFFItem]
-            ));
-    }
-
-    IFC(m_pDevice->DisableTextureStage(m_dwFirstUnusedStage));
-    
-    IFC(pVB->SendVertexFormat(m_pDevice));
-    
-    //
-    // Currently this must be called after the SendShaderData above
-    //
-    IFC(SendRenderStates());
-
-Cleanup:
-
-    RRETURN(hr);
-
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CHwPipeline::SendRenderStates
-//
-//  Synopsis:
-//      Send render states to device
-//
-
-HRESULT
-CHwFFPipeline::SendRenderStates()
-{
-    HRESULT hr = S_OK;
-
-    IFC(m_pDevice->SetAlphaBlendMode(m_pABM));
-
-    IFC(m_pDevice->SetPixelShader(NULL));
-    IFC(m_pDevice->SetVertexShader(NULL));
-
-Cleanup:
-    RRETURN(hr);
-}
-
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CHwPipeline::SendFFStageStates
-//
-//  Synopsis:
-//      Send stage and sample states for the given Fixed Function pipeline item
-//
-
-HRESULT 
-CHwFFPipeline::SendFFStageState(
-    __in_ecount(1) HwPipelineItem &oItem
-    )
-{
-    HRESULT hr = S_OK;
-
-    //
-    // Check for an operation
-    //
-
-    if (oItem.eBlendOp != HBO_Nop)
-    {
-        const TextureStageOperation *ptso;
-
-        Assert(oItem.eBlendOp >= 0);
-        Assert(oItem.eBlendOp < HBO_Total);
-        Assert(oItem.oBlendParams.hbaSrc1 >= 0);
-        Assert(oItem.oBlendParams.hbaSrc1 < HBA_Total);
-        Assert(oItem.oBlendParams.hbaSrc2 >= 0);
-        Assert(oItem.oBlendParams.hbaSrc2 < HBA_Total);
-
-        ptso = sc_tsoFromPipeOp[oItem.eBlendOp]
-                               [oItem.oBlendParams.hbaSrc1]
-                               [oItem.oBlendParams.hbaSrc2];
-
-        // A NULL ptso indicates an unsupported blending operation
-        if (!ptso)
-        {
-            RIP("Unsupported blending operation!"); // Assert to make sure we don't accidentally fall back to SW.
-            IFC(E_NOTIMPL);
-        }
-
-        IFC(m_pDevice->SetTextureStageOperation(oItem.dwStage, ptso));
-    }
-
-    //
-    // If this item has a color source request it to send whatever stage states
-    // it needs to the device.
-    //
-
-    if (oItem.pHwColorSource)
-    {
-        IFC(oItem.pHwColorSource->SendDeviceStates(
-            oItem.dwStage,
-            oItem.dwSampler
-            ));
-    }
-
-Cleanup:
-    RRETURN(hr);
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CHwFFPipeline::InitializeForRendering
-//
-//  Synopsis:
-//      Work from an empty pipeline to build the device rendering pipeline and
-//      prepare a vertex builder to receive geometry data.
-//
-
-HRESULT
-CHwFFPipeline::InitializeForRendering(
-    MilCompositingMode::Enum CompositingMode,
-    __inout_ecount(1) IGeometryGenerator *pGeometryGenerator,
-    __inout_ecount(1) IHwPrimaryColorSource *pIPCS,
-    __in_ecount_opt(1) const IMILEffectList *pIEffects,
-    __in_ecount(1) const CHwBrushContext    *pEffectContext,
-    __in_ecount_opt(1) const CMILSurfaceRect *prcOutsideBounds,
-    bool fNeedInside
-    )
-{
-    HRESULT hr = S_OK;
-
-    CHwFFPipelineBuilder ffBuilder(
-        this
-        );
-
-    IFC(ffBuilder.Setup(
-        CompositingMode,
-        pGeometryGenerator,
-        pIPCS,
-        pIEffects,
-        pEffectContext
-        ));
-
-    // Use the Builder class to select/create a vertex builder
-
-    IFC(ffBuilder.SetupVertexBuilder(
-        &m_pVBB
-        ));
-    
-    if (prcOutsideBounds)
-    {
-        m_pVBB->SetOutsideBounds(
-            prcOutsideBounds,
-            fNeedInside
-            );
-    }
-
-    // Remember the geometry generator for use in RealizeResources
-
-    m_pGG = pGeometryGenerator;
-
-Cleanup:
-    RRETURN(hr);
-}
-
-//+-----------------------------------------------------------------------------
-//
 //  Member:
 //      CHwShaderPipeline::~CHwShaderPipeline
 //
@@ -674,6 +394,7 @@ CHwShaderPipeline::InitializeForRendering(
         END_MILINSTRUMENTATION_HRESULT_LIST
 
         IFC(shaderBuilder.GetHwShader(
+            m_pVBB->GetVertexType(),
             &m_pPipelineShader
             ));
     }
@@ -722,7 +443,7 @@ CHwShaderPipeline::SendDeviceStates(
         // pVB should only be NULL for the 3D pipeline
         Assert(pVB);
         
-        IFC(pVB->SendVertexFormat(m_pDevice));
+        IFC(pVB->SendInputLayout(m_pDevice));
     }
     
     IFC(m_pDevice->SetAlphaBlendMode(m_pABM));
@@ -788,6 +509,7 @@ CHwShaderPipeline::ReInitialize(
     ReleaseInterface(m_pPipelineShader);
     
     IFC(builder.GetHwShader(
+        m_pVBB->GetVertexType(),
         &m_pPipelineShader
         ));
 
@@ -810,19 +532,7 @@ CHwShaderPipeline::CanRunWithDevice(
     __in_ecount(1) const CD3DDeviceLevel1 *pDevice
     )
 {
-    DWORD dwVertexShaderVersion = pDevice->GetVertexShaderVersion();
-    DWORD dwPixelShaderVersion  = pDevice->GetPixelShaderVersion();
-
-    if (   dwPixelShaderVersion  < D3DPS_VERSION(2,0) 
-        || dwVertexShaderVersion < D3DVS_VERSION(2,0)
-           )
-    {
-        return false;
-    }
-    else
-    {
-        return true;
-    }
+    return true;
 }
 
 //  

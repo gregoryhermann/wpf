@@ -31,7 +31,7 @@ MtDefine(CGPUMarker, MILRender, "CGPUMarker");
 //
 //------------------------------------------------------------------------------
 CGPUMarker::CGPUMarker(
-    __in_ecount(1) IDirect3DQuery9 *pQuery, 
+    __in_ecount(1) ID3D11Query *pQuery, 
     ULONGLONG ullMarkerId
     ) : m_pQuery(pQuery)
 { 
@@ -83,7 +83,7 @@ void CGPUMarker::Reset(ULONGLONG ullMarkerId)
 //      S_OK if succeeds
 //
 //------------------------------------------------------------------------------
-HRESULT CGPUMarker::InsertIntoCommandStream()
+HRESULT CGPUMarker::InsertIntoCommandStream(D3DDeviceContext* pContext)
 {
     HRESULT hr = S_OK;
 
@@ -92,7 +92,8 @@ HRESULT CGPUMarker::InsertIntoCommandStream()
         IFC(E_FAIL);
     }
 
-    IFC(m_pQuery->Issue(D3DISSUE_END));
+    pContext->Begin(m_pQuery);
+    pContext->End(m_pQuery);
     m_fIssued = TRUE;
 
   Cleanup:
@@ -112,6 +113,7 @@ HRESULT CGPUMarker::InsertIntoCommandStream()
 //
 //------------------------------------------------------------------------------
 HRESULT CGPUMarker::CheckStatus(
+    D3DDeviceContext* pContext,
     BOOL fFlush,
     __out_ecount(1) bool *pfConsumed
     )
@@ -124,8 +126,8 @@ HRESULT CGPUMarker::CheckStatus(
     {
         if (!m_fConsumed)
         {
-            DWORD dwFlags = (fFlush ? D3DGETDATA_FLUSH : 0);
-            MIL_THR(m_pQuery->GetData(NULL, 0, dwFlags));
+            DWORD dwFlags = (fFlush ? 0 : D3D11_ASYNC_GETDATA_DONOTFLUSH);
+            MIL_THR(pContext->GetData(m_pQuery, nullptr, 0, dwFlags));
             m_fConsumed = (hr == S_OK);
 
             if (hr == S_FALSE)

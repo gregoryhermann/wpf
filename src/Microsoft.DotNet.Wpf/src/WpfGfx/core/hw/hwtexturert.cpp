@@ -42,14 +42,6 @@ CHwTextureRenderTarget::Create(
     *ppTextureRT = NULL;
 
     //
-    // Make sure render target format has been tested.
-    //
-
-    IFC(pDevice->CheckRenderTargetFormat(
-        D3DFMT_A8R8G8B8
-        ));
-
-    //
     // Create the CHwTextureRenderTarget
     //
 
@@ -58,7 +50,7 @@ CHwTextureRenderTarget::Create(
         // Right now we always use 32bppPBGRA - we ignore fForBlending and
         // don't support scRGB.
         MilPixelFormat::PBGRA32bpp,
-        D3DFMT_A8R8G8B8,
+        DXGI_FORMAT_B8G8R8A8_UNORM,
         associatedDisplay
         );
     IFCOOM(*ppTextureRT);
@@ -94,50 +86,20 @@ HRESULT
 CHwTextureRenderTarget::GetSurfaceDescription(
     UINT uWidth,
     UINT uHeight,
-    __out_ecount(1) D3DSURFACE_DESC &sdLevel0
+    __out_ecount(1) D3D11_TEXTURE2D_DESC &sdLevel0
     ) const
 {
     HRESULT hr = S_OK;
 
-    sdLevel0.Format = m_d3dfmtTargetSurface;
-    sdLevel0.Type = D3DRTYPE_TEXTURE;
-    sdLevel0.Usage = D3DUSAGE_RENDERTARGET;
-    // We have to use default pool since we don't have drivers
-    // that supported DDI management features needed for MANAGED
-    // render targets.
-    sdLevel0.Pool = D3DPOOL_DEFAULT;
-    sdLevel0.MultiSampleType = D3DMULTISAMPLE_NONE;
-    sdLevel0.MultiSampleQuality = 0;
+    ZeroMemory(&sdLevel0, sizeof(sdLevel0));
+    sdLevel0.Format = m_dxgifmtTargetTexture;
     sdLevel0.Width = uWidth;
     sdLevel0.Height = uHeight;
+    sdLevel0.ArraySize = 1;
+    sdLevel0.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+    sdLevel0.SampleDesc.Count = 1;
+    sdLevel0.SampleDesc.Quality = 0;
 
-    //
-    // Get the required texture characteristics
-    //
-
-    IFC(m_pD3DDevice->GetMinimalTextureDesc(
-        &sdLevel0,
-        TRUE,
-        GMTD_NONPOW2CONDITIONAL_OK | GMTD_IGNORE_FORMAT
-        ));
-
-    //
-    // Check if dimensions were too big
-    //
-    if (hr == S_FALSE)
-    {
-        IFC(WGXERR_UNSUPPORTEDTEXTURESIZE);
-    }
-
-    //
-    // Check if we changed size
-    //
-    if (sdLevel0.Width != uWidth || sdLevel0.Height != uHeight)
-    {
-        IFC(WGXERR_UNSUPPORTED_OPERATION);
-    }
-
-Cleanup:
     RRETURN(hr);
 }
 
@@ -151,13 +113,13 @@ Cleanup:
 CHwTextureRenderTarget::CHwTextureRenderTarget(
     __inout_ecount(1) CD3DDeviceLevel1 *pD3DDevice,
     MilPixelFormat::Enum fmtTarget,
-    D3DFORMAT d3dfmtTarget,
+    DXGI_FORMAT dxgiFmtTarget,
     DisplayId associatedDisplay
     ) :
     CHwSurfaceRenderTarget(
         pD3DDevice,
         fmtTarget,
-        d3dfmtTarget,
+        dxgiFmtTarget,
         associatedDisplay
         )
 {
@@ -288,7 +250,7 @@ CHwTextureRenderTarget::Init(
     // Create the texture
     //
 
-    D3DSURFACE_DESC sdLevel0;
+    D3D11_TEXTURE2D_DESC sdLevel0;
 
     IFC(GetSurfaceDescription(
         uWidth,
@@ -314,7 +276,7 @@ CHwTextureRenderTarget::Init(
     //
 
     // None of these should be valid, yet.
-    Assert(m_pD3DTargetSurface == NULL);
+    Assert(m_pD3DTargetTexture == NULL);
     Assert(m_uWidth == 0);
     Assert(m_uHeight == 0);
 
@@ -322,10 +284,8 @@ CHwTextureRenderTarget::Init(
     // Derive the render target - level 0 of texture
     //
 
-    IFC(m_pVidMemOnlyTexture->GetD3DSurfaceLevel(
-        0,
-        &m_pD3DTargetSurface
-        ));
+    m_pD3DTargetTexture = m_pVidMemOnlyTexture;
+    m_pD3DTargetTexture->AddRef();
 
     m_uWidth = uWidth;
     m_uHeight = uHeight;
@@ -344,7 +304,7 @@ CHwTextureRenderTarget::Init(
 Cleanup:
     if (FAILED(hr))
     {
-        ReleaseInterface(m_pD3DTargetSurface);
+        ReleaseInterface(m_pD3DTargetTexture);
     }
     RRETURN(hr);
 }

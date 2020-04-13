@@ -148,7 +148,7 @@ Cleanup:
 
 HRESULT
 ReadRenderTargetIntoSysMemBuffer(
-    __in D3DSurface *pSourceSurface,
+    __in D3DTexture *pSourceTexture,
     __in const CMilRectU &rcCopy,
     MilPixelFormat::Enum fmtOut,
     UINT uStrideOut,
@@ -158,18 +158,18 @@ ReadRenderTargetIntoSysMemBuffer(
 {
     HRESULT hr = S_OK;
 
+    // Under what scenarios is this really required?
+    Assert(0);
+#if 0
+
     const UINT uBitsPerPixel = GetPixelFormatSize(fmtOut);
     UINT uStrideCopy;
     const UINT uCopyWidth = rcCopy.Width();
     const UINT uCopyHeight = rcCopy.Height();
     const RECT rcDest = { 0, 0, uCopyWidth, uCopyHeight };
 
-    D3DDeviceContext *pIDevice = NULL;
-    D3DDeviceContextEx *pIDeviceEx = NULL;
-
     D3DTexture *pD3DLockableTexture = NULL;
-    D3DSurface *pD3DLockableSurface = NULL;
-    D3DSurface *pD3DVidMemCopySurface = NULL;
+    D3DTexture *pD3DVidMemCopyTexture = NULL;
 
     if (   rcCopy.left > SURFACE_RECT_MAX 
         || rcCopy.right > SURFACE_RECT_MAX 
@@ -185,16 +185,11 @@ ReadRenderTargetIntoSysMemBuffer(
         IFC(E_INVALIDARG);
     }
 
-    D3DSURFACE_DESC d3dsd;
-    IFC(pSourceSurface->GetDesc(&d3dsd));
+    D3D11_TEXTURE2D_DESC desc;
+    pSourceTexture->GetDesc(&desc)
 
-    if (d3dsd.Pool != D3DPOOL_DEFAULT)
-    {
-        IFC(E_INVALIDARG);
-    }
-
-    const D3DFORMAT d3dfmtOut = PixelFormatToD3DFormat(fmtOut);
-    if (d3dsd.Format != d3dfmtOut)
+    const DXGI_FORMAT dxgifmtOut = PixelFormatToD3DFormat(fmtOut);
+    if (desc.Format != dxgifmtOut)
     {
         IFC(E_INVALIDARG);
     }
@@ -330,7 +325,7 @@ Cleanup:
     ReleaseInterface(pD3DVidMemCopySurface);
     ReleaseInterface(pIDevice);
     ReleaseInterface(pIDeviceEx);
-
+#endif
     RRETURN(hr);
 }
 

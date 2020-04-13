@@ -265,23 +265,17 @@ CHwBitmapCache::TryForDeviceBitmapColorSource(
                 // We've found a valid DBCS containing the area we need. However, we need to see
                 // if the desired wrap mode is possible given the current DBCS.
                 
-                D3DTEXTUREADDRESS taU, taV;
-                CHwTexturedColorSource::ConvertWrapModeToTextureAddressModes(
-                    oContextCacheParameters.wrapMode,
-                    &taU,
-                    &taV
-                    );
-
                 UINT uWidth, uHeight;
                 if (SUCCEEDED(m_pBitmap->GetSize(&uWidth, &uHeight)))
                 {
                     if (   (IS_POWER_OF_2(uWidth) && IS_POWER_OF_2(uHeight))
-                         || (m_pDevice->SupportsNonPow2Conditionally() && taU == D3DTADDRESS_CLAMP && taV == D3DTADDRESS_CLAMP)
+                         || (m_pDevice->SupportsNonPow2Conditionally() && oContextCacheParameters.wrapMode == MilBitmapWrapMode::Extend)
                          || m_pDevice->SupportsNonPow2Unconditionally()
                        )
                     {
                         pbcs = m_pDeviceBitmapColorSource;
-                        pbcs->SetWrapModes(taU, taV);
+                        pbcs->SetWrapModes(oContextCacheParameters.wrapMode,
+                                           oContextCacheParameters.wrapMode);
                     }
                     // else pbcs will be NULL and later we'll create a new BCS that can tile 
                     // correctly and pull from the CDeviceBitmap through software via
@@ -729,10 +723,7 @@ CHwBitmapCache::ChooseBitmapColorSource(
 
     if (!pbcs)
     {
-        bool fCreateAsRenderTarget =
-               (pbcsWithReusableRealizationSources != NULL)
-            && (   m_pDevice->CanStretchRectFromTextures()
-                || pbcsWithReusableRealizationSources->IsARenderTarget());
+        bool fCreateAsRenderTarget = (pbcsWithReusableRealizationSources != NULL);
 
         IFC(CHwBitmapColorSource::Create(
             m_pDevice,
@@ -851,51 +842,6 @@ HRESULT CHwBitmapCache::CreateSharedColorSource(
         rcBoundsRequired,
         OUT &pbcs,
         OUT pSharedHandle
-        ));
-
-    m_pDeviceBitmapColorSource = pbcs;
-    m_pDeviceBitmapColorSource->AddRef();
-
-Cleanup:
-    RRETURN(hr);
-}
-
-//+----------------------------------------------------------------------------
-//
-//  Member:
-//      CHwBitmapCache::CreateBitBltColorSource
-//
-//  Synopsis:
-//      Create a BitBlt-able device bitmap color source and keep it readily 
-//      available.
-//
-//-----------------------------------------------------------------------------
-
-HRESULT CHwBitmapCache::CreateBitBltColorSource(
-    MilPixelFormat::Enum fmt,
-    __in_ecount(1) CMilRectU const &rcBoundsRequired,
-    bool fIsDependent,
-    __deref_inout_ecount(1) CHwDeviceBitmapColorSource * &pbcs
-    )
-{
-    HRESULT hr = S_OK;
-
-    // Really, this should be asserting that it's a CInteropDeviceBitmap
-    Assert(m_pBitmap->SourceState() == IWGXBitmap::SourceState::DeviceBitmap);
-
-    // Only one color source at a time
-    if (m_pDeviceBitmapColorSource)
-    {
-        IFC(E_UNEXPECTED);
-    }
-
-    IFC(CHwBitBltDeviceBitmapColorSource::Create(
-        m_pDevice,
-        m_pBitmap,
-        fmt,
-        rcBoundsRequired,
-        fIsDependent,
-        OUT &pbcs
         ));
 
     m_pDeviceBitmapColorSource = pbcs;
@@ -1286,8 +1232,8 @@ CHwBitmapCache::CacheEntryList::GetSetBitmapColorSource(
                     // Update oParams (passed in) with cached settings since
                     // those are the settings that will be used.
                     //
-                    D3DTEXTUREADDRESS d3dtaU = oParams.dlU.d3dta;
-                    D3DTEXTUREADDRESS d3dtaV = oParams.dlV.d3dta;
+                    MilBitmapWrapMode::Enum wrapModeU = oParams.dlU.wrapMode;
+                    MilBitmapWrapMode::Enum wrapModeV = oParams.dlV.wrapMode;
 
                     *static_cast<CHwBitmapColorSource::CacheSizeLayoutParameters *>
                         (&oParams) = oSizeEntry.oSizeParams;
@@ -1297,8 +1243,8 @@ CHwBitmapCache::CacheEntryList::GetSetBitmapColorSource(
                     // of InternalRealizationParameters and should not be
                     // changed.
                     //
-                    oParams.dlU.d3dta = d3dtaU;
-                    oParams.dlV.d3dta = d3dtaV;
+                    oParams.dlU.wrapMode = wrapModeU;
+                    oParams.dlV.wrapMode = wrapModeV;
 
                     pbcs = oSizeEntry.pbcs;
                     pbcs->AddRef();

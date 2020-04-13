@@ -40,6 +40,9 @@ class CD3DSwapChain : public CD3DResource
         DWORD dwD3DPresentFlags
         );
 
+public:
+    IDXGISwapChain *GetD3DSwapChainNoRef() { return m_pDXGISwapChain; }
+
 protected:
 
     inline void __cdecl operator delete(void * pv) { WPFFree(ProcessHeap, pv); }
@@ -50,9 +53,8 @@ protected:
 public:
 
     static HRESULT Create(
-        __inout_ecount(1) CD3DResourceManager *pResourceManager,
-        __inout_ecount(1) IDirect3DSwapChain9 *pID3DSwapChain9,
-        UINT BackBufferCount,
+        __inout_ecount(1) CD3DDeviceLevel1 *pDevice,
+        __inout_ecount(1) IDXGISwapChain *pDXGISwapChain,
         __in_ecount_opt(1) CMILDeviceContext const *pPresentContext,        
         __deref_out_ecount(1) CD3DSwapChain **ppSwapChain
         );
@@ -63,12 +65,8 @@ public:
     
     HRESULT GetBackBuffer(
         __in_range(<, this->m_cBackBuffers) UINT iBackBuffer,
-        __deref_out_ecount(1) CD3DSurface **ppBackBuffer
+        __deref_out_ecount(1) CD3DTexture **ppBackBuffer
         ) const;
-
-    HRESULT GetFrontBuffer(
-        __deref_out_ecount(1) CD3DSurface **ppFrontBuffer
-        );
 
     virtual HRESULT GetDC(
         __in_range(<, this->m_cBackBuffers) UINT iBackBuffer,
@@ -90,16 +88,13 @@ public:
 
 protected:
     CD3DSwapChain(
-        __inout_ecount(1) IDirect3DSwapChain9 *pD3DSwapChain9,
-        __in_range(>, 0) __out_range(==, this->m_cBackBuffers) UINT cBackBuffers,
-        __out_ecount_full_opt(cBackBuffers) CD3DSurface * * const prgBackBuffers
-        );
+        __inout_ecount(1) IDXGISwapChain *pDXGISwapChain,
+        __in_range(>, 0) __out_range(==, this->m_cBackBuffers) UINT cBackBuffers);
     virtual ~CD3DSwapChain();
 
 protected:
     virtual HRESULT Init(
-        __inout_ecount(1) CD3DResourceManager *pResourceManager
-        );
+        __inout_ecount(1) CD3DDeviceLevel1* pDevice);
 
 private:
 
@@ -118,16 +113,9 @@ private:
     void ReleaseD3DResources();
 
 private:
-    // Pointer to the actual D3D resource.
-    //  The pointer is constant to help enforce the modification restrictions
-    //  of CD3DResource objects.
-    IDirect3DSwapChain9 * const m_pD3DSwapChain;
-
-    IDirect3DSwapChain9Ex *m_pD3DSwapChainEx;
-
-protected:
-    __field_range(>, 1) UINT const m_cBackBuffers;
-    __field_ecount(m_cBackBuffers) CD3DSurface * * const m_rgBackBuffers;
+    IDXGISwapChain *m_pDXGISwapChain;
+    CD3DDeviceLevel1* m_pDevice;
+    UINT m_cBackBuffers;
 };
 
 

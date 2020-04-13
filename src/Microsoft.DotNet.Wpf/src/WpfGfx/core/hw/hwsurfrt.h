@@ -65,7 +65,7 @@ protected:
     CHwSurfaceRenderTarget(
         __inout_ecount(1) CD3DDeviceLevel1 *pD3DDevice,
         MilPixelFormat::Enum fmtTarget,
-        D3DFORMAT d3dfmtTarget,
+        DXGI_FORMAT dxgifmtTarget,
         DisplayId associatedDisplay
         );
 
@@ -220,7 +220,7 @@ public:
     HRESULT Begin3DInternal(
         FLOAT rZ,
         bool fUseZBuffer,
-        __inout_ecount(1) D3DMULTISAMPLE_TYPE &MultisampleType
+        __inout_ecount(1) DXGI_SAMPLE_DESC &multisampleDesc
         );
 
     HRESULT EnsureState(
@@ -240,9 +240,9 @@ public:
         __out_ecount(1) UINT *puHeight
         ) const;
 
-    D3DFORMAT GetD3DTextureFormat() const
+    DXGI_FORMAT GetD3DTextureFormat() const
     {
-        return m_d3dfmtTargetSurface;
+        return m_dxgifmtTargetTexture;
     }
 
     HRESULT GetHwDestinationTexture(
@@ -276,7 +276,7 @@ protected:
         );
 
     void Ensure3DRenderTarget(
-        D3DMULTISAMPLE_TYPE MultisampleType
+        DXGI_SAMPLE_DESC multisampleDesc
         );
 
     HRESULT EnsureDepthState(
@@ -294,15 +294,6 @@ protected:
         __inout_ecount_opt(1) const CPlainPen *pPen,
         __inout_ecount_opt(1) CBrushRealizer *pStrokeBrush,
         __inout_ecount_opt(1) CBrushRealizer *pFillBrush
-        );
-
-    HRESULT SoftwareFillPath(
-        __in_ecount(1) const CContextState *pContextState,
-        __inout_ecount_opt(1) BrushContext *pBrushContext,
-        __in_ecount_opt(1) const CMatrix<CoordinateSpace::Shape,CoordinateSpace::Device> *pmatShapeToDevice,
-        __in_ecount(1) const IShapeData *pShape,
-        __in_ecount(1) CBrushRealizer *pBrushRealizer,
-        HRESULT hrReasonForFallback
         );
 
     HRESULT AcceleratedFillPath(
@@ -353,12 +344,6 @@ protected:
         __in_ecount(1) const CMilRectL &rcRenderingBounds
         );
 
-    HRESULT SoftwareDrawGlyphs(
-        __inout_ecount(1) DrawGlyphsParameters &pars,
-        bool fTargetSupportsClearType,
-        HRESULT hrReasonForFallback
-        );
-
     bool IntersectsRenderTargetBounds(
         __in_ecount(1) const CMilPointAndSizeF &rcShapeBounds
         );
@@ -386,7 +371,7 @@ private:
     HRESULT Setup3DRenderTargetAndDepthState(
         FLOAT rZ,
         bool fUseZBuffer,
-        __inout_ecount(1) D3DMULTISAMPLE_TYPE &MultisampleType
+        __inout_ecount(1) DXGI_SAMPLE_DESC &multisampleDesc
         );
 
 protected:
@@ -403,19 +388,19 @@ protected:
     //
     CD3DDeviceLevel1  * const m_pD3DDevice;
 
-    CD3DSurface *m_pD3DTargetSurface;
+    CD3DTexture *m_pD3DTargetTexture;
 
-    CD3DSurface *m_pD3DIntermediateMultisampleTargetSurface;
+    CD3DTexture *m_pD3DIntermediateMultisampleTargetTexture;
 
-    CD3DSurface *m_pD3DTargetSurfaceFor3DNoRef;
+    CD3DTexture *m_pD3DTargetTextureFor3DNoRef;
 
-    CD3DSurface *m_pD3DStencilSurface;
+    CD3DTexture *m_pD3DStencilTexture;
 
     //
     // Local copies of the surface information.
     //
 
-    D3DFORMAT const m_d3dfmtTargetSurface;
+    DXGI_FORMAT const m_dxgifmtTargetTexture;
 
 #if DBG
 private:
@@ -437,11 +422,11 @@ public:
          *ppSurfaceBitmap = NULL; // DbgGetTargetSurface should be used instead
     }
     override void DbgGetTargetSurface(
-        __deref_out_ecount_opt(1) CD3DSurface **ppD3DSurface
+        __deref_out_ecount_opt(1) CD3DTexture **ppD3DTexture
         ) const
     { 
-        *ppD3DSurface = m_pD3DTargetSurface;
-        m_pD3DTargetSurface->AddRef();
+        *ppD3DTexture = m_pD3DTargetTexture;
+        m_pD3DTargetTexture->AddRef();
     }
     override UINT DbgTargetWidth() const { return m_uWidth; }
     override UINT DbgTargetHeight() const { return m_uHeight; }

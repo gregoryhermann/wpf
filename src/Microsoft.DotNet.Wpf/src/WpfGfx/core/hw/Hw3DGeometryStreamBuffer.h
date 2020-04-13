@@ -174,6 +174,7 @@ private:
     void ReleaseD3DResources();
 
 private:
+    CD3DDeviceLevel1 *m_pDevice;
     D3DVertexBuffer *m_pVertexBuffer;    
     bool m_fLocked;
 };
@@ -249,6 +250,7 @@ private:
     void ReleaseD3DResources();
 
 private:
+    CD3DDeviceLevel1 *m_pDevice;
     D3DIndexBuffer *m_pIndexBuffer;    
     bool m_fLocked;
 };

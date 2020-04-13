@@ -891,19 +891,16 @@ CMilBlurEffectDuce::ApplyEffectImpl(
 {
     HRESULT hr = S_OK;
 
-    // The source texture and surface
+    // The source texture 
     CD3DVidMemOnlyTexture* pTextureNoRef_A = NULL;
-    CD3DSurface* pSurface_A = NULL;
 
-    // The first internal intermediate texture and surface
+    // The first internal intermediate texture 
     CD3DVidMemOnlyTexture* pTexture_B = NULL;
-    CD3DSurface* pSurface_B = NULL;
 
-    // The second internal intermediate texture and surface
+    // The second internal intermediate texture
     CD3DVidMemOnlyTexture* pTexture_C = NULL;
-    CD3DSurface* pSurface_C = NULL;
     
-    CD3DSurface* pPipelineDestSurface = NULL;
+    CD3DTexture* pPipelineDestTexture = NULL;
 
     float* pSamplingWeights = NULL;
 
@@ -936,17 +933,10 @@ CMilBlurEffectDuce::ApplyEffectImpl(
     {
         goto Cleanup;
     }
-
-    IFC(pTextureNoRef_A->GetD3DSurfaceLevel(0, &pSurface_A));
-
-    if (pPipelineDestRT != NULL)
-    {
-        pPipelineDestRT->GetD3DSurfaceLevel(0, &pPipelineDestSurface);
-    }
     
     //
     // Prepare our device for running an effect with the shader pipeline.
-    IFC(pDevice->PrepareShaderEffectPipeline(false /* use vs_2_0 */));
+    IFC(pDevice->PrepareShaderEffectPipeline());
 
     // Ensure the address mode is set to clamp for both samplers used by the blur shader.
     // Set the sampling mode to nearest neighbor for all intermediate passes.
@@ -997,7 +987,7 @@ CMilBlurEffectDuce::ApplyEffectImpl(
         }
         else
         {
-            Assert(pPipelineDestSurface != NULL);
+            Assert(pPipelineDestTexture != NULL);
             // Our destRT is just another intermediate
             IFC(SetupVertexTransform(
                 pContextState, 
@@ -1005,8 +995,8 @@ CMilBlurEffectDuce::ApplyEffectImpl(
                 static_cast<float>(uIntermediateWidth), 
                 static_cast<float>(uIntermediateHeight), 
                 false /* populate for rendering into an intermediate */));
-            IFC(pDevice->SetRenderTargetForEffectPipeline(pPipelineDestSurface));
-            IFC(pDevice->Clear(0, NULL, D3DCLEAR_TARGET, colBlank, 0, 0));
+            IFC(pDevice->SetRenderTargetForEffectPipeline(pPipelineDestTexture));
+            IFC(pDevice->ClearColor(0, NULL, colBlank));
         }
         
         // Draw our final result
@@ -1034,21 +1024,17 @@ CMilBlurEffectDuce::ApplyEffectImpl(
             pDevice, 
             static_cast<UINT>(uIntermediateWidth), 
             static_cast<UINT>(uIntermediateHeight), 
-            D3DFMT_A32B32G32R32F,
+            DXGI_FORMAT_R32G32B32A32_FLOAT,
             &pTexture_B));
 
         Assert(pTexture_B != NULL);
-        IFC(pTexture_B->GetD3DSurfaceLevel(0, &pSurface_B));
 
         IFC(CreateIntermediateRT(
             pDevice, 
             static_cast<UINT>(uIntermediateWidth), 
             static_cast<UINT>(uIntermediateHeight), 
-            D3DFMT_A32B32G32R32F,
+            DXGI_FORMAT_R32G32B32A32_FLOAT,
             &pTexture_C));
-
-        Assert(pTexture_C != NULL);
-        IFC(pTexture_C->GetD3DSurfaceLevel(0, &pSurface_C));
 
         // Populate vertex buffer for all intermediate passes.     
         IFC(SetupVertexTransform(
@@ -1080,9 +1066,7 @@ CMilBlurEffectDuce::ApplyEffectImpl(
             pSamplingWeights, 
             pTextureNoRef_A, 
             pTexture_B,
-            pSurface_B,
-            pTexture_C,
-            pSurface_C));
+            pTexture_C));
         
         // 
         // 2) Fill our new "source" texture from the horizontally blurred intermediate.
@@ -1092,18 +1076,18 @@ CMilBlurEffectDuce::ApplyEffectImpl(
         if (pFinalDestRT != NULL)
         {
             // We'll render back into our source texture
-            IFC(pDevice->SetRenderTargetForEffectPipeline(pSurface_A));
+            IFC(pDevice->SetRenderTargetForEffectPipeline(pTextureNoRef_A));
         }
         else
         // If we're rendering into another effect's pipeline, we can't overwrite the source, but we
         // can use our destination intermediate.
         {
-            Assert(pPipelineDestSurface != NULL);
+            Assert(pPipelineDestTexture != NULL);
             // We'll render directly into our second intermediate texture
-            IFC(pDevice->SetRenderTargetForEffectPipeline(pPipelineDestSurface));               
+            IFC(pDevice->SetRenderTargetForEffectPipeline(pPipelineDestTexture));               
         }
         
-        IFC(pDevice->Clear(0, NULL, D3DCLEAR_TARGET, colBlank, 0, 0));
+        IFC(pDevice->ClearColor(0, NULL, colBlank));
 
         // Draw horizontal result to new source.  We set the source texture in ExecutePasses.
         IFC(pDevice->SetPassThroughPixelShader());
@@ -1122,7 +1106,7 @@ CMilBlurEffectDuce::ApplyEffectImpl(
         }
         else
         {
-            Assert(pPipelineDestSurface != NULL);
+            Assert(pPipelineDestTexture != NULL);
             // We rendered directly into our destination intermediate.
             IFC(pDevice->SetTexture(0, pPipelineDestRT));              
         }
@@ -1136,9 +1120,7 @@ CMilBlurEffectDuce::ApplyEffectImpl(
             pSamplingWeights, 
             pTextureNoRef_A, 
             pTexture_B,
-            pSurface_B,
-            pTexture_C,
-            pSurface_C));
+            pTexture_C));
 
         //
         // 4) Final Pass
@@ -1174,11 +1156,11 @@ CMilBlurEffectDuce::ApplyEffectImpl(
         }
         else
         {           
-            Assert(pPipelineDestSurface != NULL);
+            Assert(pPipelineDestTexture != NULL);
             // We'll render directly into our destination intermediate texture
-            IFC(pDevice->SetRenderTargetForEffectPipeline(pPipelineDestSurface));  
+            IFC(pDevice->SetRenderTargetForEffectPipeline(pPipelineDestTexture));  
             // We need to clear this since we've drawn an intermediate result into it.
-            IFC(pDevice->Clear(0, NULL, D3DCLEAR_TARGET, colBlank, 0, 0));
+            IFC(pDevice->ClearColor(0, NULL, colBlank));
         }
 
         // Draw final result
@@ -1201,12 +1183,9 @@ CMilBlurEffectDuce::ApplyEffectImpl(
             pDevice, 
             static_cast<UINT>(uIntermediateWidth), 
             static_cast<UINT>(uIntermediateHeight), 
-            D3DFMT_A8R8G8B8,
+            DXGI_FORMAT_B8G8R8A8_UNORM,
             &pTexture_B));
 
-        Assert(pTexture_B != NULL);
-        IFC(pTexture_B->GetD3DSurfaceLevel(0, &pSurface_B));
-        
         // Populate vertex buffer for all intermediate passes.     
         IFC(SetupVertexTransform(
             pContextState, 
@@ -1225,47 +1204,46 @@ CMilBlurEffectDuce::ApplyEffectImpl(
 
         // Set texture to source texture
         IFC(pDevice->SetTexture(0, pTextureNoRef_A));
-        IFC(pDevice->SetRenderTargetForEffectPipeline(pSurface_B));
+        IFC(pDevice->SetRenderTargetForEffectPipeline(pTexture_B));
 
         // Set the blend mode to add.  The samples from each horizontal pass will
         // be added into the intermediate.
         IFC(pDevice->SetAlphaBlendMode(&CD3DRenderState::sc_abmAddSourceColor));
 
-        IFC(pDevice->Clear(0, NULL, D3DCLEAR_TARGET, colBlank, 0, 0));
+        IFC(pDevice->ClearColor(0, NULL, colBlank));
 
         //
         // Execute horizontal passes
         IFC(ExecutePasses(
-            pDevice, 
-            true /* horizontal */, 
+            pDevice,
+            true /* horizontal */,
             false /* performance */,
-            radius, 
-            static_cast<float>(uIntermediateWidth) /* size = width */, 
-            pSamplingWeights, 
-            pTextureNoRef_A, 
+            radius,
+            static_cast<float>(uIntermediateWidth) /* size = width */,
+            pSamplingWeights,
+            pTextureNoRef_A,
             pTexture_B,
-            pSurface_B,
-            NULL, /* the second intermediate is not created for performance passes */
-            NULL));
+            NULL)); /* the second intermediate is not created for performance passes */
+            
 
         // If we're rendering into a final destination, we can overwrite the source at this point.
         // We're using texture B as our source (set in ExecutePasses).
         if (pFinalDestRT != NULL)
         {
             // We'll render back into our source texture
-            IFC(pDevice->SetRenderTargetForEffectPipeline(pSurface_A));
+            IFC(pDevice->SetRenderTargetForEffectPipeline(pTextureNoRef_A));
         }
         else
         // If we're rendering into another effect's pipeline, we can't overwrite the source, but
         // since we don't need to apply the world transform at the end we can simply write all
         // vertical passes into the destination intermediate.
         {
-            Assert(pPipelineDestSurface != NULL);
+            Assert(pPipelineDestTexture != NULL);
             // We'll render directly into our second intermediate texture
-            IFC(pDevice->SetRenderTargetForEffectPipeline(pPipelineDestSurface));               
+            IFC(pDevice->SetRenderTargetForEffectPipeline(pPipelineDestTexture));               
         }
 
-        IFC(pDevice->Clear(0, NULL, D3DCLEAR_TARGET, colBlank, 0, 0));
+        IFC(pDevice->ClearColor(0, NULL, colBlank));
 
         //
         // Execute vertical passes        
@@ -1278,9 +1256,7 @@ CMilBlurEffectDuce::ApplyEffectImpl(
             pSamplingWeights, 
             pTextureNoRef_A, 
             pTexture_B,
-            pSurface_B,
-            NULL, /* the second intermediate is not created for performance passes */
-            NULL));
+            NULL)); /* the second intermediate is not created for performance passes */
 
         
         // Reset the blend mode since we're done blurring.
@@ -1333,15 +1309,10 @@ Cleanup:
         pSamplingWeights = NULL;
     }
 
-    ReleaseInterface(pPipelineDestSurface);
+    ReleaseInterface(pPipelineDestTexture);
 
-    ReleaseInterface(pSurface_A);
-    
     ReleaseInterface(pTexture_B);
-    ReleaseInterface(pSurface_B);
-
     ReleaseInterface(pTexture_C);
-    ReleaseInterface(pSurface_C);
     
     RRETURN(hr);
 }
@@ -1367,9 +1338,7 @@ CMilBlurEffectDuce::ExecutePasses(
     __in float* pSamplingWeights,
     __in CD3DVidMemOnlyTexture* pTextureNoRef_A,
     __in CD3DVidMemOnlyTexture* pTexture_B,
-    __in CD3DSurface* pSurface_B,
-    __in_opt CD3DVidMemOnlyTexture* pTexture_C,
-    __in_opt CD3DSurface* pSurface_C
+    __in_opt CD3DVidMemOnlyTexture* pTexture_C
     )
 {
     HRESULT hr = S_OK;
@@ -1410,9 +1379,9 @@ CMilBlurEffectDuce::ExecutePasses(
         {
             // On odd passes, sample from C and draw into B. On even passes, sample from B and draw into C.
             IFC(pDevice->SetTexture(1, (passNumber%2 == 1) ? pTexture_C : pTexture_B));
-            IFC(pDevice->SetRenderTargetForEffectPipeline((passNumber%2 == 1) ? pSurface_B : pSurface_C));
+            IFC(pDevice->SetRenderTargetForEffectPipeline((passNumber%2 == 1) ? pTexture_B : pTexture_C));
 
-            IFC(pDevice->Clear(0, NULL, D3DCLEAR_TARGET, colBlank, 0, 0));
+            IFC(pDevice->ClearColor(0, NULL, colBlank));
         }
 
         // We use the single input shaders for performance passes, and the first pass of quality passes.

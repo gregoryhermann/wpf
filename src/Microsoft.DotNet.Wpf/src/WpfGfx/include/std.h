@@ -353,18 +353,18 @@ RtlAssert(
 #pragma warning (disable:4005) // suppress macro redefinition warning
 #include <D2D1.h>
 
-//#define DX11
+#define DX11
 
 #ifdef DX11
-#include <d3d11.h>
+#include <d3d11_1.h>
 
 typedef ID3D11Device D3DDevice;
-typedef ID3D11DeviceContext D3DDeviceContext;
-typedef ID3D11DeviceContext D3DDeviceContextEx;
+typedef ID3D11DeviceContext1 D3DDeviceContext;
+typedef ID3D11DeviceContext1 D3DDeviceContextEx;
 typedef ID3D11Buffer D3DIndexBuffer;
 typedef ID3D11Buffer D3DVertexBuffer;
 typedef ID3D11Texture2D D3DTexture;
-typedef ID3D11Texture2D D3DSurface;
+typedef IDXGISurface1 D3DSurface;
 
 #else
 #include <d3d9.h>

@@ -90,7 +90,7 @@ public:
     {
         UINT uLength;                     // Texels
         TexelLayout eLayout;              // Texel Layout
-        D3DTEXTUREADDRESS d3dta;          // Texture addressing mode
+        MilBitmapWrapMode::Enum wrapMode;
     };
 
     //+------------------------------------------------------------------------
@@ -302,7 +302,7 @@ protected:
         __in_ecount(1) CD3DDeviceLevel1 *pDevice,
         __in_ecount_opt(1) IWGXBitmap *pBitmap,
         MilPixelFormat::Enum fmt,
-        __in_ecount(1) const D3DSURFACE_DESC &d3dsd,
+        __in_ecount(1) const D3D11_TEXTURE2D_DESC &desc,
         UINT uLevels
         );
     ~CHwBitmapColorSource();
@@ -380,7 +380,7 @@ public:
 
     bool IsARenderTarget() const
     {
-        return m_d3dsdRequired.Usage & D3DUSAGE_RENDERTARGET;
+        return m_descRequired.BindFlags & D3D11_BIND_RENDER_TARGET;
     }
 
     MilPixelFormat::Enum Format() const
@@ -402,10 +402,10 @@ public:
 
 protected:
 
-    static VOID GetD3DSDRequired(
+    static VOID GetTextureDescRequired(
         __in_ecount(1) const CD3DDeviceLevel1 *pDevice,
         __in_ecount(1) const CacheParameters &oRealizationParams,
-        __out_ecount(1) D3DSURFACE_DESC *pd3dsdRequired,
+        __out_ecount(1) D3D11_TEXTURE2D_DESC *pdescRequired,
         __out_ecount(1) UINT *puLevels
         );
 
@@ -608,8 +608,8 @@ private:
     HRESULT PrepareToPushSourceBitsToVidMem(
         BOOL fBitmapSourceIsCBitmap,
         __deref_out_ecount_opt(1) IWGXBitmapLock **ppILock,
-        __out_ecount(1) bool *pfShouldCopySourceToSysMemSurface,
-        __deref_out_ecount(1) D3DSurface** ppD3DSysMemSurface
+        __out_ecount(1) bool *pfShouldCopySourceToSysMemTexture,
+        __deref_out_ecount(1) D3DTexture** ppD3DSysMemTexture
         DBG_COMMA_PARAM(__in_ecount(1) IWGXBitmapSource *pIDBGBitmapSource)
         );
 
@@ -639,69 +639,17 @@ private:
         __in_ecount(1) IWGXBitmapSource *pIBitmapSource,
         __in_range(>=,1) UINT cDirtyRects,
         __inout_ecount(cDirtyRects) CMilRectU *rgDestDirtyRects,
-        __inout_ecount(1) D3DSurface *pD3DSysMemSurface,
-        bool fCopySourceToSysMemSurface
+        __inout_ecount(1) D3DTexture *pD3DSysMemTexture,
+        bool fCopySourceToSysMemTexture
         );
     
-    HRESULT GetSysMemUpdateSurfaceSource(
+    HRESULT GetSysMemUpdateTextureSource(
         __in_opt void *pvReferenceBits,
         UINT uWidth,
         UINT uHeight,
         bool fCanCreateFromBits,
-        __deref_out_ecount(1) D3DSurface** ppD3DSysMemSurface
+        __deref_out_ecount(1) D3DTexture** ppD3DSysMemTexture
         );
-
-protected:
-
-    static VOID AssertMinimalTextureDesc(
-        __in_ecount(1) const CD3DDeviceLevel1 *pDevice,
-        D3DTEXTUREADDRESS taU,
-        D3DTEXTUREADDRESS taV,
-        __in_ecount(1) const D3DSURFACE_DESC *d3dsdRequired
-        )
-    #if DBG
-        ;
-    #else
-    {
-        UNREFERENCED_PARAMETER(pDevice);
-        UNREFERENCED_PARAMETER(taU);
-        UNREFERENCED_PARAMETER(taV);
-        UNREFERENCED_PARAMETER(d3dsdRequired);
-    }
-    #endif
-
-
-private:
-
-    #if DBG
-        void AssertSysMemSurfaceDescriptionNotChanged(
-            __in_ecount(1) D3DSurface *pD3DSysMemSurface,
-            UINT Width,
-            UINT Height
-            );
-
-        void AssertSysMemTextureDescriptionNotChanged(
-            __in_ecount(1) D3DTexture *pD3DSysMemTexture
-            );
-    #else
-        MIL_FORCEINLINE void AssertSysMemSurfaceDescriptionNotChanged(
-            __in_ecount(1) D3DSurface *pD3DSysMemSurface,
-            UINT Width,
-            UINT Height
-            )
-        {
-            UNREFERENCED_PARAMETER(pD3DSysMemSurface);
-            UNREFERENCED_PARAMETER(Width);
-            UNREFERENCED_PARAMETER(Height);
-        }
-
-        MIL_FORCEINLINE void AssertSysMemTextureDescriptionNotChanged(
-            __in_ecount(1) D3DTexture *pD3DSysMemTexture
-            )
-        {
-            UNREFERENCED_PARAMETER(pD3DSysMemTexture);
-        }
-    #endif
 
 protected:
 
@@ -734,14 +682,14 @@ protected:
 
 private:
 
-    D3DSURFACE_DESC const m_d3dsdRequired;  // Description of surface needed to
-                                            // realize this bitmap
+    D3D11_TEXTURE2D_DESC const m_descRequired;  // Description of surface needed to
+                                                // realize this bitmap
 
     UINT const m_uLevels;                   // Number of mip-map levels to
                                             // create texture with
 
     void *m_pvReferencedSystemBits;       // pointer to the bits that the bitmap had during the last lock.
-    D3DSurface* m_pD3DSysMemRefSurface; // cache of system memory surface that references the bitmap bits
+    D3DTexture* m_pD3DSysMemRefTexture; // cache of system memory surface that references the bitmap bits
 
     CHwBitmapColorSource *m_pbcsRealizationSources;     // A list of realized
                                                         // Hw color source that

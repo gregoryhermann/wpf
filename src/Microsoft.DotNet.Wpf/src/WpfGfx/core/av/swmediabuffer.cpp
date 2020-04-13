@@ -146,7 +146,11 @@ DoneWithBitmap(
 
     if (m_systemMemoryValid)
     {
+#ifndef DX11
         IFC(m_pIBitmapSurface->UnlockRect());
+#else
+        IFC(m_pIBitmapSurface->Unmap());
+#endif
 
         m_systemMemoryValid = false;
     }
@@ -185,6 +189,7 @@ Init(
 
     GetUnderlyingDevice(m_pRenderDevice, &pIDevice);
 
+#ifndef DX11
     IFC(pIDevice->CreateRenderTarget(
             m_uiWidth,
             m_uiHeight,
@@ -194,7 +199,7 @@ Init(
             TRUE,                   // This surface must be lockable
             &m_pIBitmapSurface,
             NULL));                 // No shared handle required for the render target.
-
+#endif
     //
     // Especially in this case, need to pass this up to the CMFMediaBuffer to allow
     // this to be lockable.
@@ -296,17 +301,22 @@ AliasBitmap(
     //
     if (!m_systemMemoryValid && !initializing)
     {
+#ifndef DX11
         m_pIBitmapSurface->UnlockRect();
+#else
+        m_pIBitmapSurface->Unmap();
+#endif
     }
 
     //
     // Lock the corresponding lockable texture
     //
+#ifndef DX11
     IFC(m_pIBitmapSurface->LockRect(
             &lockedRect,
             NULL,       // Just lock everything
             0));
-
+#endif
     surfaceLocked = true;
 
     //
@@ -338,7 +348,11 @@ Cleanup:
 
     if (FAILED(hr) && surfaceLocked)
     {
+#ifndef DX11
         IGNORE_HR(m_pIBitmapSurface->UnlockRect());
+#else
+        IGNORE_HR(m_pIBitmapSurface->Unmap());
+#endif
     }
 
     EXPECT_SUCCESS(hr);

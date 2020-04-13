@@ -101,7 +101,8 @@ public:
     // border color instead of default clamping.
     void ForceBorder()
     {
-        m_taU = m_taV = D3DTADDRESS_BORDER;
+        m_wrapModeU = MilBitmapWrapMode::Border;
+        m_wrapModeV = MilBitmapWrapMode::Border;
     }
 
     // Set a clip parallelogram that will be implemented
@@ -120,15 +121,9 @@ public:
         );
 
     void SetWrapModes(
-        D3DTEXTUREADDRESS taU,
-        D3DTEXTUREADDRESS taV
-        );
-
-    static void ConvertWrapModeToTextureAddressModes(
-        MilBitmapWrapMode::Enum wrapMode,
-        __out_ecount(1) D3DTEXTUREADDRESS *ptaU,
-        __out_ecount(1) D3DTEXTUREADDRESS *ptaV
-        );
+        MilBitmapWrapMode::Enum wrapModeU,
+        MilBitmapWrapMode::Enum wrapModeV
+    );
 
 private:
 
@@ -142,16 +137,13 @@ protected:
 
     void SetFilterAndWrapModes(
         MilBitmapInterpolationMode::Enum interpolationMode,
-        D3DTEXTUREADDRESS taU,
-        D3DTEXTUREADDRESS taV
-        );
+        MilBitmapWrapMode::Enum wrapModeU,
+        MilBitmapWrapMode::Enum wrapModeV
+    );
 
     void SetFilterMode(
         MilBitmapInterpolationMode::Enum interpolationMode
-        );
-
-    D3DTEXTUREADDRESS GetTAU() const { return m_taU; }
-    D3DTEXTUREADDRESS GetTAV() const { return m_taV; }
+    );
 
     HRESULT CalcTextureTransform(
         __in_ecount(1) const BitmapToXSpaceTransform *pBitmapToXSpaceTransform,
@@ -194,6 +186,8 @@ protected:
     }
 #endif
 
+    MilBitmapWrapMode::Enum GetWrapU() const { return m_wrapModeU; }
+    MilBitmapWrapMode::Enum GetWrapV() const { return m_wrapModeV; }
 
 protected:
 
@@ -204,8 +198,8 @@ protected:
 private:
 
     const FilterMode *m_pFilterMode;    // Filter settings for render state
-
-    D3DTEXTUREADDRESS m_taU, m_taV;     // Current texture addressing/wrapping modes
+    MilBitmapWrapMode::Enum m_wrapModeU;
+    MilBitmapWrapMode::Enum m_wrapModeV;
 
     bool m_fUseHwTransform;             // Request tex coordinate transform
                                         // from hardware device

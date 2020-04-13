@@ -172,8 +172,9 @@ GetUnderlyingDevice(
     )
 {
     MediaDeviceConsumer mdc;
-
+#ifndef DX11
     pCD3DDeviceLevel1->InitializeIMediaDeviceConsumer(&mdc);
+#endif
 
     mdc.GetD3DDeviceContext(ppD3DDeviceContext);
 }

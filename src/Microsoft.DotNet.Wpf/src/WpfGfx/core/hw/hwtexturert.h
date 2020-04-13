@@ -43,7 +43,7 @@ private:
     CHwTextureRenderTarget(
         __inout_ecount(1) CD3DDeviceLevel1 *pD3DDevice,
         MilPixelFormat::Enum fmtTarget,
-        D3DFORMAT d3dfmtTarget,
+        DXGI_FORMAT dxgiFmtTarget,
         DisplayId associatedDisplay
         );
 
@@ -58,7 +58,7 @@ private:
     HRESULT GetSurfaceDescription(
         UINT uWidth,
         UINT uHeight,
-        __out_ecount(1) D3DSURFACE_DESC &sdLevel0
+        __out_ecount(1) D3D11_TEXTURE2D_DESC &sdLevel0
     ) const;
 
 public:

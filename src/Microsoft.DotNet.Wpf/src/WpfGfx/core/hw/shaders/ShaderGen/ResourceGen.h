@@ -47,34 +47,27 @@ public:
         );
     HRESULT CompileEffect(
         __in WCHAR const *pszEffectFileName,
+        __in char const* pszTechniqueName,
         __in char const *pszEffectName
         );
     ~CResourceGen();
 
 private:
-    HRESULT WriteEffect();
-    HRESULT WriteTechnique();
-    HRESULT WritePass();
     HRESULT WritePixelShader();
-    HRESULT WriteVertexShader();
     void WriteDwordArray(
-        __in DWORD const *pFunction
-        );
+        __in DWORD const *pFunction,
+        __in DWORD cbLen
+    );
 
 private:
     static char const sc_szTitle[];
 
-    D3DDeviceContext *m_pDevice;
     FILE *m_pFileRc;
     FILE *m_pFileHpp;
-    ID3DXEffect *m_pEffect;
+    ID3DBlob* m_pShader;
+    ID3DBlob* m_pCompilationErrors;
     char const *m_pszEffectName;
-
-    D3DXHANDLE m_hTechnique;
-    D3DXTECHNIQUE_DESC m_descTechnique;
-
-    D3DXHANDLE m_hPass;
-    D3DXPASS_DESC m_descPass;
+    char const* m_pszTechniqueName;
 
     UINT m_cbTotal;
     UINT m_uEnumCurrent;

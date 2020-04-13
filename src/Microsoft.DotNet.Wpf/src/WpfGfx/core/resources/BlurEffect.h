@@ -200,9 +200,7 @@ private:
         __in float* pSamplingWeights,
         __in CD3DVidMemOnlyTexture* pTextureNoRef_A,
         __in CD3DVidMemOnlyTexture* pTexture_B,
-        __in CD3DSurface* pSurface_B,
-        __in_opt CD3DVidMemOnlyTexture* pTexture_C,
-        __in_opt CD3DSurface* pSurface_C
+        __in_opt CD3DVidMemOnlyTexture* pTexture_C
         );
 
     HRESULT ApplyGaussianBlurSw(__in_ecount(sourceWidth * sourceHeight * 4) BYTE * pInputOutputBuffer,

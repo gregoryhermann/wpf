@@ -44,12 +44,10 @@ MtDefine(CHwHWNDRenderTarget, MILRender, "CHwHWNDRenderTarget");
 
 CHwHWNDRenderTarget::CHwHWNDRenderTarget(
     __inout_ecount(1) CD3DDeviceLevel1 *pD3DDevice,
-    __in_ecount(1) D3DPRESENT_PARAMETERS const &D3DPresentParams,
-    UINT AdapterOrdinalInGroup,
     DisplayId associatedDisplay,
     MilWindowLayerType::Enum eWindowLayerType
     ) :
-    CHwDisplayRenderTarget(pD3DDevice, D3DPresentParams, AdapterOrdinalInGroup, associatedDisplay),
+    CHwDisplayRenderTarget(pD3DDevice, DXGI_FORMAT_B8G8R8A8_UNORM, associatedDisplay),
     m_eWindowLayerType(eWindowLayerType)
 {
 }
@@ -69,16 +67,16 @@ HRESULT
 CHwHWNDRenderTarget::Init(
     __in_ecount_opt(1) HWND hwnd,
     __in_ecount(1) CDisplay const *pDisplay,
-    D3DDEVTYPE type, 
     MilRTInitialization::Flags dwFlags
     )
 {
     HRESULT hr = S_OK;
 
+    m_hwnd = hwnd;
+
     IFC(CHwDisplayRenderTarget::Init(
         hwnd,
         pDisplay,
-        type,
         dwFlags));
     
     // Finish initialization with 0x0 flipping chain.  A call to Resize
@@ -89,40 +87,6 @@ CHwHWNDRenderTarget::Init(
 
     // Call base init only after size has been updated by UpdateFlippingChain
     IFC(CBaseRenderTarget::Init());
-
-    //
-    // Check to see if we need to present linear content to a non-linear
-    // display format
-    //
-
-    if (m_D3DPresentParams.BackBufferFormat == D3DFMT_A2R10G10B10)
-    {
-        D3DDISPLAYMODE d3ddm;
-
-        IFC(pDisplay->D3DObject()->GetAdapterDisplayMode(
-                pDisplay->GetDisplayIndex(),
-                &d3ddm
-                ));
-
-        if (d3ddm.Format != D3DFMT_A2R10G10B10)
-        {
-            if (!m_pD3DDevice->SupportsLinearTosRGBPresentation())
-            {
-                IFC(WGXERR_DISPLAYFORMATNOTSUPPORTED);
-            }
-
-            m_dwPresentFlags |= D3DPRESENT_LINEAR_CONTENT;
-        }
-        else
-        {
-            // The only way known to enable A2R10G10B10 is with a fullscreen
-            // D3D RT (not enabled in WPF) so output a little warning if we see 
-            // something else.  It could mean that the system is in transition 
-            // or that the DWM has enabled A2R10G10B10, but this is just an application.
-            TraceTag((tagMILWarning,
-                      "Display mode is A2R10G10B10, but RT is not fullscreen."));
-        }
-    }
 
 Cleanup:
     RRETURN(hr);
@@ -250,6 +214,7 @@ CHwHWNDRenderTarget::UpdateFlippingChain(
     )
 {
     HRESULT hr = S_OK;
+    DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
 
     Assert(m_pD3DDevice);
 
@@ -257,9 +222,13 @@ CHwHWNDRenderTarget::UpdateFlippingChain(
     // Release old resources
     //
 
-    ReleaseInterface(m_pD3DTargetSurface);
+    if (m_pD3DTargetTexture != nullptr)
+    {
+        m_pD3DTargetTexture->DestroyAndRelease();
+        m_pD3DTargetTexture = nullptr;
+    }
 
-    if (m_pD3DIntermediateMultisampleTargetSurface)
+    if (m_pD3DIntermediateMultisampleTargetTexture)
     {
         //
         // If new size of less than a quarter of current intermediate use
@@ -267,18 +236,16 @@ CHwHWNDRenderTarget::UpdateFlippingChain(
         //
 
         ULONGLONG ullSizeCur =
-            m_pD3DIntermediateMultisampleTargetSurface->Desc().Width *
-            m_pD3DIntermediateMultisampleTargetSurface->Desc().Height;
+            m_pD3DIntermediateMultisampleTargetTexture->D3DSurface0Desc().Width *
+            m_pD3DIntermediateMultisampleTargetTexture->D3DSurface0Desc().Height;
 
         ULONGLONG ullSizeNew = uWidth * uHeight;
 
         if (ullSizeNew < ullSizeCur / 4)
         {
-            ReleaseInterface(m_pD3DIntermediateMultisampleTargetSurface);
+            ReleaseInterface(m_pD3DIntermediateMultisampleTargetTexture);
         }
     }
-
-    ReleaseInterface(m_pD3DSwapChain);
 
     //
     // Don't render when minimized or empty
@@ -291,21 +258,52 @@ CHwHWNDRenderTarget::UpdateFlippingChain(
     }
 
     //
-    // Update Present Parameters
-    //
-
-    m_D3DPresentParams.BackBufferWidth = uWidth;
-    m_D3DPresentParams.BackBufferHeight = uHeight;
-
-    //
     // Create flipping chain
     //
 
-    IFCSUB1(m_pD3DDevice->CreateAdditionalSwapChain(
-        &m_MILDC,    
-        &m_D3DPresentParams,
-        &m_pD3DSwapChain
+    if (m_pD3DSwapChain != nullptr)
+    {
+        m_pD3DSwapChain->DestroyAndRelease();
+        m_pD3DSwapChain = nullptr;
+    }
+
+    if (m_pD3DSwapChain == nullptr)
+    {
+        IDXGIFactory2* pFactory = nullptr;
+        IFC(CreateDXGIFactory(__uuidof(pFactory), reinterpret_cast<void**>(&pFactory)));
+
+        swapChainDesc.BufferCount = 2;
+        swapChainDesc.Width = 0;
+        swapChainDesc.Height = 0;
+        swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+        swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+        swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+        swapChainDesc.SampleDesc.Count = 1;
+
+        IDXGISwapChain1* pD3DSwapChain = nullptr;
+        IFCSUB1(pFactory->CreateSwapChainForHwnd(
+            m_pD3DDevice->GetDevice(),
+            m_hwnd,
+            &swapChainDesc,
+            nullptr,
+            nullptr,
+            &pD3DSwapChain
         ));
+
+        IFC(CD3DSwapChain::Create(
+            m_pD3DDevice,
+            pD3DSwapChain,
+            &m_MILDC,
+            &m_pD3DSwapChain
+        ));
+
+        pD3DSwapChain->Release();
+    }
+    else
+    {
+        m_pD3DSwapChain->GetD3DSwapChainNoRef()->ResizeBuffers(2, uWidth, uHeight, DXGI_FORMAT_B8G8R8A8_UNORM, 0);
+        m_pD3DSwapChain = nullptr;
+    }
 
     //
     // Get the current back buffer and update CHwDisplayRenderTarget
@@ -319,7 +317,7 @@ CHwHWNDRenderTarget::UpdateFlippingChain(
     m_uWidth = uWidth;
     m_uHeight = uHeight;
 
-    IFCSUB1(m_pD3DSwapChain->GetBackBuffer(0, &m_pD3DTargetSurface));
+    IFCSUB1(m_pD3DSwapChain->GetBackBuffer(0, &m_pD3DTargetTexture));
 
     //
     // Reset dirty list for new frame (expected next) in case there was a

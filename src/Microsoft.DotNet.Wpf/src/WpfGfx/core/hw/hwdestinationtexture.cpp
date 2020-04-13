@@ -445,7 +445,7 @@ CHwDestinationTexture::SetContents(
         // If our dimensions are valid create a texture
         if (m_uTextureWidth > 0 && m_uTextureHeight > 0)
         {
-            D3DSURFACE_DESC sdLevel0;
+            D3D11_TEXTURE2D_DESC descLevel0;
             
             // We're recreating the texture, so we'll need to re-realize
             m_fValidRealization = false;
@@ -454,29 +454,13 @@ CHwDestinationTexture::SetContents(
 
             PopulateSurfaceDesc(
                 PixelFormatToD3DFormat(fmtRT),
-                D3DPOOL_DEFAULT,
-                D3DUSAGE_RENDERTARGET,
                 m_uTextureWidth,
                 m_uTextureHeight,
-                &sdLevel0
+                &descLevel0
                 );
 
-            // No need call GetMinimalTextureDesc since this surface is a
-            // representation of the target surface which has already been
-            // successfully validated.
-#if DBG
-
-            D3DSURFACE_DESC sd = sdLevel0;
-            Assert(SUCCEEDED(m_pDevice->GetMinimalTextureDesc(
-                &sd, 
-                FALSE, 
-                GMTD_IGNORE_FORMAT | GMTD_NONPOW2CONDITIONAL_OK
-                )));
-            
-            Assert(sdLevel0.Width == sd.Width);
-            Assert(sdLevel0.Height == sd.Height);
-
-#endif
+            // Make sure is bindable as a render target and shader resource
+            descLevel0.BindFlags |= D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
 
             //
             // IMPORTANT: Do not create an evictable video
@@ -487,7 +471,7 @@ CHwDestinationTexture::SetContents(
             //
 
             IFC(CD3DVidMemOnlyTexture::Create(
-                &sdLevel0,
+                &descLevel0,
                 1,      // levels
                 false,  // fIsEvictable
                 m_pDevice,
@@ -500,10 +484,10 @@ CHwDestinationTexture::SetContents(
             //
 
             SetFilterAndWrapModes(
-                MilBitmapInterpolationMode::NearestNeighbor, 
-                D3DTADDRESS_CLAMP, 
-                D3DTADDRESS_CLAMP
-                );
+                MilBitmapInterpolationMode::NearestNeighbor,
+                MilBitmapWrapMode::Extend,
+                MilBitmapWrapMode::Extend
+            );
             
             // Remember format
             m_fmtTexture = fmtRT;
@@ -701,31 +685,16 @@ CHwDestinationTexture::DbgSetContentsInvalid(
 {
     HRESULT hr = S_OK;
 
-    D3DSurface *pDestSurface = NULL;
-
-
-    // get the destination surface
-    {
-        D3DTexture *pDestTextureNoRef = m_pBackgroundTexture->GetD3DTextureNoRef();
-    
-        IFC(pDestTextureNoRef->GetSurfaceLevel(
-            0,
-            &pDestSurface
-            ));
-    }
-
     // fill to some kind of purple
     D3DCOLOR fillColor = D3DCOLOR_ARGB(255, 255, 0, 128);
 
     IFC(pDevice->ColorFill(
-        pDestSurface,
+        m_pBackgroundTexture,
         NULL,
         fillColor
         ));
  
 Cleanup:
-    ReleaseInterfaceNoNULL(pDestSurface);
-
     RRETURN(hr);
 }
 #endif

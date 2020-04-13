@@ -128,59 +128,9 @@ namespace dxlayer
             // We will query D3DCAPS9 to identify the best supported
             // profile name. If that query fails, then the following 
             // default name will be used as a fallback. 
-            const std::string default_profile_name = "ps_3_0";
+            const std::string default_profile_name = "ps_4_0_level_9_3";
 
-            std::string pixel_shader_profile = default_profile_name;
-
-            if (pD3DDevice != nullptr)
-            {
-                D3DCAPS9 d3dCaps;
-                if (SUCCEEDED(pD3DDevice->GetDeviceCaps(&d3dCaps)))
-                {
-                    switch (d3dCaps.PixelShaderVersion)
-                    {
-                    case D3DPS_VERSION(2, 0):
-                        pixel_shader_profile = "ps_2_0";
-                        break;
-                    case D3DPS_VERSION(2, 2):
-                        pixel_shader_profile = "ps_2_a";
-                        break;
-                    case D3DPS_VERSION(3, 0):
-                        pixel_shader_profile = "ps_3_0";
-                        break;
-                    case D3DPS_VERSION(4, 0):
-                        if ((d3dCaps.PS20Caps.NumTemps >= 32) &&
-                            (d3dCaps.PS20Caps.Caps & D3DPS20CAPS_ARBITRARYSWIZZLE) &&
-                            (d3dCaps.PS20Caps.Caps & D3DPS20CAPS_GRADIENTINSTRUCTIONS) &&
-                            (d3dCaps.PS20Caps.Caps & D3DPS20CAPS_PREDICATION) &&
-                            (d3dCaps.PS20Caps.Caps & D3DPS20CAPS_NODEPENDENTREADLIMIT) &&
-                            (d3dCaps.PS20Caps.Caps & D3DPS20CAPS_NOTEXINSTRUCTIONLIMIT))
-                        {
-                            pixel_shader_profile = "ps_4_0_level_9_3";
-                        }
-                        else if (d3dCaps.PS20Caps.NumTemps >= 12)
-                        {
-                            pixel_shader_profile = "ps_4_0_level_9_1";
-                        }
-                        break;
-                    case D3DPS_VERSION(1, 1):
-                    case D3DPS_VERSION(1, 2):
-                    case D3DPS_VERSION(1, 3):
-                    case D3DPS_VERSION(1, 4):
-                    default:
-                        // D3DCompile* API's do not support 1.x pixel shaders. The last version 
-                        // of HLSL to support these targets was D3DX9 in the Oct 2006 release of 
-                        // the DirectX SDK. All versions of D3DX and the DirectX SDK (i.e., separate
-                        // SDK's that shipped outside of the Windows SDK) are deprecated.
-                        // 
-                        // Feature levels > 4.0 correspond to DirectX 10 or above. 
-                        // Those are not (yet) supported in wpfgfx.
-                        break;
-                    }
-                }
-            }
-
-            return pixel_shader_profile;
+            return default_profile_name;
         }
 
 #pragma endregion
@@ -198,58 +148,9 @@ namespace dxlayer
         static std::string get_vertex_shader_profile_name<D3DDeviceContext>(
             D3DDeviceContext* pD3DDevice)
         {
-            // We will query D3DCAPS9 to identify the best supported
-            // profile name. If that query fails, then the following 
-            // default name will be used as a fallback. 
-            const std::string default_profile_name = "vs_3_0";
+            const std::string default_profile_name = "vs_4_0_level_9_3";
 
-            std::string vertex_shader_profile = default_profile_name;
-
-            if (pD3DDevice != nullptr)
-            {
-                D3DCAPS9 d3dCaps;
-                if (SUCCEEDED(pD3DDevice->GetDeviceCaps(&d3dCaps)))
-                {
-                    switch (d3dCaps.VertexShaderVersion)
-                    {
-                    case D3DVS_VERSION(2, 0):
-                        vertex_shader_profile = "vs_2_0";
-                        break;
-                    case D3DVS_VERSION(2, 2):
-                        vertex_shader_profile = "vs_2_a";
-                        break;
-                    case D3DVS_VERSION(3, 0):
-                        vertex_shader_profile = "vs_3_0";
-                        break;
-                    case D3DVS_VERSION(4, 0):
-                        if ((d3dCaps.VS20Caps.NumTemps >= 32) &&
-                            (d3dCaps.VS20Caps.Caps & D3DVS20CAPS_PREDICATION))
-                        {
-                            vertex_shader_profile = "vs_4_0_level_9_3";
-                        }
-                        else if (d3dCaps.VS20Caps.NumTemps >= 12)
-                        {
-                            vertex_shader_profile = "vs_4_0_level_9_1";
-                        }
-                        break;
-                    case D3DVS_VERSION(1, 1):
-                    case D3DVS_VERSION(1, 2):
-                    case D3DVS_VERSION(1, 3):
-                    case D3DVS_VERSION(1, 4):
-                    default:
-                        // D3DCompile* API's do not support 1.x vertex shaders. The last version 
-                        // of HLSL to support these targets was D3DX9 in the Oct 2006 release of 
-                        // the DirectX SDK. All versions of D3DX and the DirectX SDK (i.e., separate
-                        // SDK's that shipped outside of the Windows SDK) are deprecated.
-                        // 
-                        // Feature levels > 4.0 correspond to DirectX 10 or above. 
-                        // Those are not (yet) supported in wpfgfx.
-                        break;
-                    }
-                }
-            }
-
-            return vertex_shader_profile;
+            return default_profile_name;
         }
 
 #pragma endregion

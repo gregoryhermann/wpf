@@ -39,7 +39,7 @@ using namespace dxlayer;
 //   What depth buffer should be used
 //  since we no longer need the stencil.  Is 16 or 32 better than 24?
 
-const D3DFORMAT kD3DDepthFormat = D3DFMT_D24S8;
+const DXGI_FORMAT kD3DDepthFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
 MtDefine(CD3DDeviceLevel1, MILRender, "CD3DDeviceLevel1");
 MtDefine(NormalTraceVectors, MILRender, "Normal vectors drawn for testing");
@@ -81,8 +81,6 @@ MIL_FORCEINLINE void DbgInjectDIE(__inout_ecount(1) HRESULT *pHR)
 {
 }
 #endif
-
-
 
 extern HINSTANCE g_DllInstance;
 extern volatile DWORD g_dwTextureUpdatesPerFrame;
@@ -170,6 +168,7 @@ DbgIsPixelZoomMode()
 }
 #endif
 
+
 //+-----------------------------------------------------------------------------
 //
 //  Member:
@@ -181,7 +180,8 @@ DbgIsPixelZoomMode()
 //------------------------------------------------------------------------------
 HRESULT
 CD3DDeviceLevel1::Create(
-    __inout_ecount(1) D3DDeviceContext *pID3DDevice,
+    __inout_ecount(1) D3DDevice *pID3DDevice,
+    __inout_ecount(1) D3DDeviceContext *pID3DDeviceContext,
     __in_ecount(1) const CDisplay *pPrimaryDisplay,
     __in_ecount(1) IMILPoolManager *pManager,
     DWORD dwBehaviorFlags,
@@ -203,7 +203,7 @@ CD3DDeviceLevel1::Create(
     // Call init
     //
 
-    IFC((*ppDevice)->Init(pID3DDevice, pPrimaryDisplay));
+    IFC((*ppDevice)->Init(pID3DDevice, pID3DDeviceContext, pPrimaryDisplay));
 
 Cleanup:
     if (FAILED(hr))
@@ -239,41 +239,22 @@ CD3DDeviceLevel1::CD3DDeviceLevel1(
         m_uFrameNumber(0),
         m_ullLastMarkerId(0),
         m_ullLastConsumedMarkerId(0),
-        m_uNumSuccessfulPresentsSinceMarkerFlush(0),
-        m_fHWVBlankTested(false),
-        m_fHWVBlank(true),
-        m_fMultisampleFailed(false),
-        m_ManagedPool(D3DPOOL_MANAGED),
-        m_pCachedAnisoFilterMode(NULL)
+        m_uNumSuccessfulPresentsSinceMarkerFlush(0)
 {
     m_cEntry = 0;
     m_dwThreadId = 0;
 
     m_pD3DDevice = NULL;
-    m_pD3DDeviceEx = NULL;
-
-    m_RenderTargetTestStatusX8R8G8B8.hrTest = WGXERR_NOTINITIALIZED;
-    m_RenderTargetTestStatusX8R8G8B8.hrTestGetDC = WGXERR_NOTINITIALIZED;
-    m_RenderTargetTestStatusA8R8G8B8.hrTest = WGXERR_NOTINITIALIZED;
-    m_RenderTargetTestStatusA8R8G8B8.hrTestGetDC = WGXERR_NOTINITIALIZED;
-    m_RenderTargetTestStatusA2R10G10B10.hrTest = WGXERR_NOTINITIALIZED;
-    m_RenderTargetTestStatusA2R10G10B10.hrTestGetDC = WGXERR_NOTINITIALIZED;
+    m_pD3DDeviceContext = NULL;
 
     m_pCurrentRenderTargetNoRef = NULL;
     m_pDepthStencilBufferForCurrentRTNoRef = NULL;
 
     m_fInScene = false;
 
-    m_fDeviceLostProcessed = false;
     m_hrDisplayInvalid = S_OK;
 
     m_dwGPUMarkerFlags = 0;
-
-    m_fmtSupportFor32bppBGR =
-        m_fmtSupportFor32bppPBGRA =
-        m_fmtSupportFor32bppBGR101010 =
-        m_fmtSupportFor128bppRGBFloat =
-        m_fmtSupportFor128bppPRGBAFloat = MilPixelFormat::Undefined;
 
     if (g_pMediaControl)
     {
@@ -285,8 +266,6 @@ CD3DDeviceLevel1::CD3DDeviceLevel1(
 
     m_uCacheIndex = CMILResourceCache::InvalidToken;
 
-    m_pD3DDummyBackBuffer = NULL;
-
     m_matSurfaceToClip.reset_to_identity();
 
     m_pHwIndexBuffer = NULL;
@@ -297,7 +276,6 @@ CD3DDeviceLevel1::CD3DDeviceLevel1(
     m_pDbgSaveSurface = NULL;
 #endif DBG_STEP_RENDERING
 }
-
 
 //+-----------------------------------------------------------------------------
 //
@@ -312,16 +290,12 @@ CD3DDeviceLevel1::CD3DDeviceLevel1(
 //------------------------------------------------------------------------------
 HRESULT
 CD3DDeviceLevel1::Init(
-    __inout_ecount(1) D3DDeviceContext *pID3DDevice,
+    __inout_ecount(1) D3DDevice* pID3DDevice,
+    __inout_ecount(1) D3DDeviceContext *pID3DDeviceContext,
     __in_ecount(1) const CDisplay *pDisplay
     )
 {
-    HRESULT hr = S_OK;
-
-    Assert(m_pD3DDevice == NULL);
-    Assert(m_pD3DDeviceEx == NULL);
-
-    IDirect3D9* pd3d9 = NULL;
+    HRESULT hr = S_OK;   
 
     // Initialize the resource manager as early as possible since the resource manager asserts on
     // shutdown that it has a valid device associated. If not, failures in the hardware detection code
@@ -334,86 +308,11 @@ CD3DDeviceLevel1::Init(
 
     m_luidD3DAdapter = pDisplay->GetLUID();
 
-    MIL_THR(pID3DDevice->GetDeviceCaps(
-        &m_caps
-        ));
-
-    if (FAILED(hr))
-    {
-        TRACE_DEVICECREATE_FAILURE(m_caps.AdapterOrdinal, "Failed to get device caps", hr);
-        goto Cleanup;
-    }
-
-    //
-    // Starting with WPF 4.0, WPF will no longer support pre DX9 class hardware and hardware that
-    // does not at least support PS2.0. We also require VS 2.0. In the case of the hardware not supporting
-    // VS2.0 we fall back to software vertex processing (e.g. for Intel 945G).
-    //
-    // Hence, if we do not find a device with PS2.0 support, we fail the device creation here. Higher up in the
-    // stack that will cause us to create a software renderer. The exception is 3D: For 3D software rendering we
-    // are using RGBRast. RGBRast only supports fixed function and therefore we will allow the creation of a software
-    // DX device for 3D here, even though it does not support PS2.0.
-    //
-
-    if (m_caps.PixelShaderVersion < D3DPS_VERSION(2,0)
-        && (m_caps.DeviceType != D3DDEVTYPE_SW)
-        )
-    {
-        TRACE_DEVICECREATE_FAILURE(m_caps.AdapterOrdinal, "Adapter does not support PS2.0", WGXERR_INSUFFICIENT_GPU_CAPS);
-        // If PixelShaderVersion is less than 2.0, fall back to software rendering.
-        IFC(WGXERR_INSUFFICIENT_GPU_CAPS);
-    }
-
-    //
-    // It appears that some devices (Pixomatic) can return 0 here for their Max
-    // Aniso.  0 is an invalid value and the default aniso set by d3d is 1, so
-    // if they return 0, overwrite it with 1.  It's possible that this could
-    // fail later when we try to set it to 1, but it seems safer than trying to
-    // set it to 0.
-    //
-    if (m_caps.MaxAnisotropy == 0)
-    {
-        m_caps.MaxAnisotropy = 1;
-    }
-
-    bool fSupportsMagAniso = ((m_caps.TextureFilterCaps & D3DPTFILTERCAPS_MAGFANISOTROPIC) != 0);
-    bool fSupportsMinAniso = ((m_caps.TextureFilterCaps & D3DPTFILTERCAPS_MINFANISOTROPIC) != 0);
-
-    if (fSupportsMagAniso && fSupportsMinAniso)
-    {
-        m_pCachedAnisoFilterMode = &CD3DRenderState::sc_fmAnisotropic;
-    }
-    else if (fSupportsMinAniso)
-    {
-        m_pCachedAnisoFilterMode = &CD3DRenderState::sc_fmMinOnlyAnisotropic;
-    }
-    else
-    {
-        //
-        // It's unlikely that a card supports Mag but not Min, and Mag aniso
-        // doesn't buy us much anyway, so we just default to linear.
-        //
-        m_pCachedAnisoFilterMode = &CD3DRenderState::sc_fmLinear;
-    }
-
-    //
-    // There is only ever one software device and it is shared so we must
-    // protect it with critical section.
-    //
-
-    if (m_caps.DeviceType == D3DDEVTYPE_SW)
-    {
-        IFC(m_csDeviceEntry.Init());
-    }
-
     //
     // Determine Graphics Acceleration Tier
     //
 
-    if (m_caps.DeviceType != D3DDEVTYPE_SW)
-    {
-        m_Tier = pDisplay->GetTier();
-    }
+    m_Tier = MIL_TIER(1, 0);
 
     {
     #pragma warning(push)
@@ -425,74 +324,16 @@ CD3DDeviceLevel1::Init(
     m_pD3DDevice = pID3DDevice;
     m_pD3DDevice->AddRef();
 
-    IGNORE_HR(m_pD3DDevice->QueryInterface(IID_IDirect3DDevice9Ex, (void**)&m_pD3DDeviceEx));
-
-    m_ManagedPool = IsExtendedDevice() ? D3DPOOL_MANAGED_INTERNAL : D3DPOOL_MANAGED;
-
-    //
-    // If we are rendering with a SW Rasterizer we don't need to check the drivers.
-    //
-    if (   CD3DRegistryDatabase::ShouldSkipDriverCheck() == false
-        && m_caps.DeviceType != D3DDEVTYPE_SW
-        && m_caps.DeviceType != D3DDEVTYPE_REF)
-    {
-        IFC(CheckBadDeviceDrivers(pDisplay));
-    }
+    m_pD3DDeviceContext = pID3DDeviceContext;
+    m_pD3DDeviceContext->AddRef();
 
     //
     // Check for primitive count limiting trace tag
     //
 
-#if DBG
-    if (IsTagEnabled(tagLowPrimitiveCount))
-    {
-        m_caps.MaxPrimitiveCount = 8;
-    }
-#endif
-
-    //
-    // Get the implicit back buffer as the dummy
-    //
-    IFC(m_pD3DDevice->GetBackBuffer(
-        0,
-        0,
-        D3DBACKBUFFER_TYPE_MONO,
-        &m_pD3DDummyBackBuffer
-        ));
-
     //
     // Detect supported target formats
     //
-
-    MIL_THR(pDisplay->GetMode(&m_d3ddm, NULL));
-    if (FAILED(hr))
-    {
-        if (hr == D3DERR_DEVICELOST)
-        {
-            MIL_THR(WGXERR_DISPLAYSTATEINVALID);
-        }
-
-        TRACE_DEVICECREATE_FAILURE(m_caps.AdapterOrdinal, "Failed to get adapter display mode",  hr);
-        goto Cleanup;
-    }
-
-    //
-    // Get IDirect3D for remaing support detection
-    //
-
-    IFC( m_pD3DDevice->GetDirect3D(&pd3d9) );
-
-    //
-    // Detect supported texture formats
-    //
-
-    GatherSupportedTextureFormats(pd3d9);
-
-    //
-    // Detect supported multisample types
-    //
-
-    GatherSupportedMultisampleTypes(pd3d9);
 
     //
     // Request a global cache index
@@ -506,7 +347,7 @@ CD3DDeviceLevel1::Init(
 
     IFC(CD3DRenderState::Init(
         this,
-        m_pD3DDevice
+        m_pD3DDeviceContext
         ));
 
 
@@ -567,258 +408,19 @@ CD3DDeviceLevel1::Init(
         &m_pHwVertexBuffer
         ));
 
-    // Do basic device tests
-    IFC(TestLevel1Device());
-
     m_presentFailureWindowMessage = RegisterWindowMessage(L"NeedsRePresentOnWake");
 
     } // Leave device scope
 
 Cleanup:
-    ReleaseInterfaceNoNULL(pd3d9);
 
     if (FAILED(hr))
     {
         ReleaseInterface(m_pD3DDevice);
-        ReleaseInterface(m_pD3DDeviceEx);
+        ReleaseInterface(m_pD3DDeviceContext);
     }
     RRETURN(HandleDIE(hr));
 }
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::GatherSupportedTextureFormats
-//
-//  Synopsis:
-//      Inspect texture formats supported by device and setup our mappings from
-//      given MilPixelFormat::Enum to supported MilPixelFormat::Enum
-//
-
-void
-CD3DDeviceLevel1::GatherSupportedTextureFormats(
-    __in_ecount(1) IDirect3D9 *pd3d9
-    )
-{
-    //
-    // Check on support for one of three 8 bit formats for use with text
-    //
-
-    m_fSupportsD3DFMT_A8 = SUCCEEDED( pd3d9->CheckDeviceFormat(
-        m_caps.AdapterOrdinal,
-        m_caps.DeviceType,
-        m_d3ddm.Format,
-        0,
-        D3DRTYPE_TEXTURE,
-        D3DFMT_A8
-        ) );
-    m_fSupportsD3DFMT_P8 = SUCCEEDED( pd3d9->CheckDeviceFormat(
-        m_caps.AdapterOrdinal,
-        m_caps.DeviceType,
-        m_d3ddm.Format,
-        0,
-        D3DRTYPE_TEXTURE,
-        D3DFMT_P8
-        ) );
-    m_fSupportsD3DFMT_L8 = SUCCEEDED( pd3d9->CheckDeviceFormat(
-        m_caps.AdapterOrdinal,
-        m_caps.DeviceType,
-        m_d3ddm.Format,
-        0,
-        D3DRTYPE_TEXTURE,
-        D3DFMT_L8
-        ) );
-
-    //
-    // Check for support for general rendering formats.
-    //
-    // Check higher precision formats first; so that lower precision formats
-    // can map to higher precision ones if needed.
-    //
-
-    m_fmtSupportFor128bppPRGBAFloat =
-        SUCCEEDED( pd3d9->CheckDeviceFormat(
-            m_caps.AdapterOrdinal,
-            m_caps.DeviceType,
-            m_d3ddm.Format,
-            0,
-            D3DRTYPE_TEXTURE,
-            D3DFMT_A32B32G32R32F
-            ) ) ?
-        MilPixelFormat::PRGBA128bppFloat : MilPixelFormat::Undefined;
-
-    // There is no specific support in D3D for 128bpp w/o alpha; so,
-    // use the alpha form.
-    m_fmtSupportFor128bppRGBFloat = m_fmtSupportFor128bppPRGBAFloat;
-
-    m_fmtSupportFor32bppBGR101010 =
-        SUCCEEDED( pd3d9->CheckDeviceFormat(
-            m_caps.AdapterOrdinal,
-            m_caps.DeviceType,
-            m_d3ddm.Format,
-            0,
-            D3DRTYPE_TEXTURE,
-            D3DFMT_A2R10G10B10
-            ) ) ?
-        MilPixelFormat::BGR32bpp101010 : m_fmtSupportFor128bppRGBFloat;
-
-    m_fmtSupportFor32bppPBGRA =
-        SUCCEEDED( pd3d9->CheckDeviceFormat(
-            m_caps.AdapterOrdinal,
-            m_caps.DeviceType,
-            m_d3ddm.Format,
-            0,
-            D3DRTYPE_TEXTURE,
-            D3DFMT_A8R8G8B8
-            ) ) ?
-        MilPixelFormat::PBGRA32bpp : m_fmtSupportFor128bppPRGBAFloat;
-
-    m_fmtSupportFor32bppBGR =
-        SUCCEEDED( pd3d9->CheckDeviceFormat(
-            m_caps.AdapterOrdinal,
-            m_caps.DeviceType,
-            m_d3ddm.Format,
-            0,
-            D3DRTYPE_TEXTURE,
-            D3DFMT_X8R8G8B8
-            ) ) ?
-        MilPixelFormat::BGR32bpp :
-        ((m_fmtSupportFor32bppPBGRA != MilPixelFormat::Undefined) ?
-            // First try PBGRA since converions is probably easier
-            m_fmtSupportFor32bppPBGRA :
-            // then go for B10G10R10
-            m_fmtSupportFor32bppBGR101010
-         );
-
-    return;
-}
-
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::GetMaxMultisampleTypeWithDepthSupport
-//
-//  Synopsis:
-//      Search for highest multisample type supported for given target surface
-//      and depth.  If none are supported D3DMULTISAMPLE_NONE is returned.
-//
-//  Note:
-//      d3dfmtDepth argument maybe be set to d3dfmtTarget to avoid a secondary
-//      check.  Both arguments accept any D3DFORMAT.
-//
-
-D3DMULTISAMPLE_TYPE
-CD3DDeviceLevel1::GetMaxMultisampleTypeWithDepthSupport(
-    __in_ecount(1) IDirect3D9 *pd3d,
-    D3DFORMAT d3dfmtTarget,
-    D3DFORMAT d3dfmtDepth,
-    D3DMULTISAMPLE_TYPE MaxMultisampleType
-    ) const
-{
-    Assert(MaxMultisampleType <= D3DMULTISAMPLE_16_SAMPLES);
-
-    while (MaxMultisampleType >= D3DMULTISAMPLE_2_SAMPLES)
-    {
-        if (SUCCEEDED(pd3d->CheckDeviceMultiSampleType(
-            m_caps.AdapterOrdinal,
-            m_caps.DeviceType,
-            d3dfmtTarget,
-            true,
-            MaxMultisampleType,
-            NULL
-           )))
-        {
-            if (   d3dfmtTarget == d3dfmtDepth
-                   // Depth format isn't same as target so check it too
-                || SUCCEEDED(pd3d->CheckDeviceMultiSampleType(
-                    m_caps.AdapterOrdinal,
-                    m_caps.DeviceType,
-                    d3dfmtDepth,
-                    true,
-                    MaxMultisampleType,
-                    NULL
-                    ))
-               )
-            {
-                break;
-            }
-        }
-
-        reinterpret_cast<DWORD &>(MaxMultisampleType)--;
-    }
-
-    if (MaxMultisampleType < D3DMULTISAMPLE_2_SAMPLES)
-    {
-        MaxMultisampleType = D3DMULTISAMPLE_NONE;
-    }
-
-    return MaxMultisampleType;
-}
-
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::GatherSupportedMultisampleTypes
-//
-//  Synopsis:
-//      Inspect target formats supported by device and setup our mappings from
-//      given MilPixelFormat::Enum to mutlisample type
-//
-
-void
-CD3DDeviceLevel1::GatherSupportedMultisampleTypes(
-    __in_ecount(1) IDirect3D9 *pd3d
-    )
-{
-    //
-    // Check for multisample support for general rendering formats.
-    //
-
-    D3DMULTISAMPLE_TYPE MaxMultisampleType =
-        IsLDDMDevice() ? D3DMULTISAMPLE_4_SAMPLES : D3DMULTISAMPLE_NONE;
-
-    // Get default multi-sample max from the registry
-    CDisplayRegKey keyDisplay(HKEY_LOCAL_MACHINE, _T(""));
-
-    keyDisplay.ReadDWORD(
-        _T("MaxMultisampleType"),
-        reinterpret_cast<DWORD *>(&MaxMultisampleType)
-        );
-
-    // Filter first by maximum depth buffer support
-    MaxMultisampleType = GetMaxMultisampleTypeWithDepthSupport(
-        pd3d,
-        kD3DDepthFormat,
-        kD3DDepthFormat,
-        MaxMultisampleType
-        );
-
-    m_multisampleTypeFor32bppBGR = GetMaxMultisampleTypeWithDepthSupport(
-        pd3d,
-        D3DFMT_X8R8G8B8,
-        kD3DDepthFormat,
-        MaxMultisampleType
-        );
-
-    m_multisampleTypeFor32bppPBGRA = GetMaxMultisampleTypeWithDepthSupport(
-        pd3d,
-        D3DFMT_A8R8G8B8,
-        kD3DDepthFormat,
-        MaxMultisampleType
-        );
-
-    m_multisampleTypeFor32bppBGR101010 = GetMaxMultisampleTypeWithDepthSupport(
-        pd3d,
-        D3DFMT_A2R10G10B10,
-        kD3DDepthFormat,
-        MaxMultisampleType
-        );
-
-    return;
-}
-
 
 //+-----------------------------------------------------------------------------
 //
@@ -837,12 +439,9 @@ CD3DDeviceLevel1::~CD3DDeviceLevel1()
 
     ResetMarkers();
 
-    ReleaseInterface(m_pEffectPipelineVertexShader20);
-    ReleaseInterface(m_pEffectPipelineVertexShader30);
+    ReleaseInterface(m_pEffectPipelineVertexShader);
     ReleaseInterface(m_pEffectPipelineVertexBuffer);
     ReleaseInterface(m_pEffectPipelinePassThroughPixelShader);
-    ReleaseInterface(m_pD3DDummyBackBuffer);
-    ReleaseInterface(m_pD3DDeviceEx);
     m_pCurrentRenderTargetNoRef = NULL;   // No longer care about what is set.
                                           // This makes sure
                                           // ReleaseUseOfRenderTarget does
@@ -865,7 +464,6 @@ CD3DDeviceLevel1::~CD3DDeviceLevel1()
 #endif
 
 }
-
 
 //+-----------------------------------------------------------------------------
 //
@@ -950,9 +548,8 @@ CD3DDeviceLevel1::IsProtected(
 {
     // Check if we are always protected (and entry confirmation isn't required)
     // or if not if this thread has been marked/entered.
-    bool fProtected = (   (   !fForceEntryConfirmation
-                           && !(m_dwD3DBehaviorFlags & D3DCREATE_MULTITHREADED))
-                       || (m_dwThreadId == GetCurrentThreadId()));
+    bool fProtected = (!fForceEntryConfirmation)
+                       || (m_dwThreadId == GetCurrentThreadId());
 
     if (fProtected)
     {
@@ -967,7 +564,6 @@ CD3DDeviceLevel1::IsProtected(
 
     return fProtected;
 }
-
 
 //+-----------------------------------------------------------------------------
 //
@@ -1003,694 +599,11 @@ CD3DDeviceLevel1::IsEntered(
     return fEntered;
 }
 
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::TestRenderTargetFormat
-//
-//  Synopsis:
-//      Test the device to see if it is usable with this render target format
-//
-//------------------------------------------------------------------------------
-HRESULT
-CD3DDeviceLevel1::TestRenderTargetFormat(
-    D3DFORMAT fmtRenderTarget,
-    __inout_ecount(1) TargetFormatTestStatus *pFormatTestEntry
-    )
-{
-    AssertDeviceEntry(*this);
-
-    HRESULT hr = S_OK;
-    CD3DSurface *pD3DSurface = NULL;
-    CD3DLockableTexture *pLockableTexture = NULL;
-    D3DDEVICE_CREATION_PARAMETERS d3dCreateParams;
-    D3DSURFACE_DESC d3dsd;
-    CD3DSwapChain *pD3DSwapChain = NULL;
-    IDirect3D9 *pD3D = NULL;
-
-    //
-    // Get d3d object and adapter
-    //
-
-    MIL_THR(m_pD3DDevice->GetDirect3D(&pD3D));
-    if (FAILED(hr))
-    {
-        TRACE_DEVICECREATE_FAILURE(m_caps.AdapterOrdinal, "Failed to get d3d object",  hr);
-        goto Cleanup;
-    }
-
-    MIL_THR(m_pD3DDevice->GetCreationParameters(&d3dCreateParams));
-    if (FAILED(hr))
-    {
-        TRACE_DEVICECREATE_FAILURE(m_caps.AdapterOrdinal, "Failed to get creation parameters",  hr);
-        goto Cleanup;
-    }
-
-    if (m_caps.DeviceType == D3DDEVTYPE_HAL)
-    {
-        //
-        // Check for our depth buffer
-        //
-
-        MIL_THR(pD3D->CheckDepthStencilMatch(
-            d3dCreateParams.AdapterOrdinal,
-            D3DDEVTYPE_HAL,
-            m_d3ddm.Format,
-            fmtRenderTarget,
-            kD3DDepthFormat
-            ));
-
-        if (FAILED(hr))
-        {
-            TRACE_DEVICECREATE_FAILURE(m_caps.AdapterOrdinal, "Can't get 24-bit z-buffer",  hr);
-            goto Cleanup;
-        }
-    }
-
-    // Render Target create routines are about to be used and they expect this
-    // format to have been successfully tested.  So, set status to success now
-    // with the expectation that the real status will be set later.
-    // WGXHR_INTERNALTEMPORARYSUCCESS is used to indicate success, but also
-    // note that this value should not last.
-    WHEN_DBG_ANALYSIS(pFormatTestEntry->hrTest = WGXHR_INTERNALTEMPORARYSUCCESS);
-
-    if (!d3dCreateParams.hFocusWindow)
-    {
-        //
-        // Try to create a lockable render target
-        //
-
-        hr = CreateRenderTarget(
-            128,
-            128,
-            fmtRenderTarget,
-            D3DMULTISAMPLE_NONE,
-            0,
-            true,
-            &pD3DSurface
-            );
-
-        if (FAILED(hr))
-        {
-            TRACE_DEVICECREATE_FAILURE(m_caps.AdapterOrdinal, "Failed to create render target",  hr);
-            goto Cleanup;
-        }
-    }
-    else
-    {
-        //
-        // Try to create a lockable secondary swap chain
-        //
-        D3DPRESENT_PARAMETERS d3dpp;
-
-        ZeroMemory(&d3dpp, sizeof(d3dpp));
-        d3dpp.Windowed = true;
-        d3dpp.BackBufferWidth = 128;
-        d3dpp.BackBufferHeight = 128;
-        d3dpp.BackBufferFormat = fmtRenderTarget;
-        d3dpp.BackBufferCount = 1;
-        d3dpp.MultiSampleType = D3DMULTISAMPLE_NONE;
-        d3dpp.SwapEffect = D3DSWAPEFFECT_COPY;
-        d3dpp.hDeviceWindow = d3dCreateParams.hFocusWindow;
-        d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
-        d3dpp.Flags = D3DPRESENTFLAG_LOCKABLE_BACKBUFFER;
-
-        MIL_THR(CreateAdditionalSwapChain(
-            NULL, //pMILDC
-            &d3dpp,
-            &pD3DSwapChain
-            ));
-        if (FAILED(hr))
-        {
-            TRACE_DEVICECREATE_FAILURE(m_caps.AdapterOrdinal, "Failed to create swap chain",  hr);
-            goto Cleanup;
-        }
-
-        MIL_THR(pD3DSwapChain->GetBackBuffer(0,  &pD3DSurface));
-        if (FAILED(hr))
-        {
-            TRACE_DEVICECREATE_FAILURE(m_caps.AdapterOrdinal, "Failed to get swap chain back buffer",  hr);
-            goto Cleanup;
-        }
-
-        TestGetDC(pD3DSurface, IN OUT pFormatTestEntry);
-    }
-
-    MIL_THR(SetRenderTarget(pD3DSurface));
-    if (FAILED(hr))
-    {
-        TRACE_DEVICECREATE_FAILURE(m_caps.AdapterOrdinal, "Failed to set render target",  hr);
-        goto Cleanup;
-    }
-
-    MIL_THR(SetDepthStencilSurface(NULL));
-    if (FAILED(hr))
-    {
-        TRACE_DEVICECREATE_FAILURE(m_caps.AdapterOrdinal, "Failed to reset depth stencil surface",  hr);
-        goto Cleanup;
-    }
-
-    //
-    // Check that we can get our favorite texture format and
-    // try to render it
-    //
-
-    ZeroMemory(&d3dsd, sizeof(d3dsd));
-    d3dsd.Format = PixelFormatToD3DFormat(MilPixelFormat::BGRA32bpp);
-    d3dsd.Type = D3DRTYPE_TEXTURE;
-    d3dsd.Usage = 0;
-    d3dsd.Pool = m_ManagedPool;
-    d3dsd.MultiSampleType = D3DMULTISAMPLE_NONE;
-    d3dsd.MultiSampleQuality = 0;
-    d3dsd.Width = 128;
-    d3dsd.Height = 128;
-
-    MIL_THR(CreateLockableTexture(
-        &d3dsd,
-        &pLockableTexture
-        ));
-
-    if (FAILED(hr))
-    {
-        TRACE_DEVICECREATE_FAILURE(m_caps.AdapterOrdinal, "Failed to create 32-bit ARGB texture",  hr);
-        goto Cleanup;
-    }
-
-    {
-        MilPointAndSizeL rc = {0, 0, 128, 128};
-        MIL_THR(RenderTexture(pLockableTexture, rc, TBM_DEFAULT/* premultiplied */));
-        if (FAILED(hr))
-        {
-            TRACE_DEVICECREATE_FAILURE(m_caps.AdapterOrdinal, "Failed to draw texture",  hr);
-            goto Cleanup;
-        }
-    }
-
-Cleanup:
-
-    //
-    // Process test results.
-    //
-    // If the failure is due to a lack of capability, then don't bother to
-    // create future targets of this format for this device.  Out of memory or
-    // driverinternal errors can all be context dependent so we need to
-    // evaluate each time.  For example, D3DERR_DRIVERINTERNALERROR has been
-    // seen when we are low on video memory and try to lock a surface.
-    //
-    // Note: These settings should only persist until the device capabilities
-    //  can change.  Display mode change gives us this notification and these
-    //  settings will be cleared.
-    //
-
-    pFormatTestEntry->hrTest = hr;
-
-    if (FAILED(hr))
-    {
-        if (   (hr == D3DERR_OUTOFVIDEOMEMORY)
-            || (hr == E_OUTOFMEMORY)
-            || (hr == D3DERR_DRIVERINTERNALERROR))
-        {
-            // This case doesn't actually determine usability; so reset back to
-            // untested (not initialized).
-            pFormatTestEntry->hrTest = WGXERR_NOTINITIALIZED;
-        }
-        else
-        {
-            // If there is a failure and GetDC test status is not initialized
-            // then update it with the general failure status.
-            if (pFormatTestEntry->hrTestGetDC == WGXERR_NOTINITIALIZED)
-            {
-                pFormatTestEntry->hrTestGetDC = pFormatTestEntry->hrTest;
-            }
-        }
-    }
-
-    ReleaseInterfaceNoNULL(pD3DSurface);
-    ReleaseInterfaceNoNULL(pLockableTexture);
-    ReleaseInterfaceNoNULL(pD3DSwapChain);
-    ReleaseInterfaceNoNULL(pD3D);
-
-    RRETURN(hr); // D3DERR_DRIVERINTERNALERROR OK here
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::TestLevel1Device
-//
-//  Synopsis:
-//      Test the device to see if it is basically usable
-//
-//------------------------------------------------------------------------------
-
-HRESULT
-CD3DDeviceLevel1::TestLevel1Device(
-    )
-{
-    HRESULT hr = S_OK;
-
-    //
-    // Check Device Caps
-    //
-
-    IFC(HwCaps::CheckDeviceLevel1(m_caps));
-
-    //
-    // Test some render states
-    //
-
-    // This is a shotgun approach. We can't really enumerate all combinations of
-    // state that might cause the driver to return failure. The driver might
-    // only fail later, when it's sure we intend to use a particular combination
-    // of state (e.g. at DrawPrimitive). And, testing for a failed return code,
-    // isn't enough.
-
-    //   Do better HW caps testing
-    //   Ultimately, we need to be confident that any state we choose to set
-    //   later on, will succeed, produce correct rendering, and not cause system
-    //   instability.
-
-#define IFC_RSCHECK(expr) {MIL_THR(expr); if (FAILED(hr)) {                              \
-    TRACE_DEVICECREATE_FAILURE(m_caps.AdapterOrdinal, "Failed to set render states", hr); \
-    goto Cleanup;}}
-
-    IFC_RSCHECK( SetRenderState_AlphaSolidBrush() );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_None, MilBitmapInterpolationMode::NearestNeighbor, 0) );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_None, MilBitmapInterpolationMode::Linear, 0) );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_None, MilBitmapInterpolationMode::TriLinear, 0) );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_Diffuse, MilBitmapInterpolationMode::NearestNeighbor, 0) );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_Diffuse, MilBitmapInterpolationMode::Linear, 0) );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_Diffuse, MilBitmapInterpolationMode::TriLinear, 0) );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_Specular, MilBitmapInterpolationMode::NearestNeighbor, 0) );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_Specular, MilBitmapInterpolationMode::Linear, 0) );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_Specular, MilBitmapInterpolationMode::TriLinear, 0) );
-
-    IFC_RSCHECK( SetRenderState_AlphaSolidBrush() );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_None, MilBitmapInterpolationMode::NearestNeighbor, 1) );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_None, MilBitmapInterpolationMode::Linear, 1) );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_None, MilBitmapInterpolationMode::TriLinear, 1) );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_Diffuse, MilBitmapInterpolationMode::NearestNeighbor, 1) );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_Diffuse, MilBitmapInterpolationMode::Linear, 1) );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_Diffuse, MilBitmapInterpolationMode::TriLinear, 1) );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_Specular, MilBitmapInterpolationMode::NearestNeighbor, 1) );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_Specular, MilBitmapInterpolationMode::Linear, 1) );
-    IFC_RSCHECK( SetRenderState_Texture( TBM_DEFAULT, TBA_Specular, MilBitmapInterpolationMode::TriLinear, 1) );
-#undef IFC_RSCHECK
-
-    //
-    // Let people know that everything is ok!
-    //
-
-    if (m_caps.DeviceType == D3DDEVTYPE_SW)
-    {
-        TraceTag((tagError, "MIL-HW(adapter=%d): d3d software device tested successfully. (For SW 3D use only.)", m_caps.AdapterOrdinal));
-    }
-    else
-    {
-        TraceTag((tagError, "MIL-HW(adapter=%d): d3d device tested successfully.", m_caps.AdapterOrdinal));
-    }
-
-Cleanup:
-    //
-    // If the failure is due to a lack of capability, then don't
-    // bother to create future devices for this adapter.  Out of
-    // memory or driverinternal errors can all be context dependent
-    // so we need to evaluate each time.  For example,
-    // D3DERR_DRIVERINTERNALERROR has been seen when we are low on
-    // video memory and try to lock a surface.
-    //
-    // Note: These settings should only persist until the device capabilities
-    //  can change.  Display mode change gives us this notification and these
-    //  settings will be cleared.
-    //
-
-    if (FAILED(hr) &&
-        (hr != D3DERR_OUTOFVIDEOMEMORY) &&
-        (hr != E_OUTOFMEMORY) &&
-        (hr != D3DERR_DRIVERINTERNALERROR) &&
-        (m_caps.DeviceType == D3DDEVTYPE_HAL))
-    {
-        IGNORE_HR(CD3DRegistryDatabase::DisableAdapter(m_caps.AdapterOrdinal));
-    }
-
-    RRETURN(hr); // D3DERR_DRIVERINTERNALERROR OK here
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::TestGetDC
-//
-//  Synopsis:
-//      Test to see if we can obtain a DC from this surface.  Record the result
-//      into the device (TargetFormatTestStatus *), so we can avoid creating
-//      surfaces that will require a DC.
-//
-//------------------------------------------------------------------------------
-void
-CD3DDeviceLevel1::TestGetDC(
-    __inout_ecount(1) CD3DSurface * const pD3DSurface,
-    __inout_ecount(1) TargetFormatTestStatus * const pFormatTestEntry
-    )
-{
-    HDC hTestDC = NULL;
-    HRESULT hrGetDC;
-
-    Assert(pFormatTestEntry->hrTestGetDC == WGXERR_NOTINITIALIZED);
-
-    // Make a test GetDC call
-    MIL_THRX(hrGetDC, pD3DSurface->GetDC(&hTestDC));
-
-    Assert(hrGetDC != WGXERR_NOTINITIALIZED);
-
-    pFormatTestEntry->hrTestGetDC = hrGetDC;
-
-    if (hTestDC)
-    {
-        pD3DSurface->ReleaseDC(hTestDC);
-    }
-
-    return;
-}
-
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      HwCaps::CheckDeviceLevel1
-//
-//  Synopsis:
-//      Check the caps for a device- fail if the device does not support caps
-//      that we need.
-//
-//------------------------------------------------------------------------------
-HRESULT
-HwCaps::CheckDeviceLevel1(
-    __in_ecount(1) const D3DCAPS9 &caps
-    )
-{
-    HRESULT hr = S_OK;
-
-    if (caps.TextureCaps & D3DPTEXTURECAPS_POW2 &&
-        !(caps.TextureCaps & D3DPTEXTURECAPS_NONPOW2CONDITIONAL))
-    {
-        hr = E_FAIL;
-        TRACE_DEVICECREATE_FAILURE(caps.AdapterOrdinal, "Non power of 2 textures support must be present for hw acceleration",  hr);
-        goto Cleanup;
-    }
-
-    //
-    // Check for non square textures
-    //
-    if (caps.TextureCaps & D3DPTEXTURECAPS_SQUAREONLY)
-    {
-        hr = E_FAIL;
-        TRACE_DEVICECREATE_FAILURE(caps.AdapterOrdinal, "Non square texture support must be present for hw acceleration",  hr);
-        goto Cleanup;
-    }
-
-    //
-    // Check for multi-texturing and color masking
-    //
-
-    if (caps.MaxTextureBlendStages < 2
-        || caps.MaxSimultaneousTextures < 2)
-    {
-        hr = E_FAIL;
-        TRACE_DEVICECREATE_FAILURE(caps.AdapterOrdinal, "We need at least 2 texture stages",  hr);
-        goto Cleanup;
-    }
-
-    // Since we intend on only using D3DDEVTYPE_SW for 3D, we don't
-    // care about color masking which is only used for text.
-
-    if (!IsSWDevice(caps))
-    {
-        if (!CanMaskColorChannels(caps))
-        {
-            hr = E_FAIL;
-            TRACE_DEVICECREATE_FAILURE(caps.AdapterOrdinal, "Color masking support must be present for hw acceleration",  hr);
-            goto Cleanup;
-        }
-    }
-
-    //
-    // Check for blending capabilities
-    //
-
-    {
-        UINT requiredSrcCaps = 0
-            | D3DPBLENDCAPS_ZERO
-            | D3DPBLENDCAPS_ONE
-/*          | D3DPBLENDCAPS_SRCCOLOR                unused*/
-/*          | D3DPBLENDCAPS_INVSRCCOLOR             unused*/
-            | D3DPBLENDCAPS_SRCALPHA
-/*          | D3DPBLENDCAPS_INVSRCALPHA             unused*/
-/*          | D3DPBLENDCAPS_DESTALPHA               unused*/
-            | D3DPBLENDCAPS_INVDESTALPHA
-/*          | D3DPBLENDCAPS_DESTCOLOR               unused*/
-/*          | D3DPBLENDCAPS_INVDESTCOLOR            unused*/
-/*          | D3DPBLENDCAPS_SRCALPHASAT             unused*/
-/*          | D3DPBLENDCAPS_BOTHSRCALPHA            unused*/
-/*          | D3DPBLENDCAPS_BOTHINVSRCALPHA         unused*/
-/*          | D3DPBLENDCAPS_BLENDFACTOR      used but we allow unsupported blend factor*/
-        ;
-
-        UINT requiredDestCaps = 0
-            | D3DPBLENDCAPS_ZERO
-            | D3DPBLENDCAPS_ONE
-/*          | D3DPBLENDCAPS_SRCCOLOR                unused*/
-            | D3DPBLENDCAPS_INVSRCCOLOR
-/*          | D3DPBLENDCAPS_SRCALPHA                unused*/
-            | D3DPBLENDCAPS_INVSRCALPHA
-/*          | D3DPBLENDCAPS_DESTALPHA               unused*/
-/*          | D3DPBLENDCAPS_INVDESTALPHA            unused*/
-/*          | D3DPBLENDCAPS_DESTCOLOR               unused*/
-/*          | D3DPBLENDCAPS_INVDESTCOLOR            unused*/
-/*          | D3DPBLENDCAPS_SRCALPHASAT             unused*/
-/*          | D3DPBLENDCAPS_BOTHSRCALPHA            unused*/
-/*          | D3DPBLENDCAPS_BOTHINVSRCALPHA         unused*/
-/*          | D3DPBLENDCAPS_BLENDFACTOR      used but we allow unsupported blend factor*/
-        ;
-
-        if ((caps.SrcBlendCaps  & requiredSrcCaps ) != requiredSrcCaps ||
-            (caps.DestBlendCaps & requiredDestCaps) != requiredDestCaps)
-        {
-            hr = E_FAIL;
-            TRACE_DEVICECREATE_FAILURE(caps.AdapterOrdinal, "Device doesn't support all the required blending modes",  hr);
-            goto Cleanup;
-        }
-    }
-
-Cleanup:
-    RRETURN(hr);
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::GetRenderTargetFormatTestEntry
-//
-//  Synopsis:
-//      Get the test status entry of a particular render target format.
-//
-//------------------------------------------------------------------------------
-
-HRESULT
-CD3DDeviceLevel1::GetRenderTargetFormatTestEntry(
-    D3DFORMAT fmtRenderTarget,
-    __deref_out_ecount(1) TargetFormatTestStatus * &pFormatTestEntry
-    )
-{
-    HRESULT hr = S_OK;
-
-    AssertDeviceEntry(*this);
-
-    pFormatTestEntry = NULL;
-
-    switch (fmtRenderTarget)
-    {
-    case D3DFMT_X8R8G8B8:
-        pFormatTestEntry = &m_RenderTargetTestStatusX8R8G8B8;
-        break;
-
-    case D3DFMT_A8R8G8B8:
-        pFormatTestEntry = &m_RenderTargetTestStatusA8R8G8B8;
-        break;
-
-    case D3DFMT_A2R10G10B10:
-        pFormatTestEntry = &m_RenderTargetTestStatusA2R10G10B10;
-        break;
-
-    default:
-        RIP("Unsupported render target format.");
-        IFC(E_INVALIDARG);
-        break;
-    }
-
-Cleanup:
-    RRETURN(hr);
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::CheckRenderTargetFormat
-//
-//  Synopsis:
-//      Check the device to see if it is usable with this render target format.
-//      Testing will only happen the first time the format is introduced to the
-//      device.
-//
-//------------------------------------------------------------------------------
-HRESULT CD3DDeviceLevel1::CheckRenderTargetFormat(
-    D3DFORMAT fmtRenderTarget,
-    __deref_opt_out_ecount(1) HRESULT const ** const pphrTestGetDC
-    )
-{
-    #pragma warning(push)
-    // error C4328: 'CGuard<LOCK>::CGuard(LOCK &)' : indirection alignment of formal parameter 1 (16) is greater than the actual argument alignment (8)
-    #pragma warning(disable : 4328)
-    ENTER_DEVICE_FOR_SCOPE(*this);
-    #pragma warning(pop)
-
-    HRESULT hr = S_OK;
-    TargetFormatTestStatus *pRenderTargetTestStatus = NULL;
-
-    IFC(GetRenderTargetFormatTestEntry(
-        fmtRenderTarget,
-        OUT pRenderTargetTestStatus
-        ));
-
-    // Return pointer to GetDC test status if requested.
-    if (pphrTestGetDC)
-    {
-        *pphrTestGetDC = &pRenderTargetTestStatus->hrTestGetDC;
-    }
-
-    if (pRenderTargetTestStatus->hrTest != WGXERR_NOTINITIALIZED)
-    {
-        IFC(pRenderTargetTestStatus->hrTest);
-        goto Cleanup;
-    }
-
-    IFC(TestRenderTargetFormat(fmtRenderTarget, pRenderTargetTestStatus));
-
-Cleanup:
-    if (FAILED(hr))
-    {
-        TraceTag((tagError, "MIL-HW(adapter=%d): d3d device failed testing.", m_caps.AdapterOrdinal));
-    }
-
-    RRETURN(hr); // Let DIE through
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::AssertRenderFormatIsTestedSuccessfully
-//
-//  Synopsis:
-//      Trigger an assert if given format has not been tested as a render target
-//      or that test failed.
-//
-//------------------------------------------------------------------------------
-
 void
 CD3DDeviceLevel1::AssertRenderFormatIsTestedSuccessfully(
-    D3DFORMAT fmtRenderTarget
+    DXGI_FORMAT fmtRenderTarget
     )
 {
-#if DBG_ANALYSIS
-    #pragma warning(push)
-    // error C4328: 'CGuard<LOCK>::CGuard(LOCK &)' : indirection alignment of formal parameter 1 (16) is greater than the actual argument alignment (8)
-    #pragma warning(disable : 4328)
-    ENTER_DEVICE_FOR_SCOPE(*this);
-    #pragma warning(pop)
-
-    TargetFormatTestStatus *pRenderTargetTestStatus = NULL;
-
-    Assert(SUCCEEDED(GetRenderTargetFormatTestEntry(
-        fmtRenderTarget,
-        OUT pRenderTargetTestStatus
-        )));
-
-    if (pRenderTargetTestStatus)
-    {
-        Assert(pRenderTargetTestStatus->hrTest != WGXERR_NOTINITIALIZED);
-        Assert(SUCCEEDED(pRenderTargetTestStatus->hrTest));
-    }
-#endif
-}
-
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::CheckBadDeviceDrivers
-//
-//  Synopsis:
-//      Modifies caps to disable buggy features of bad device drivers
-//
-//------------------------------------------------------------------------------
-HRESULT
-CD3DDeviceLevel1::CheckBadDeviceDrivers(
-    __in_ecount(1) const CDisplay *pDisplay
-    )
-{
-    AssertDeviceEntry(*this);
-
-    HRESULT hr = S_OK;
-
-    Assert(m_caps.AdapterOrdinal == pDisplay->GetDisplayIndex());
-
-    if (!pDisplay->IsRecentDriver())
-    {
-        IFC(E_FAIL);
-    }
-    else if (pDisplay->IsDeviceDriverBad())
-    {
-        MIL_THR(E_FAIL);
-
-        if (pDisplay->GetVendorId() == GraphicsCardVendorIntel
-            && pDisplay->GetDeviceId() == GraphicsCardIntel_845G)
-        {
-            TRACE_DEVICECREATE_FAILURE(
-                m_caps.AdapterOrdinal,
-                "Intel 845 disabled due to performance problems and a GPU bug.",
-                hr);
-        }
-        else
-        {
-            TRACE_DEVICECREATE_FAILURE(
-                m_caps.AdapterOrdinal,
-                "Device has been disabled due to driver problems.",
-                hr);
-        }
-
-        goto Cleanup;
-    }
-
-    {
-        //
-        //
-        // On many pieces of nvidia hardware, scissor rect has artifacts.  For
-        // right now we are disabling it.
-        //
-        //
-        // Disabling for all hardware because we don't have enough test time
-        // to verify that all issues are gone. This is fine because the
-        // optimization doesn't make any measurable improvement to DWM or
-        // WPF perf tests.
-        //
-        m_caps.RasterCaps &= ~D3DPRASTERCAPS_SCISSORTEST;
-
-        Assert((m_caps.RasterCaps & D3DPRASTERCAPS_SCISSORTEST) == 0);
-    }
-
-Cleanup:
-    RRETURN(hr);
 }
 
 //+-----------------------------------------------------------------------------
@@ -1708,121 +621,6 @@ CD3DDeviceLevel1::MarkUnusable(
     bool fMayBeMultithreadedCall
     )
 {
-    // No entry check as this method is thread safe
-
-    if (m_hrDisplayInvalid == D3DERR_DRIVERINTERNALERROR)
-    {
-        IGNORE_HR(CD3DRegistryDatabase::HandleAdapterUnexpectedError(m_caps.AdapterOrdinal));
-    }
-
-    //
-    // Future calls to Present will return display invalid
-    //
-
-    m_hrDisplayInvalid = WGXERR_DISPLAYSTATEINVALID;
-
-    //
-    // We can only safely access this device's m_resourceManager and the
-    // m_pManager when on this device's rendering thread.  If we're on a
-    // different thread defer those operations.
-    //
-
-    if (   !m_fDeviceLostProcessed
-        && IsProtected(fMayBeMultithreadedCall)
-#if DBG_STEP_RENDERING
-           // Don't process this if within stepped rendering because the
-           // primitive may be using cached resources w/o a reference to them.
-           // For example CHwSurfaceRenderTarget::DrawBitmap does that with the
-           // m_pDrawBitmapScratchBrush.
-        && !DbgInStepRenderingPresent()
-#endif DBG_STEP_RENDERING
-       )
-    {
-        // Destroy all GPUMarkers created using this device
-        ResetMarkers();
-
-        m_fDeviceLostProcessed = true;
-
-        //
-        // Notify the manager this device is unusable
-        //
-
-        m_pManager->UnusableNotification(this);
-
-        //
-        // Future Consideration:   Have state manager release resources
-        // since we know what is set we can set all state to NULL and eliminate
-        // any internal D3D references.  The need is not pressing as we expect
-        // the device will be fully released soon enough and will truely free
-        // all associated resources when it does.  Note that we expect this,
-        // but haven't validated D3D behavior.
-        //
-
-        //
-        // Attempt to destroy all resources that are now also lost/unusable
-        //
-        // There is a slim chance that the only thing keeping this device alive
-        // is an outstanding CD3DResource and since DestroyAllResources could
-        // eliminate that reference make sure this is the last call of this
-        // method.  Note what makes this unlikely is that we check for device
-        // protection above and currently the only way I know to get that is
-        // through a RT which is not currently a resource, but does hold a
-        // reference to the device.
-        //
-
-        //
-        // *** NOTE: UnusableNotification is depending upon this for D3DImage
-        //
-
-        m_resourceManager.DestroyAllResources();
-
-    }
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::GetSwapChain
-//
-//  Synopsis:
-//      delegate to D3DDeviceContext::GetSwapChain
-//      Note: we always create a new wrapper object
-//
-//------------------------------------------------------------------------------
-HRESULT
-CD3DDeviceLevel1::GetSwapChain(
-    UINT uGroupAdapterOrdinal,
-    __deref_out_ecount(1) CD3DSwapChain ** const ppSwapChain
-    )
-{
-    AssertDeviceEntry(*this);
-
-    HRESULT hr = S_OK;
-    IDirect3DSwapChain9 *pD3DSwapChain = NULL;
-
-    *ppSwapChain = NULL;
-
-    //
-    // Delegate to GetSwapChain
-    //
-
-    IFC(m_pD3DDevice->GetSwapChain(uGroupAdapterOrdinal, &pD3DSwapChain));
-
-    //
-    // Create swap chain wrapper
-    //
-
-    IFC(CD3DSwapChain::Create(
-        &m_resourceManager,
-        pD3DSwapChain,
-        0,
-        NULL, // pPresentContext- NULL indicates normal GetDC behavior
-        ppSwapChain
-        ));
-
-Cleanup:
-    ReleaseInterfaceNoNULL(pD3DSwapChain);
-    RRETURN(HandleDIE(hr));
 }
 
 //+-----------------------------------------------------------------------------
@@ -1839,30 +637,30 @@ HRESULT
 CD3DDeviceLevel1::CreateRenderTarget(
     UINT uiWidth,
     UINT uiHeight,
-    D3DFORMAT d3dfmtSurface,
-    D3DMULTISAMPLE_TYPE d3dMultiSampleType,
-    DWORD dwMultisampleQuality,
-    bool fLockable,
-    __deref_out_ecount(1) CD3DSurface ** const ppD3DSurface
+    DXGI_FORMAT dxgiFmt,
+    UINT uiMultisampleCount,
+    UINT uiMultisampleQuality,
+    __deref_out_ecount(1) CD3DTexture** const ppD3DTexture
     )
 {
     HRESULT hr = S_OK;
-    D3DSurface *pID3DSurface = NULL;
+    D3DTexture *pID3DTexture = NULL;
 
     IFC(CreateRenderTargetUntracked(
         uiWidth,
         uiHeight,
-        d3dfmtSurface,
-        d3dMultiSampleType,
-        dwMultisampleQuality,
-        fLockable,
-        &pID3DSurface
+        dxgiFmt,
+        uiMultisampleCount,
+        uiMultisampleQuality,
+        &pID3DTexture
         ));
 
-    IFC(CD3DSurface::Create(&m_resourceManager, pID3DSurface, ppD3DSurface));
+    CD3DVidMemOnlyTexture* pResult = nullptr;
+    IFC(CD3DVidMemOnlyTexture::Create(pID3DTexture, false, this, &pResult));
+    *ppD3DTexture = pResult;
 
 Cleanup:
-    ReleaseInterface(pID3DSurface);
+    ReleaseInterface(pID3DTexture);
 
     RRETURN(hr);
 }
@@ -1883,199 +681,50 @@ HRESULT
 CD3DDeviceLevel1::CreateRenderTargetUntracked(
     UINT uiWidth,
     UINT uiHeight,
-    D3DFORMAT d3dfmtSurface,
-    D3DMULTISAMPLE_TYPE d3dMultiSampleType,
-    DWORD dwMultisampleQuality,
-    bool fLockable,
-    __deref_out_ecount(1) D3DSurface ** const ppD3DSurface
+    DXGI_FORMAT dxgiFormat,
+    UINT uiMultisampleCount,
+    UINT uiMultisampleQuality,
+    __deref_out_ecount(1) D3DTexture ** const ppD3DTexture
     )
 {
     HRESULT hr = S_OK;
+    D3DTexture *pID3DTexture = NULL;
 
-    D3DSurface *pID3DSurface = NULL;
-
-    *ppD3DSurface = NULL;
+    *ppD3DTexture = NULL;
 
     AssertDeviceEntry(*this);
-
-    AssertRenderFormatIsTestedSuccessfully(d3dfmtSurface);
 
     BEGIN_DEVICE_ALLOCATION;
 
     {
         MtSetDefault(Mt(D3DRenderTarget));
 
-        hr = m_pD3DDevice->CreateRenderTarget(
-            uiWidth,
-            uiHeight,
-            d3dfmtSurface,
-            d3dMultiSampleType,
-            dwMultisampleQuality,
-            fLockable,
-            &pID3DSurface,
-            NULL
-            );
+        D3D11_TEXTURE2D_DESC bufferDesc;
+        bufferDesc.ArraySize = 1;
+        bufferDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        bufferDesc.CPUAccessFlags = 0;
+        bufferDesc.Format = dxgiFormat;
+        bufferDesc.Height = uiHeight;
+        bufferDesc.MipLevels = 1;
+        bufferDesc.MiscFlags = 0;
+        bufferDesc.SampleDesc.Count = uiMultisampleCount;
+        bufferDesc.SampleDesc.Quality = uiMultisampleQuality;
+        bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+        bufferDesc.Width = uiWidth;
+        hr = m_pD3DDevice->CreateTexture2D(&bufferDesc, 0, &pID3DTexture);
     }
 
     END_DEVICE_ALLOCATION;
 
     IFC(hr); // placed here to avoid stack capturing multiple times in allocation loop
 
-    *ppD3DSurface = pID3DSurface; // Steal ref
-    pID3DSurface = NULL;
+    *ppD3DTexture = pID3DTexture; // Steal ref
+    pID3DTexture = NULL;
 
 Cleanup:
-    ReleaseInterfaceNoNULL(pID3DSurface);
+    ReleaseInterfaceNoNULL(pID3DTexture);
 
     RRETURN(HandleDIE(hr));
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::GetRenderTargetData
-//
-//  Synopsis:
-//      Delegate to D3DDeviceContext::GetRenderTargetData, Copies data from a
-//      render target source surface to a system memory destination surface.
-//
-//------------------------------------------------------------------------------
-HRESULT
-CD3DDeviceLevel1::GetRenderTargetData(
-    __in_ecount(1) D3DSurface *pSourceSurface,
-    __in_ecount(1) D3DSurface *pDestinationSurface
-    )
-{
-    HRESULT hr = S_OK;
-
-    IFC(m_pD3DDevice->GetRenderTargetData(
-        pSourceSurface,
-        pDestinationSurface
-        ));
-
-Cleanup:
-    if (hr == D3DERR_DEVICELOST)
-    {
-        MIL_THR(WGXERR_DISPLAYSTATEINVALID);
-    }
-
-    RRETURN(HandleDIE(hr));
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::CreateAdditionalSwapChain
-//
-//  Synopsis:
-//      delegate to D3DDeviceContext::CreateAdditionalSwapChain
-//
-//------------------------------------------------------------------------------
-HRESULT
-CD3DDeviceLevel1::CreateAdditionalSwapChain(
-    __in_ecount_opt(1) CMILDeviceContext const *pMILDC,
-    __in_ecount(1) D3DPRESENT_PARAMETERS *pD3DPresentParams,
-    __deref_out_ecount(1) CD3DSwapChain ** const ppSwapChain
-    )
-{
-    AssertDeviceEntry(*this);
-
-    // Assert format has been tested, for swap chains.
-    AssertRenderFormatIsTestedSuccessfully(pD3DPresentParams->BackBufferFormat);
-
-    HRESULT hr = S_OK;
-    IDirect3DSwapChain9 *pD3DSwapChain = NULL;
-
-    *ppSwapChain = NULL;
-
-    //
-    // It is possible for caller to try creating a render target even though
-    // the device is now invalid.  Check here for such a situation.
-    //
-
-    IFC(m_hrDisplayInvalid);
-
-    //
-    // Workaround : HW RT artifacts on large windows
-    //
-    // Some drivers can't handle creating swap chains larger than their texture
-    // limit.  Until these are fixed we will mock OOVM so that we can fallback
-    // to SW.
-    //
-
-    if (pD3DPresentParams->BackBufferWidth > m_caps.MaxTextureWidth ||
-        pD3DPresentParams->BackBufferHeight > m_caps.MaxTextureHeight)
-    {
-        // Any error except WGXERR_DISPLAYSTATEINVALID will try fallback to SW.
-        IFC(D3DERR_OUTOFVIDEOMEMORY);
-    }
-
-    //
-    // Delegate to CreateAdditionalSwapChain
-    //
-
-    {
-        MtSetDefault(Mt(D3DSwapChain));
-
-        BEGIN_DEVICE_ALLOCATION;
-
-        hr = m_pD3DDevice->CreateAdditionalSwapChain(pD3DPresentParams, &pD3DSwapChain);
-
-        END_DEVICE_ALLOCATION;
-
-        IFC(hr); // placed here to avoid jumping to cleanup immediately on OOVM
-    }
-
-    //
-    // Create swap chain wrapper
-    //
-
-    if (   pMILDC
-        && (   pMILDC->PresentWithHAL()
-            || !IsExtendedDevice()
-            || (   pD3DPresentParams->BackBufferFormat != D3DFMT_A8R8G8B8
-                && pD3DPresentParams->BackBufferFormat != D3DFMT_X8R8G8B8
-               )
-           )
-       )
-    {
-        //
-        // The MILDC, if passed to CD3DSwapChain::Create, will cause us to
-        // implement GetDC ourselves by copying the swap chain surface to a
-        // software bitmap. We only want to do this in WDDM since XPDM can
-        // hardware accelerate GetDC on its own.
-        //
-        // Additionally, non-32bpp formats are not currently allowed when a
-        // MILDC is supplied.
-        //
-        pMILDC = NULL;
-    }
-
-    IFC(CD3DSwapChain::Create(
-        &m_resourceManager,
-        pD3DSwapChain,
-        pD3DPresentParams->BackBufferCount,
-        pMILDC,
-        ppSwapChain
-        ));
-
-Cleanup:
-    // Can't use HandleDIE because if we can't create swap chain
-    // present won't be called.
-
-    switch (hr)
-    {
-    case D3DERR_DRIVERINTERNALERROR:
-        m_hrDisplayInvalid = D3DERR_DRIVERINTERNALERROR;
-        __fallthrough;
-
-    case D3DERR_DEVICELOST:
-        hr = WGXERR_DISPLAYSTATEINVALID;
-        MarkUnusable(false /* This call is already entry protected. */);
-    }
-
-    ReleaseInterface(pD3DSwapChain);
-    RRETURN(hr);
 }
 
 //+-----------------------------------------------------------------------------
@@ -2090,9 +739,8 @@ Cleanup:
 HRESULT
 CD3DDeviceLevel1::CreateVertexBuffer(
     UINT Length,
-    DWORD Usage,
-    DWORD FVF,
-    D3DPOOL Pool,
+    D3D11_USAGE Usage,
+    UINT cpuAccessFlags,
     __deref_out_ecount(1) D3DVertexBuffer ** const ppVertexBuffer
     )
 {
@@ -2108,14 +756,18 @@ CD3DDeviceLevel1::CreateVertexBuffer(
 
     BEGIN_DEVICE_ALLOCATION;
 
-    hr = m_pD3DDevice->CreateVertexBuffer(
-        Length,
-        Usage,
-        FVF,
-        Pool,
-        ppVertexBuffer,
-        NULL // HANDLE* pSharedHandle
-        );
+    // Fill in a buffer description.
+    D3D11_BUFFER_DESC bufferDesc;
+    bufferDesc.Usage = Usage;
+    bufferDesc.ByteWidth = Length;
+    bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    bufferDesc.CPUAccessFlags = cpuAccessFlags;
+    bufferDesc.MiscFlags = 0;
+
+    hr = m_pD3DDevice->CreateBuffer(
+        &bufferDesc, 
+        nullptr, 
+        ppVertexBuffer);
 
     END_DEVICE_ALLOCATION;
 
@@ -2127,10 +779,9 @@ CD3DDeviceLevel1::CreateVertexBuffer(
 HRESULT
 CD3DDeviceLevel1::CreateIndexBuffer(
     UINT Length,
-    DWORD Usage,
-    D3DFORMAT Format,
-    D3DPOOL Pool,
-    __deref_out_ecount(1) D3DIndexBuffer ** const ppIndexBuffer
+    D3D11_USAGE Usage,
+    UINT uiCpuAccessFlags,
+    __deref_out_ecount(1) D3DIndexBuffer** const ppIndexBuffer
     )
 {
     AssertDeviceEntry(*this);
@@ -2140,65 +791,27 @@ CD3DDeviceLevel1::CreateIndexBuffer(
     MtSetDefault(Mt(D3DIndexBuffer));
 
     //
-    // Allocate the D3D vertex buffer
+    // Allocate the D3D index buffer
     //
 
     BEGIN_DEVICE_ALLOCATION;
 
-    hr = m_pD3DDevice->CreateIndexBuffer(
-        Length,
-        Usage,
-        Format,
-        Pool,
-        ppIndexBuffer,
-        NULL // HANDLE* pSharedHandle
-        );
+    // Fill in a buffer description.
+    D3D11_BUFFER_DESC bufferDesc = { 0 };
+    bufferDesc.Usage = Usage;
+    bufferDesc.ByteWidth = Length;
+    bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    bufferDesc.CPUAccessFlags = uiCpuAccessFlags;
+    bufferDesc.MiscFlags = 0;
+
+    hr = m_pD3DDevice->CreateBuffer(
+        &bufferDesc,
+        nullptr,
+        ppIndexBuffer);
 
     END_DEVICE_ALLOCATION;
 
     MIL_THR(hr); // placed here to avoid stack capturing multiple times in allocation loop
-
-    RRETURN(HandleDIE(hr));
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::ComposeRects
-//
-//  Synopsis:
-//      delegate to D3DDeviceContext::ComposeRects
-//
-//------------------------------------------------------------------------------
-HRESULT
-CD3DDeviceLevel1::ComposeRects(
-        __in_ecount(1) D3DSurface* pSource,
-        __inout_ecount(1) D3DSurface* pDestination,
-        __in_ecount(1) D3DVertexBuffer* pSrcRectDescriptors,
-        UINT NumRects,
-        __in_ecount(1) D3DVertexBuffer* pDstRectDescriptors,
-        D3DCOMPOSERECTSOP Operation
-        )
-{
-    AssertDeviceEntry(*this);
-    Assert(m_pD3DDeviceEx);
-
-    HRESULT hr = S_OK;
-
-    //
-    // Compose overscaled glyph run bitmap
-    //
-
-    MIL_THR(m_pD3DDeviceEx->ComposeRects(
-        pSource,
-        pDestination,
-        pSrcRectDescriptors,
-        NumRects,
-        pDstRectDescriptors,
-        Operation,
-        0,  //OffsetX
-        0   //OffsetY
-        ));
 
     RRETURN(HandleDIE(hr));
 }
@@ -2217,28 +830,14 @@ CD3DDeviceLevel1::ComposeRects(
 //------------------------------------------------------------------------------
 HRESULT
 CD3DDeviceLevel1::CreateTexture(
-    __in_ecount(1) const D3DSURFACE_DESC *pSurfDesc,
+    __in_ecount(1) const D3D11_TEXTURE2D_DESC* pTextureDesc,
     UINT uLevels,
-    __deref_out_ecount(1) D3DTexture ** const ppD3DTexture,
-    __deref_opt_inout_ecount(1) HANDLE * const pSharedHandle
-    )
+    __deref_out_ecount(1) D3DTexture** const ppD3DTexture
+)
 {
     AssertDeviceEntry(*this);
 
     HRESULT hr = S_OK;
-
-    //
-    // If we've already processed a mode change for this device but haven't recreated
-    // it for this window, we should notify the caller.  If we allow the device to create
-    // a texture that new texture will be valid and the rendering stack could
-    // attempt to draw into it even though the rest of the device's resources have
-    // already been released.
-    //
-    if (m_fDeviceLostProcessed == true)
-    {
-        MIL_THR(WGXERR_DISPLAYSTATEINVALID);
-        RRETURN(hr);
-    }
 
     //
     // Allocate the D3D texture
@@ -2249,57 +848,11 @@ CD3DDeviceLevel1::CreateTexture(
 
         BEGIN_DEVICE_ALLOCATION;
 
-        hr = m_pD3DDevice->CreateTexture(
-            pSurfDesc->Width,
-            pSurfDesc->Height,
-            uLevels,
-            pSurfDesc->Usage,
-            pSurfDesc->Format,
-            pSurfDesc->Pool,
-            ppD3DTexture,
-            pSharedHandle
-            );
+        hr = m_pD3DDevice->CreateTexture2D(pTextureDesc, 0, ppD3DTexture);
 
         END_DEVICE_ALLOCATION;
 
         DbgInjectDIE(&hr);
-
-        MIL_THR(hr); // placed here to avoid stack capturing multiple times in allocation loop
-    }
-
-    RRETURN(HandleDIE(hr));
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::CreateStateBlock
-//
-//  Synopsis:
-//      delegate to D3DDeviceContext::CreateStateBlock
-//
-//------------------------------------------------------------------------------
-HRESULT
-CD3DDeviceLevel1::CreateStateBlock(
-    D3DSTATEBLOCKTYPE d3dStateBlockType,
-    __deref_out_ecount(1) IDirect3DStateBlock9 ** const ppStateBlock
-    )
-{
-    AssertDeviceEntry(*this);
-
-    HRESULT hr = S_OK;
-
-    {
-        MtSetDefault(Mt(D3DStateBlock));
-
-        BEGIN_DEVICE_ALLOCATION;
-
-        hr = m_pD3DDevice->CreateStateBlock(
-            d3dStateBlockType,
-            ppStateBlock
-            );
-
-        END_DEVICE_ALLOCATION;
 
         MIL_THR(hr); // placed here to avoid stack capturing multiple times in allocation loop
     }
@@ -2318,9 +871,9 @@ CD3DDeviceLevel1::CreateStateBlock(
 //------------------------------------------------------------------------------
 HRESULT
 CD3DDeviceLevel1::CreateLockableTexture(
-    __in_ecount(1) const D3DSURFACE_DESC *pSurfDesc,
-    __deref_out_ecount(1) CD3DLockableTexture ** const ppLockableTexture
-    )
+    __in_ecount(1) const D3D11_TEXTURE2D_DESC* pTextureDesc,
+    __deref_out_ecount(1) CD3DLockableTexture** const ppLockableTexture
+)
 {
     AssertDeviceEntry(*this);
 
@@ -2328,15 +881,7 @@ CD3DDeviceLevel1::CreateLockableTexture(
     D3DTexture *pD3DTexture = NULL;
     UINT uLevels = 1;
 
-    Assert((pSurfDesc->Pool == m_ManagedPool) ||
-           (pSurfDesc->Pool == D3DPOOL_SYSTEMMEM));
-
     *ppLockableTexture = NULL;
-
-    if (pSurfDesc->Usage & D3DUSAGE_AUTOGENMIPMAP)
-    {
-        uLevels = 0;
-    }
 
     //
     // Allocate the D3D texture
@@ -2347,16 +892,7 @@ CD3DDeviceLevel1::CreateLockableTexture(
 
         BEGIN_DEVICE_ALLOCATION;
 
-        hr = m_pD3DDevice->CreateTexture(
-            pSurfDesc->Width,
-            pSurfDesc->Height,
-            uLevels,
-            pSurfDesc->Usage,
-            pSurfDesc->Format,
-            pSurfDesc->Pool,
-            &pD3DTexture,
-            NULL // HANDLE* pSharedHandle
-            );
+        hr = CD3DDeviceLevel1::CreateTexture(pTextureDesc, uLevels, &pD3DTexture);
 
         END_DEVICE_ALLOCATION;
 
@@ -2369,6 +905,7 @@ CD3DDeviceLevel1::CreateLockableTexture(
 
     IFC(CD3DLockableTexture::Create(
         &m_resourceManager,
+        this,
         pD3DTexture,
         ppLockableTexture
         ));
@@ -2395,166 +932,114 @@ Cleanup:
 //
 //------------------------------------------------------------------------------
 HRESULT
-CD3DDeviceLevel1::CreateSysMemUpdateSurface(
+CD3DDeviceLevel1::CreateSysMemUpdateTexture(
     UINT uWidth,
     UINT uHeight,
-    D3DFORMAT fmtTexture,
-    __in_xcount_opt(uWidth * uHeight * D3DFormatSize(fmtTexture)) void *pvPixels,
-    __deref_out_ecount(1) D3DSurface ** const ppD3DSysMemSurface
-    )
+    DXGI_FORMAT fmtTexture,
+    __in_xcount_opt(uWidth* uHeight* D3DFormatSize(fmtTexture)) void* pvPixels,
+    __deref_out_ecount(1) D3DTexture** const ppD3DSysMemTexture
+)
 {
     HRESULT hr = S_OK;
-    D3DTexture *pD3DTexture = NULL;
-
-    *ppD3DSysMemSurface = NULL;
-
-    if (pvPixels)
-    {
-        // pvPixel may be non-NULL only if we have LDDM
-        Assert(IsLDDMDevice());
-    }
-
-    if (IsLDDMDevice())
-    {
-        //
-        // Allocate the D3D surface. Passing the pixels this way creates the
-        // surface by referencing these pixels.
-        //
-
-        {
-            MtSetDefault(Mt(D3DTexture));
-
-            BEGIN_DEVICE_ALLOCATION;
-
-            hr = m_pD3DDevice->CreateOffscreenPlainSurface(
-                uWidth,
-                uHeight,
-                fmtTexture,
-                D3DPOOL_SYSTEMMEM,
-                ppD3DSysMemSurface,
-                pvPixels ? reinterpret_cast<HANDLE*>(&pvPixels) : NULL
-                );
-
-            END_DEVICE_ALLOCATION;
-
-            MIL_THR(hr); // placed here to avoid stack capturing multiple times in allocation loop
-
-            IFC(HandleDIE(hr));
-        }
-    }
-    else
-    {
-        //
-        // In XPDM, offscreen plain surfaces do not
-        // work correctly. D3D9: SystemMemory Resource Lock
-        // doesn't synchronize with command stream.
-        //
-        // The code in this "else" block is a workaround. The Locking mechanism
-        // does work on textures.
-        //
-
-        //
-        // There is one caveat to using a texture instead of an offscreen
-        // surface. Textures must respect max texture size, while offscreen
-        // surfaces do not. Fortunately our code does not attempt to do such a
-        // thing, so we are okay Asserting here.
-        //
-        Assert(uWidth <= GetMaxTextureWidth());
-        Assert(uHeight <= GetMaxTextureHeight());
-
-        D3DSURFACE_DESC d3dsdSysMemTexture;
-
-        d3dsdSysMemTexture.Format = fmtTexture;
-        d3dsdSysMemTexture.Type = D3DRTYPE_TEXTURE;
-        d3dsdSysMemTexture.Usage = 0;
-        d3dsdSysMemTexture.Pool = D3DPOOL_SYSTEMMEM;
-        d3dsdSysMemTexture.MultiSampleType = D3DMULTISAMPLE_NONE;
-        d3dsdSysMemTexture.MultiSampleQuality = 0;
-        d3dsdSysMemTexture.Width = uWidth;
-        d3dsdSysMemTexture.Height = uHeight;
-
-        IFC(CreateTexture(
-            &d3dsdSysMemTexture,
-            1,
-            &pD3DTexture
-            ));
-
-        IFC(pD3DTexture->GetSurfaceLevel(
-            0,
-            ppD3DSysMemSurface
-            ));
-    }
-
-Cleanup:
-    ReleaseInterfaceNoNULL(pD3DTexture);
-
-    RRETURN(hr);
-}
-
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::CreateSysMemReferenceTexture
-//
-//  Synopsis:
-//         delegate to D3DDeviceContext::CreateTexture
-//
-//      *** WARNING *** WARNING *** WARNING *** WARNING ***
-//
-//         CreateSysMemReferenceTexture only works on Longhorn. Passing a
-//         non-NULL pSharedHandle to CreateTexture will return E_NOTIMPL on XP
-//         and Server 2003.
-//
-//------------------------------------------------------------------------------
-HRESULT
-CD3DDeviceLevel1::CreateSysMemReferenceTexture(
-    __in_ecount(1) const D3DSURFACE_DESC *pSurfDesc,
-    __in_xcount(
-        pSurfDesc->Width * pSurfDesc->Height
-        * D3DFormatSize(pSurfDesc->Format)
-        ) void *pvPixels,
-    __deref_out_ecount(1) D3DTexture ** const ppD3DSysMemTexture
-    )
-{
-    HRESULT hr = S_OK;
-
-    // Mip mapping for this special kind of texture
-    // is not supported by us or D3D.
-    UINT uiLevels = 1;
-
-    Assert(pSurfDesc->Pool == D3DPOOL_SYSTEMMEM);
-
-    // this function cannot be called if we are not LDDM
-    Assert(IsLDDMDevice());
+    D3DTexture *pID3DTexture = NULL;
 
     *ppD3DSysMemTexture = NULL;
 
     //
-    // Allocate the D3D texture. Passing the pixels
-    // this way creates the texture by referencing
-    // these pixels.
+    // Allocate the D3D surface. Passing the pixels this way creates the
+    // surface by referencing these pixels.
     //
 
-    BEGIN_DEVICE_ALLOCATION;
+    {
+        MtSetDefault(Mt(D3DTexture));
 
-    hr = m_pD3DDevice->CreateTexture(
-        pSurfDesc->Width,
-        pSurfDesc->Height,
-        uiLevels,
-        pSurfDesc->Usage,
-        pSurfDesc->Format,
-        pSurfDesc->Pool,
-        ppD3DSysMemTexture,
-        reinterpret_cast<HANDLE*>(&pvPixels)
-        );
+        BEGIN_DEVICE_ALLOCATION;
 
-    END_DEVICE_ALLOCATION;
+        D3D11_TEXTURE2D_DESC bufferDesc;
+        bufferDesc.ArraySize = 1;
+        bufferDesc.BindFlags = 0;
+        bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE;
+        bufferDesc.Format = fmtTexture;
+        bufferDesc.Height = uHeight;
+        bufferDesc.MipLevels = 1;
+        bufferDesc.MiscFlags = 0;
+        bufferDesc.SampleDesc.Count = 1;
+        bufferDesc.SampleDesc.Quality = 0;
+        bufferDesc.Usage = D3D11_USAGE_STAGING;
+        bufferDesc.Width = uWidth;
 
-    MIL_THR(hr); // placed here to avoid stack capturing multiple times in allocation loop
+        if (pvPixels != nullptr)
+        {
+            D3D11_SUBRESOURCE_DATA initialData;
+            initialData.pSysMem = pvPixels;
+            initialData.SysMemPitch = uWidth * D3DFormatSize(fmtTexture);
+            initialData.SysMemSlicePitch = 0;
+            hr = m_pD3DDevice->CreateTexture2D(&bufferDesc, &initialData, &pID3DTexture);
+        }
+        else
+        {
+            hr = m_pD3DDevice->CreateTexture2D(&bufferDesc, nullptr, &pID3DTexture);
+        }
 
+
+        END_DEVICE_ALLOCATION;
+
+        MIL_THR(hr); // placed here to avoid stack capturing multiple times in allocation loop
+
+        IFC(HandleDIE(hr));
+
+        *ppD3DSysMemTexture = pID3DTexture;
+        (*ppD3DSysMemTexture)->AddRef();
+    }
+
+Cleanup:
+    ReleaseInterfaceNoNULL(pID3DTexture);
+
+    RRETURN(hr);
+}
+
+//+-----------------------------------------------------------------------------
+//
+//  Member:
+//      CD3DDeviceLevel1::UpdateTextureRegion
+//
+//  Synopsis:
+//      delegate to D3DDeviceContext::CopySubresourceRegion
+//
+//  Note:
+//      There is no check for this, but the src texture must be in system memory
+//      and the dest texture must be in pool default.
+//
+//------------------------------------------------------------------------------
+HRESULT
+CD3DDeviceLevel1::UpdateTextureRegion(
+    __in_ecount(1) D3DTexture * pD3DSysMemSrcTexture,
+    UINT srcSubresource,
+    __in_ecount_opt(1) const RECT *pSourceRect,
+    __inout_ecount(1) D3DTexture * pD3DPoolDefaultDestTexture,
+    UINT destSubresource,
+    __in_ecount_opt(1) const POINT *pDestPoint
+)
+{
+    HRESULT hr = S_OK;
+
+    AssertDeviceEntry(*this);
+
+    D3D11_BOX sourceCopyBox;
+    sourceCopyBox.left = pSourceRect->left;
+    sourceCopyBox.right = pSourceRect->right;
+    sourceCopyBox.top = pSourceRect->top;
+    sourceCopyBox.bottom = pSourceRect->bottom;
+    sourceCopyBox.front = 0;
+    sourceCopyBox.back = 1;
+
+    m_pD3DDeviceContext->CopySubresourceRegion(pD3DPoolDefaultDestTexture, 0, pDestPoint->x, pDestPoint->y, 0,
+                                               pD3DSysMemSrcTexture, 0, &sourceCopyBox);
+
+Cleanup:
     RRETURN(HandleDIE(hr));
 }
+
 
 
 //+-----------------------------------------------------------------------------
@@ -2571,99 +1056,16 @@ CD3DDeviceLevel1::CreateSysMemReferenceTexture(
 //
 //------------------------------------------------------------------------------
 HRESULT
-CD3DDeviceLevel1::UpdateSurface(
-    __in_ecount(1) D3DSurface *pD3DSysMemSrcSurface,
-    __in_ecount_opt(1) const RECT *pSourceRect,
-    __inout_ecount(1) D3DSurface *pD3DPoolDefaultDestSurface,
-    __in_ecount_opt(1) const POINT *pDestPoint
-    )
+CD3DDeviceLevel1::UpdateTexture(
+    __in_ecount(1) D3DTexture* pD3DSysMemSrcTexture,
+    __inout_ecount(1) D3DTexture* pD3DPoolDefaultDestTexture
+)
 {
     HRESULT hr = S_OK;
 
     AssertDeviceEntry(*this);
 
-    IFC(m_pD3DDevice->UpdateSurface(
-        pD3DSysMemSrcSurface,
-        pSourceRect,
-        pD3DPoolDefaultDestSurface,
-        pDestPoint
-        ));
-
-Cleanup:
-    RRETURN(HandleDIE(hr));
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::UpdateTexture
-//
-//  Synopsis:
-//      delegate to D3DDeviceContext::UpdateTexture
-//      Note: There is no check for this, but the src texture
-//      must be in system memory and the dest texture must be in
-//      pool default.
-//
-//------------------------------------------------------------------------------
-HRESULT CD3DDeviceLevel1::UpdateTexture(
-    __in_ecount(1) D3DTexture *pD3DSysMemSrcTexture,
-    __inout_ecount(1) D3DTexture *pD3DPoolDefaultDestTexture
-    )
-{
-    HRESULT hr = S_OK;
-
-    IFC(m_pD3DDevice->UpdateTexture(
-        pD3DSysMemSrcTexture,
-        pD3DPoolDefaultDestTexture
-        ));
-
-Cleanup:
-    RRETURN(HandleDIE(hr));
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::StretchRect
-//
-//  Synopsis:
-//      delegate to D3DDeviceContext::StretchRect
-//      Note: There are restrictions on which types of surfaces
-//      may be used with this function. See the D3D docs for
-//      specifics.
-//
-//------------------------------------------------------------------------------
-HRESULT CD3DDeviceLevel1::StretchRect(
-    __in_ecount(1) CD3DSurface *pSourceSurface,
-    __in_ecount_opt(1) const RECT *pSourceRect,
-    __inout_ecount(1) D3DSurface *pDestSurface,
-    __in_ecount_opt(1) const RECT *pDestRect,
-    D3DTEXTUREFILTERTYPE Filter
-    )
-{
-    HRESULT hr = S_OK;
-
-    AssertDeviceEntry(*this);
-
-    if (g_pMediaControl)
-    {
-        if (pSourceRect)
-        {
-            g_lPixelsFilledPerFrame += (pSourceRect->right - pSourceRect->left) * (pSourceRect->bottom - pSourceRect->top);
-        }
-        else if (pDestRect)
-        {
-            g_lPixelsFilledPerFrame += (pDestRect->right - pDestRect->left) * (pDestRect->bottom - pDestRect->top);
-        }
-    }
-
-    IFC(m_pD3DDevice->StretchRect(
-        pSourceSurface->ID3DSurface(),
-        pSourceRect,
-        pDestSurface,
-        pDestRect,
-        Filter
-        ));
+    m_pD3DDeviceContext->CopyResource(pD3DPoolDefaultDestTexture, pD3DSysMemSrcTexture);
 
 Cleanup:
     RRETURN(HandleDIE(hr));
@@ -2683,18 +1085,14 @@ Cleanup:
 //------------------------------------------------------------------------------
 HRESULT
 CD3DDeviceLevel1::SetRenderTargetForEffectPipeline(
-    __in_ecount(1) CD3DSurface *pD3DSurface
+    __in_ecount(1) CD3DTexture* pD3DTexture
     )
 {
     AssertDeviceEntry(*this);
 
     HRESULT hr = S_OK;
 
-    //
-    // If the render target hasn't changed, don't do anything.
-    //
-
-    if (pD3DSurface == m_pCurrentRenderTargetNoRef)
+    if (pD3DTexture == m_pCurrentRenderTargetNoRef)
     {
         goto Cleanup;
     }
@@ -2712,10 +1110,10 @@ CD3DDeviceLevel1::SetRenderTargetForEffectPipeline(
     // Set the render target
     //
 
-    m_desc = pD3DSurface->Desc();
+    m_desc = pD3DTexture->D3DSurface0Desc();
 
-    IFC(m_pD3DDevice->SetRenderTarget(0, pD3DSurface->ID3DSurface()));
-    m_pCurrentRenderTargetNoRef = pD3DSurface;
+    CD3DRenderState::SetRenderTarget(pD3DTexture->GetRenderTargetViewNoAddRef());
+    m_pCurrentRenderTargetNoRef = pD3DTexture;
 
     //
     // SetRenderTarget resets the Viewport and ScissorClip
@@ -2729,7 +1127,6 @@ CD3DDeviceLevel1::SetRenderTargetForEffectPipeline(
     // We have to let it know to set the clip to false.
     //
     SetClipSet(false);
-
 
     //
     // Call BeginScene
@@ -2752,8 +1149,6 @@ Cleanup:
     RRETURN(HandleDIE(hr));
 }
 
-
-
 //+-----------------------------------------------------------------------------
 //
 //  Member:
@@ -2768,7 +1163,7 @@ Cleanup:
 //------------------------------------------------------------------------------
 HRESULT
 CD3DDeviceLevel1::SetRenderTarget(
-    __in_ecount(1) CD3DSurface *pD3DSurface
+    __in_ecount(1) CD3DTexture *pD3DTexture
     )
 {
     AssertDeviceEntry(*this);
@@ -2781,7 +1176,7 @@ CD3DDeviceLevel1::SetRenderTarget(
     // If the render target hasn't changed, don't do anything.
     //
 
-    if (pD3DSurface == m_pCurrentRenderTargetNoRef)
+    if (pD3DTexture == m_pCurrentRenderTargetNoRef)
     {
         goto Cleanup;
     }
@@ -2799,16 +1194,14 @@ CD3DDeviceLevel1::SetRenderTarget(
     // Set the render target
     //
 
-    m_desc = pD3DSurface->Desc();
+    m_desc = pD3DTexture->D3DSurface0Desc();
 
     // There was a Watson report where D3D returned a failure code
     //                 indicating the D3D9 surface ptr was NULL.  From inspection
     //                 this seems impossible - we want this to break in retail at
     //                 the point of failure to aid future investigation of the issue.
-    FreAssert(pD3DSurface->ID3DSurface() != NULL);
-
-    IFC(m_pD3DDevice->SetRenderTarget(0, pD3DSurface->ID3DSurface()));
-    m_pCurrentRenderTargetNoRef = pD3DSurface;
+    CD3DRenderState::SetRenderTarget(pD3DTexture->GetRenderTargetViewNoAddRef());
+    m_pCurrentRenderTargetNoRef = pD3DTexture;
 
     //
     // SetRenderTarget resets the Viewport and ScissorClip
@@ -2830,15 +1223,6 @@ CD3DDeviceLevel1::SetRenderTarget(
         rcViewport.Y = 0;
         rcViewport.Width = m_desc.Width;
         rcViewport.Height = m_desc.Height;
-
-        //
-        // We must call ScissorRectChanged because D3DDeviceContext::SetRenderTarget
-        // resets the scissor rect to the viewport.
-        //
-        if (SupportsScissorRect())
-        {
-            ScissorRectChanged(&rcViewport);
-        }
 
         //
         // Set the viewport since it has inherently changed.
@@ -2875,7 +1259,6 @@ Cleanup:
     RRETURN(HandleDIE(hr));
 }
 
-
 //+-----------------------------------------------------------------------------
 //
 //  Member:
@@ -2889,21 +1272,14 @@ Cleanup:
 //------------------------------------------------------------------------------
 void
 CD3DDeviceLevel1::ReleaseUseOfRenderTarget(
-    __in_ecount(1) const CD3DSurface *pD3DSurface     // [IN] a render target that
+    __in_ecount(1) const CD3DTexture* pD3DTexture// [IN] a render target that
                                                       // will no longer be valid
     )
 {
     AssertDeviceEntry(*this);
 
-    if (pD3DSurface == m_pCurrentRenderTargetNoRef)
+    if (pD3DTexture == m_pCurrentRenderTargetNoRef)
     {
-        //
-        // The pd3dSurface we need to release is currently
-        //  set as the D3D render target.  In order to
-        //  completely release it we must call SetRenderTarget
-        //  with a different RT.  NULL is not acceptable.
-        //
-
         m_pCurrentRenderTargetNoRef = NULL;
 
         AssertMsg(m_fInScene,
@@ -2915,16 +1291,14 @@ CD3DDeviceLevel1::ReleaseUseOfRenderTarget(
             IGNORE_HR(EndScene());
         }
 
-        IGNORE_HR(m_pD3DDevice->SetRenderTarget(0, m_pD3DDummyBackBuffer));
-
-        ReleaseUseOfDepthStencilSurface(m_pDepthStencilBufferForCurrentRTNoRef);
+        CD3DRenderState::SetRenderTarget(nullptr);
+        ReleaseUseOfDepthStencilTexture(m_pDepthStencilBufferForCurrentRTNoRef);
 
         // Note: We've set the RT to a dummy so there is no point in
         //       beginning a scene now.  The scene will begin once
         //       another RT has been set.
     }
 }
-
 
 //+-----------------------------------------------------------------------------
 //
@@ -2936,99 +1310,58 @@ CD3DDeviceLevel1::ReleaseUseOfRenderTarget(
 //
 //------------------------------------------------------------------------------
 HRESULT
-CD3DDeviceLevel1::Clear(
+CD3DDeviceLevel1::ClearColor(
     DWORD dwCount,
-    __in_ecount_opt(dwCount) const D3DRECT* pRects,
-    DWORD dwFlags,
-    D3DCOLOR d3dColor,
-    FLOAT rZValue,
-    int iStencilValue
-    )
+    __in_ecount_opt(dwCount) const D3D11_RECT* pRects,
+    DWORD colorRGBA
+)
 {
     AssertDeviceEntry(*this);
 
     HRESULT hr = S_OK;
 
     Assert((dwCount > 0) == (pRects != NULL));
-    Assert(rZValue >= 0.0f && rZValue <= 1.0f);
-    Assert(iStencilValue >= 0);
-
-    //
-    // There is a bug in checked D3D that will cause them to fail if we clear
-    // the target and the depth stencil surface is not at least as big as the
-    // rendertarget, even if we're not clearing the depth or stencil.
-    //
-    // Some drivers don't deal with this well either, as they've never, been
-    // expected to.
-    //
-
-    if (IsDepthStencilSurfaceSmallerThan(m_desc.Width, m_desc.Height))
-    {
-        //
-        // Too small; so unset the depth-stencil buffer to work around bugs.
-        //
-
-        // We shouldn't be clearing z or stencil, with an inappropriately
-        // sized buffer.
-        Assert((dwFlags & (D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL) ) == 0);
-
-        IFC(SetDepthStencilSurfaceInternal(NULL));
-    }
 
     //
     // Do the clear
     //
+    FLOAT colorFloat[4] = {
+        ((colorRGBA >> 0) & 0xFF) / 255.0f,
+        ((colorRGBA >> 8) & 0xFF) / 255.0f,
+        ((colorRGBA >> 16) & 0xFF) / 255.0f,
+        ((colorRGBA >> 24) & 0xFF) / 255.0f
+    };
 
-    IFC(m_pD3DDevice->Clear(
-        dwCount,
+    m_pD3DDeviceContext->ClearView(m_pCurrentRenderTargetNoRef->GetRenderTargetViewNoAddRef(),
+        colorFloat,
         pRects,
-        dwFlags,
-        d3dColor,
-        rZValue,
-        iStencilValue
-        ));
-
-#if DBG
-    //
-    // Draw zoom mode grid (if it is enabled)
-    //
-
-    if (DbgIsPixelZoomMode())
-    {
-        D3DRECT d3dRect;
-        MilColorB colorGrid = MIL_COLOR(255, 190, 190, 190);
-
-        if (dwFlags == D3DCLEAR_TARGET
-            && pRects == NULL
-            && m_pCurrentRenderTargetNoRef != NULL)
-        {
-            for (unsigned x = 0; x < m_desc.Width; x += c_dbgPixelZoomModeScale)
-            {
-                for (unsigned y = 0; y < m_desc.Height; y += c_dbgPixelZoomModeScale)
-                {
-                    if (((x + y) % (2*c_dbgPixelZoomModeScale)) == 0)
-                    {
-                        d3dRect.x1 = x;
-                        d3dRect.y1 = y;
-                        d3dRect.x2 = x + c_dbgPixelZoomModeScale;
-                        d3dRect.y2 = y + c_dbgPixelZoomModeScale;
-
-                        IGNORE_HR(m_pD3DDevice->Clear(1, &d3dRect, D3DCLEAR_TARGET, colorGrid, rZValue, 0));
-                    }
-                }
-            }
-        }
-        else
-        {
-            //  at some point, we can handle rect clears
-        }
-    }
-#endif
+        dwCount
+    );
 
 Cleanup:
     RRETURN(HandleDIE(hr));
 }
 
+HRESULT
+CD3DDeviceLevel1::ClearDepthStencil(
+    FLOAT rZValue,
+    int iStencilValue
+)
+{
+    AssertDeviceEntry(*this);
+
+    HRESULT hr = S_OK;
+
+    //
+    // Do the clear
+    //
+    m_pD3DDeviceContext->ClearDepthStencilView(m_pDepthStencilBufferForCurrentRTNoRef->GetDepthStencilViewNoAddRef(), 
+        0, 
+        rZValue, 
+        iStencilValue);
+
+    RRETURN(HandleDIE(hr));
+}
 
 //+-----------------------------------------------------------------------------
 //
@@ -3041,20 +1374,35 @@ Cleanup:
 //------------------------------------------------------------------------------
 HRESULT
 CD3DDeviceLevel1::ColorFill(
-    __inout_ecount(1) D3DSurface *pSurface,
-    __in_ecount_opt(1) const RECT *pRect,
-    D3DCOLOR color
-    )
+    __inout_ecount(1) CD3DTexture* pTexture,
+    __in_ecount_opt(1) const RECT* pRect,
+    DWORD colorRGBA
+)
 {
-    {
-        MtSetDefault(Mt(D3DColorFill));
+    HRESULT hr = S_OK;
 
-        return m_pD3DDevice->ColorFill(
-            pSurface,
-            pRect,
-            color
-            );
+    MtSetDefault(Mt(D3DColorFill));
+
+    FLOAT colorFloat[4] = {
+        ((colorRGBA >> 0) & 0xFF) / 255.0f,
+        ((colorRGBA >> 8) & 0xFF) / 255.0f,
+        ((colorRGBA >> 16) & 0xFF) / 255.0f,
+        ((colorRGBA >> 24) & 0xFF) / 255.0f
+    };
+
+    DWORD dwCount = 0;
+    if (pRect != nullptr)
+    {
+        dwCount = 1;
     }
+
+    m_pD3DDeviceContext->ClearView(pTexture->GetRenderTargetViewNoAddRef(),
+        colorFloat,
+        reinterpret_cast<const D3D11_RECT*>(pRect),
+        dwCount
+    );
+
+    return hr;
 }
 
 //+-----------------------------------------------------------------------------
@@ -3102,7 +1450,6 @@ FillCurrentCumulativeMax(
     InterlockedExchange(reinterpret_cast<LONG *>(pMax), maxValue);
 }
 
-
 //+-----------------------------------------------------------------------------
 //
 //  Member:
@@ -3141,7 +1488,7 @@ CD3DDeviceLevel1::Present(
         goto Cleanup;
     }
 
-    Assert(pD3DSwapChain->m_pD3DSwapChain);
+    Assert(pD3DSwapChain->m_pDXGISwapChain);
     Assert(pD3DSwapChain->IsValid());
 
 #if DBG==1
@@ -3226,55 +1573,24 @@ CD3DDeviceLevel1::Present(
     if (IsTagEnabled(tagD3DStats))
     {
         // Query stats
-        m_d3dStats.OnPresent(m_pD3DDevice);
+        //m_d3dStats.OnPresent(m_pD3DDevice);
     }
 #endif
     IF_D3DLOG(m_log.OnPresent();)
 
-    if (pMILDC->PresentWithHAL())
-    {
-        IFC(PresentWithD3D(
-            pD3DSwapChain->m_pD3DSwapChain,
-            prcSource,
-            prcDest,
-            pMILDC,
-            pDirtyRegion,
-            dwD3DPresentFlags,
-            &fPresentProcessed
-            ));
-    }
-    else
-    {
-        IFC(PresentWithGDI(
-            pD3DSwapChain,
-            prcSource,
-            prcDest,
-            pMILDC,
-            pDirtyRegion,
-            &fPresentProcessed
-            ));
-    }
+    IFC(PresentWithD3D(
+        pD3DSwapChain->m_pDXGISwapChain,
+        prcSource,
+        prcDest,
+        pMILDC,
+        pDirtyRegion,
+        dwD3DPresentFlags,
+        &fPresentProcessed
+        ));
 
     if (fRestoreScene)
     {
         MIL_THR_SECONDARY(BeginScene());
-    }
-
-    if (fPresentProcessed)
-    {
-        if (!IsLDDMDevice())
-        {
-            if (!CCommonRegistryData::GPUThrottlingDisabled())
-            {
-                ULONGLONG ullPresentTime;
-
-                m_uNumSuccessfulPresentsSinceMarkerFlush++;
-
-                IFCW32(QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER *>(&ullPresentTime)));
-
-                IFC(InsertGPUMarker(ullPresentTime));
-            }
-        }
     }
 
 Cleanup:
@@ -3293,7 +1609,7 @@ Cleanup:
 
 HRESULT
 CD3DDeviceLevel1::PresentWithD3D(
-    __inout_ecount(1) IDirect3DSwapChain9 *pD3DSwapChain,
+    __inout_ecount(1) IDXGISwapChain *pDXGISwapChain,
     __in_ecount_opt(1) CMILSurfaceRect const *prcSource,
     __in_ecount_opt(1) CMILSurfaceRect const *prcDest,
     __in_ecount(1) CMILDeviceContext const *pMILDC,
@@ -3304,8 +1620,6 @@ CD3DDeviceLevel1::PresentWithD3D(
 {
     HRESULT hr = S_OK;
 
-    Assert( pMILDC->PresentWithHAL() );
-
     *pfPresentProcessed = false;
 
     //
@@ -3314,16 +1628,16 @@ CD3DDeviceLevel1::PresentWithD3D(
 
     BEGIN_DEVICE_ALLOCATION;
 
-    hr = pD3DSwapChain->Present(
-        prcSource,
-        prcDest,
-        pMILDC->GetHWND(),
-        (prcSource == NULL) ? NULL : pDirtyRegion,
-        dwD3DPresentFlags
-        );
+    // TODO -- Consider, dirty region support?
+    hr = pDXGISwapChain->Present(0, 0);
+
 
     END_DEVICE_ALLOCATION;
 
+    // Once present is complete, state should be reset
+    ResetState();
+    m_pCurrentRenderTargetNoRef = NULL;
+    m_pDepthStencilBufferForCurrentRTNoRef = NULL;
 
     DbgInjectDIE(&hr);
 
@@ -3394,7 +1708,6 @@ CD3DDeviceLevel1::PresentWithD3D(
     RRETURN1(hr, S_PRESENT_OCCLUDED);
 }
 
-
 //+-----------------------------------------------------------------------------
 //
 //  Member:
@@ -3428,9 +1741,9 @@ CD3DDeviceLevel1::HandlePresentFailure(
     {
         m_pCurrentRenderTargetNoRef = NULL;
 
-        IGNORE_HR(m_pD3DDevice->SetRenderTarget(0, m_pD3DDummyBackBuffer));
+        m_pD3DDeviceContext->ClearState();
 
-        ReleaseUseOfDepthStencilSurface(m_pDepthStencilBufferForCurrentRTNoRef);
+        ReleaseUseOfDepthStencilTexture(m_pDepthStencilBufferForCurrentRTNoRef);
     }
 
 
@@ -3459,15 +1772,14 @@ CD3DDeviceLevel1::HandlePresentFailure(
         //    which is handled below.
         //
         hr = D3DERR_DEVICELOST;
-        IGNORE_HR(CD3DRegistryDatabase::HandleAdapterUnexpectedError(m_caps.AdapterOrdinal));
     }
-    else if (hr == E_INVALIDARG && IsLDDMDevice())
+    else if (hr == E_INVALIDARG)
     {
         //
         //  DWM DX redirection resize
         //  synchronization can return E_INVALIDARG or E_FAIL (handled above).
         //
-        RIPW(L"LDDM Present returned E_INVALIDARG");
+        RIPW(L"Present returned E_INVALIDARG");
         MIL_THR(WGXERR_NEED_RECREATE_AND_PRESENT);
     }
 
@@ -3492,185 +1804,6 @@ CD3DDeviceLevel1::HandlePresentFailure(
 //+-----------------------------------------------------------------------------
 //
 //  Member:
-//      CD3DDeviceLevel1::PresentWithGDI
-//
-//  Synopsis:
-//      Presents the backbuffer using a gdi bit blt. Currently this should only
-//      be used with rendertargets that have specified a right to left layout.
-//
-//------------------------------------------------------------------------------
-HRESULT
-CD3DDeviceLevel1::PresentWithGDI(
-    __in_ecount(1) CD3DSwapChain const *pD3DSwapChain,
-    __in_ecount_opt(1) CMILSurfaceRect const * prcSource,
-    __in_ecount_opt(1) CMILSurfaceRect const * prcDest,
-    __in_ecount(1) CMILDeviceContext const * pMILDC,
-    __in_ecount_opt(1) RGNDATA const * pDirtyRegion,
-    __out_ecount(1) bool *pfPresentProcessed
-    )
-{
-    HRESULT hr = S_OK;
-    HDC hdcFrontBuffer = NULL;
-    HDC hdcBackBuffer = NULL;
-
-    CD3DSurface *pBackBufferSurface = NULL;
-
-    CMilRectU rcSource;
-    RECT rcDest;
-
-    UINT uBufferWidth;
-    UINT uBufferHeight;
-
-    Assert( !pMILDC->PresentWithHAL() );
-
-    //
-    // We don't handle the case where the swap chain has more than 1 entry.
-    //
-#if DBG
-    Assert(pD3DSwapChain->DbgGetNumBackBuffers() == 1);
-#endif
-
-    *pfPresentProcessed = false;
-
-    IFC(pD3DSwapChain->GetBackBuffer(
-        0,
-        &pBackBufferSurface
-        ));
-
-    pBackBufferSurface->GetSurfaceSize(
-        &uBufferWidth,
-        &uBufferHeight
-        );
-
-    //
-    // If a source and destination rect weren't specified, set them to be the
-    // full size of the buffer.
-    //
-    // The source and dest pointers are linked, they should either both be
-    // NULL, or both be non-NULL.
-    //
-    if (prcSource)
-    {
-        Assert(prcDest);
-
-        Assert(prcSource->Width() == prcDest->Width());
-        Assert(prcSource->Height() == prcDest->Height());
-
-        rcDest = *prcDest;
-        rcSource.left = prcSource->left;
-        rcSource.top = prcSource->top;
-        rcSource.right = prcSource->right;
-        rcSource.bottom = prcSource->bottom;
-    }
-    else
-    {
-        Assert(!prcDest);
-
-        rcSource.left = 0;
-        rcSource.top = 0;
-        rcSource.right = uBufferWidth;
-        rcSource.bottom = uBufferWidth;
-
-        rcDest.left   = 0;
-        rcDest.top    = 0;
-        rcDest.right  = uBufferWidth;
-        rcDest.bottom = uBufferHeight;
-    }
-
-    Assert(rcDest.right > rcDest.left);
-    Assert(rcDest.bottom > rcDest.top);
-
-    IFC(pD3DSwapChain->GetDC(
-        0,
-        rcSource,
-        OUT &hdcBackBuffer
-        ));
-
-    *pfPresentProcessed = true;
-
-
-    if ((pMILDC->GetRTInitializationFlags() & MilRTInitialization::PresentUsingMask) == MilRTInitialization::PresentUsingUpdateLayeredWindow)
-    {
-        SIZE sz = { uBufferWidth, uBufferHeight };
-        POINT ptSrc = { 0, 0 };
-        HWND hWnd = pMILDC->GetHWND();
-
-        hr = UpdateLayeredWindowEx(
-            hWnd,
-            NULL, // front buffer
-            &pMILDC->GetPosition(),
-            &sz,
-            hdcBackBuffer,
-            &ptSrc,
-            pMILDC->GetColorKey(), // colorkey
-            &pMILDC->GetBlendFunction(), // blendfunction
-            pMILDC->GetULWFlags(), // flags
-            prcSource
-            );
-        // If we get this error, then UpdateLayeredWindow
-        // probably failed because the size in sz didn't exactly match the
-        // window size.  Ignore this error (rather than crash).
-        if (hr == HRESULT_FROM_WIN32(ERROR_GEN_FAILURE))
-        {
-            hr = S_OK;
-        }
-        IFC(hr);
-    }
-    else if ((pMILDC->GetRTInitializationFlags() & MilRTInitialization::PresentUsingMask) == MilRTInitialization::PresentUsingBitBlt)
-    {
-        IFC(pMILDC->BeginRendering(
-            &hdcFrontBuffer
-            ));
-
-        IFCW32_CHECKSAD(BitBlt(
-            hdcFrontBuffer,
-            rcDest.left,
-            rcDest.top,
-            rcDest.right - rcDest.left,
-            rcDest.bottom - rcDest.top,
-            hdcBackBuffer,
-            rcSource.left,
-            rcSource.top,
-            SRCCOPY
-            ));
-    }
-    else
-    {
-        // No support for AlphaBlend yet.
-        IFC(E_NOTIMPL);
-    }
-
-Cleanup:
-
-    if (FAILED(hr))
-    {
-        hr = HandlePresentFailure(pMILDC, hr);
-    }
-
-    if (hdcBackBuffer)
-    {
-        //
-        // Need to release the DC we're holding onto
-        //
-        MIL_THR_SECONDARY(pD3DSwapChain->ReleaseDC(
-            0,
-            hdcBackBuffer
-            ));
-    }
-
-    ReleaseInterfaceNoNULL(pBackBufferSurface);
-
-    if (hdcFrontBuffer != NULL)
-    {
-        pMILDC->EndRendering(hdcFrontBuffer);
-    }
-
-    RRETURN(hr);
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
 //      CD3DDeviceLevel1::SetTexture
 //
 //  Synopsis:
@@ -3679,16 +1812,13 @@ Cleanup:
 //------------------------------------------------------------------------------
 HRESULT
 CD3DDeviceLevel1::SetTexture(
-    DWORD dwTextureStage,
-    __inout_ecount_opt(1) CD3DTexture *pD3DTexture
-    )
+    UINT uiSlot,
+    __inout_ecount_opt(1) CD3DTexture* pD3DTexture
+)
 {
     AssertDeviceEntry(*this);
 
     HRESULT hr = S_OK;
-
-
-    IDirect3DBaseTexture9 *pd3dBaseTextureNoRef = NULL;
 
     // 2/14/2003 chrisra - Changed the function so if a NULL texture
     // was passed in the stage would be set to NULL
@@ -3700,64 +1830,11 @@ CD3DDeviceLevel1::SetTexture(
         Use(*pD3DTexture);
 
         //
-        // Get IDirect3DBaseTexture
-        //
-
-        pd3dBaseTextureNoRef = pD3DTexture->GetD3DTextureNoRef();
-
-        //
         // Set base texture at specified stage
         //
     }
 
-    IFC(CD3DRenderState::SetTexture(dwTextureStage, pd3dBaseTextureNoRef));
-
-Cleanup:
-    RRETURN(HandleDIE(hr));
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::SetD3DTexture
-//
-//  Synopsis:
-//      Sets the texture for a particular stage
-//
-//------------------------------------------------------------------------------
-HRESULT
-CD3DDeviceLevel1::SetD3DTexture(
-    DWORD dwTextureStage,
-    __in_ecount_opt(1) D3DTexture *pD3DTexture
-    )
-{
-    AssertDeviceEntry(*this);
-
-    HRESULT hr = S_OK;
-
-    IFC(CD3DRenderState::SetTexture(dwTextureStage, pD3DTexture));
-
-Cleanup:
-    RRETURN(HandleDIE(hr));
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::DisableTextureTransform
-//
-//  Synopsis:
-//      Disables texture transformation for given stage
-//
-//------------------------------------------------------------------------------
-HRESULT
-CD3DDeviceLevel1::DisableTextureTransform(DWORD dwTextureStage)
-{
-    AssertDeviceEntry(*this);
-
-    HRESULT hr = S_OK;
-
-    IFC(CD3DRenderState::DisableTextureTransform(dwTextureStage));
+    IFC(CD3DRenderState::SetTexture(uiSlot, pD3DTexture->GetShaderResourceViewNoAddRef()));
 
 Cleanup:
     RRETURN(HandleDIE(hr));
@@ -3775,22 +1852,9 @@ Cleanup:
 HRESULT
 CD3DDeviceLevel1::BeginScene()
 {
-    HRESULT hr = S_OK;
-
     Assert(!m_fInScene);
-
-    BEGIN_DEVICE_ALLOCATION;
-
-    hr = m_pD3DDevice->BeginScene();
-
-    END_DEVICE_ALLOCATION;
-
-    IFC(hr); // placed here to avoid jumping to cleanup immediately on OOVM
-
     m_fInScene = true;
-
-Cleanup:
-    RRETURN(HandleDIE(hr));
+    return S_OK;
 }
 
 //+-----------------------------------------------------------------------------
@@ -3805,16 +1869,12 @@ Cleanup:
 HRESULT
 CD3DDeviceLevel1::EndScene()
 {
-    HRESULT hr = S_OK;
-
     Assert(m_fInScene);
-
-    IFC(m_pD3DDevice->EndScene());
     m_fInScene = false;
 
-Cleanup:
-    RRETURN(HandleDIE(hr));
+    return S_OK;
 }
+
 
 //+-----------------------------------------------------------------------------
 //
@@ -3855,9 +1915,21 @@ CD3DDeviceLevel1::FlushBufferFan(
     {
         UINT cTriangles = cVertices - 2;
 
-        IFC(DrawPrimitiveUP(
-            D3DPT_TRIANGLEFAN,
+        std::vector<WORD> indexArray;
+        indexArray.resize(cTriangles * 3);
+
+        int indexCur = 0;
+        for (int idx = 0; idx < cTriangles; ++idx)
+        {
+            indexArray[indexCur++] = 0;
+            indexArray[indexCur++] = idx + 1;
+            indexArray[indexCur++] = idx + 2;
+        }
+
+        IFC(DrawIndexedTriangleListUP(
+            cVertices,
             cTriangles,
+            &indexArray[0],
             pBuffer->GetVertices(),
             pBuffer->GetVertexStride()
             ));
@@ -3886,6 +1958,7 @@ CD3DDeviceLevel1::Set3DTransforms(
     )
 {
     HRESULT hr = S_OK;
+
     CMILMatrix mat2DDeviceToHomogeneous;
     CMILMatrix matProjectionModifier;
     CMILMatrix mat3DViewportProjection;
@@ -3894,8 +1967,7 @@ CD3DDeviceLevel1::Set3DTransforms(
         pWorldTransform3D
         ));
 
-    IFC(SetNonWorldTransform(
-        D3DTS_VIEW,
+    IFC(SetViewTransform(
         pViewTransform3D
         ));
 
@@ -3909,14 +1981,14 @@ CD3DDeviceLevel1::Set3DTransforms(
 
     mat3DViewportProjection = *pProjectionTransform3D * matProjectionModifier;
 
-    IFC(SetNonWorldTransform(
-        D3DTS_PROJECTION,
+    IFC(SetProjectionTransform(
         &mat3DViewportProjection
         ));
 
 Cleanup:
     RRETURN(hr);
 }
+
 
 //+-----------------------------------------------------------------------------
 //
@@ -4070,14 +2142,6 @@ CD3DDeviceLevel1::SetSurfaceToClippingMatrix(
         &m_matSurfaceToClip
         ));
 
-    // 3/18/2003 chrisra - In my 3D checkin I removed the explicit setting of the
-    //  transform, assuming that every rendering call would be preceded by a call
-    //  to EnsureState, which would call this.  Unfortunately, we have code in
-    //  TestLevel1Device which calls rendertexture after this function without
-    //  any call to EnsureState.  So there is currently a requirement for this
-    //  function to exit with the transforms set in D3D.
-    IFC(Set2DTransformForFixedFunction());
-
 Cleanup:
     RRETURN(hr);
 }
@@ -4096,13 +2160,14 @@ Cleanup:
 HRESULT
 CD3DDeviceLevel1::CreatePixelShaderFromResource(
     UINT uResourceId,
-    __deref_out_ecount(1) IDirect3DPixelShader9 ** const ppPixelShader
+    __deref_out_ecount(1) ID3D11PixelShader** const ppPixelShader
     )
 {
     HRESULT hr = S_OK;
     HGLOBAL hResource = NULL;
     HRSRC hResourceInfo = NULL;
     const DWORD *pData = NULL;
+    DWORD dwResourceSize = 0;
 
     // This routine should not be called if the shader exists.
     // Use EnsurePixelShader() instead, if it might happen.
@@ -4119,6 +2184,11 @@ CD3DDeviceLevel1::CreatePixelShaderFromResource(
         hResourceInfo
         ));
 
+    IFCW32(dwResourceSize = SizeofResource(
+        g_DllInstance, 
+        hResourceInfo
+        ));
+
     // This method is nothing more than a cast, so we don't have to worry about error checking here
     pData = reinterpret_cast<const DWORD *>(LockResource(hResource));
 
@@ -4128,7 +2198,7 @@ CD3DDeviceLevel1::CreatePixelShaderFromResource(
         IFC(E_FAIL);
     }
 
-    IFC(CreatePixelShader(pData, ppPixelShader));
+    IFC(CreatePixelShader(pData, dwResourceSize, ppPixelShader));
 
 Cleanup:
     if (hResource)
@@ -4151,14 +2221,16 @@ Cleanup:
 //------------------------------------------------------------------------------
 HRESULT
 CD3DDeviceLevel1::CreateVertexShaderFromResource(
+    D3DVertexType vertexType,
     UINT uResourceId,
-    __deref_out_ecount(1) IDirect3DVertexShader9 ** const ppVertexShader
+    __deref_out_ecount(1) ID3D11VertexShader ** const ppVertexShader
     )
 {
     HRESULT hr = S_OK;
     HGLOBAL hResource = NULL;
     HRSRC hResourceInfo = NULL;
     const DWORD *pData = NULL;
+    DWORD dwResourceSize = 0;
 
     Assert(*ppVertexShader == NULL);
 
@@ -4174,7 +2246,12 @@ CD3DDeviceLevel1::CreateVertexShaderFromResource(
         IFC(E_FAIL);
     }
 
-    IFC(CreateVertexShader(pData, ppVertexShader));
+    IFCW32(dwResourceSize = SizeofResource(
+        g_DllInstance,
+        hResourceInfo
+    ));
+
+    IFC(CreateVertexShader(vertexType, pData, dwResourceSize, ppVertexShader));
 
 Cleanup:
     if (hResource)
@@ -4195,9 +2272,10 @@ Cleanup:
 
 HRESULT
 CD3DDeviceLevel1::CompilePipelineVertexShader(
+    D3DVertexType vertexType,
     __in_bcount(cbHLSLSource) PCSTR pHLSLSource,
     UINT cbHLSLSource,
-    __deref_out_ecount(1) IDirect3DVertexShader9 ** const ppVertexShader
+    __deref_out_ecount(1) ID3D11VertexShader ** const ppVertexShader
 )
 {
     MtSetDefault(Mt(D3DCompiler));
@@ -4206,19 +2284,20 @@ CD3DDeviceLevel1::CompilePipelineVertexShader(
     std::shared_ptr<buffer> pErr;
 
     std::string profile_name = 
-        shader::get_vertex_shader_profile_name(m_pD3DDevice);
+        shader::get_vertex_shader_profile_name(m_pD3DDeviceContext);
 
     HRESULT hr =
         shader::compile(
             std::string(pHLSLSource, pHLSLSource + cbHLSLSource),
             "VertexShaderImpl",
             profile_name,
-            0, 0,
+            D3DCOMPILE_ENABLE_BACKWARDS_COMPATIBILITY, 
+            0,
             pShader, pErr);
 
     if (SUCCEEDED(hr))
     {
-        hr = CreateVertexShader(reinterpret_cast<DWORD*>(pShader->get_buffer_data().buffer), ppVertexShader);
+        hr = CreateVertexShader(vertexType, reinterpret_cast<DWORD*>(pShader->get_buffer_data().buffer), pShader->get_buffer_data().buffer_size, ppVertexShader);
     }
 
     if (FAILED(hr))
@@ -4242,7 +2321,7 @@ HRESULT
 CD3DDeviceLevel1::CompilePipelinePixelShader(
     __in_bcount(cbHLSLSource) PCSTR pHLSLSource,
     UINT cbHLSLSource,
-    __deref_out_ecount(1) IDirect3DPixelShader9 ** const ppPixelShader
+    __deref_out_ecount(1) ID3D11PixelShader ** const ppPixelShader
     )
 {
     MtSetDefault(Mt(D3DCompiler));
@@ -4251,19 +2330,20 @@ CD3DDeviceLevel1::CompilePipelinePixelShader(
     std::shared_ptr<buffer> pErr;
 
     std::string profile_name 
-        = shader::get_pixel_shader_profile_name(m_pD3DDevice);
+        = shader::get_pixel_shader_profile_name(m_pD3DDeviceContext);
 
     HRESULT hr =
         shader::compile(
             std::string(pHLSLSource, pHLSLSource + cbHLSLSource),
             "PixelShaderImpl",
             profile_name,
-            0, 0,
+            D3DCOMPILE_ENABLE_BACKWARDS_COMPATIBILITY, 
+            0,
             pShader, pErr);
 
     if (SUCCEEDED(hr))
     {
-        hr = CreatePixelShader(reinterpret_cast<DWORD*>(pShader->get_buffer_data().buffer), ppPixelShader);
+        hr = CreatePixelShader(reinterpret_cast<DWORD*>(pShader->get_buffer_data().buffer), pShader->get_buffer_data().buffer_size, ppPixelShader);
     }
 
     if (!SUCCEEDED(hr))
@@ -4273,7 +2353,6 @@ CD3DDeviceLevel1::CompilePipelinePixelShader(
 
     RRETURN(HandleDIE(hr));
 }
-
 
 //+-----------------------------------------------------------------------------
 //
@@ -4286,8 +2365,10 @@ CD3DDeviceLevel1::CompilePipelinePixelShader(
 
 HRESULT
 CD3DDeviceLevel1::CreateVertexShader(
+    D3DVertexType vertexType,
     __in const DWORD *pdwfnVertexShader,
-    __deref_out_ecount(1) IDirect3DVertexShader9 ** const ppOutShader
+    __in DWORD cbVertexShader,
+    __deref_out_ecount(1) ID3D11VertexShader ** const ppOutShader
     )
 {
     HRESULT hr = S_OK;
@@ -4296,10 +2377,17 @@ CD3DDeviceLevel1::CreateVertexShader(
 
     hr = m_pD3DDevice->CreateVertexShader(
         pdwfnVertexShader,
+        cbVertexShader,
+        nullptr,
         ppOutShader
         );
 
     END_DEVICE_ALLOCATION;
+
+    if (SUCCEEDED(hr))
+    {
+        hr = EnsureInputLayout(vertexType, pdwfnVertexShader, cbVertexShader);
+    }
 
     MIL_THR(hr); // placed here to avoid stack capturing multiple times in allocation loop
 
@@ -4318,7 +2406,8 @@ CD3DDeviceLevel1::CreateVertexShader(
 HRESULT
 CD3DDeviceLevel1::CreatePixelShader(
     __in const DWORD *pdwfnPixelShader,
-    __deref_out_ecount(1) IDirect3DPixelShader9 ** const ppOutShader
+    __in DWORD cbPixelShader,
+    __deref_out_ecount(1) ID3D11PixelShader ** const ppOutShader
     )
 {
     HRESULT hr = S_OK;
@@ -4327,6 +2416,8 @@ CD3DDeviceLevel1::CreatePixelShader(
 
     hr = m_pD3DDevice->CreatePixelShader(
         pdwfnPixelShader,
+        cbPixelShader,
+        nullptr,
         ppOutShader
         );
 
@@ -4336,128 +2427,6 @@ CD3DDeviceLevel1::CreatePixelShader(
 
     RRETURN(HandleDIE(hr));
 }
-
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::RenderTexture
-//
-//  Synopsis:
-//      Renders the upper-left portion of the given texture 1:1 on the current
-//      render target
-//
-//------------------------------------------------------------------------------
-HRESULT
-CD3DDeviceLevel1::RenderTexture(
-    __in_ecount(1) CD3DTexture *pD3DTexture,
-    __in_ecount(1) const MilPointAndSizeL &rcDestination,
-    TextureBlendMode blendMode
-    )
-{
-    AssertDeviceEntry(*this);
-
-    HRESULT hr = S_OK;
-
-    CD3DVertexXYZDUV2 *pVertex;
-    FLOAT rLeft, rTop, rRight, rBottom;
-    FLOAT ruRight, rvBottom;
-
-    Assert(rcDestination.X >= 0);
-    Assert(rcDestination.Y >= 0);
-    Assert(rcDestination.Width > 0);
-    Assert(rcDestination.Height > 0);
-    Assert(static_cast<UINT>(rcDestination.X) < m_desc.Width);
-    Assert(static_cast<UINT>(rcDestination.Y) < m_desc.Height);
-    Assert(static_cast<UINT>(rcDestination.X) +
-            static_cast<UINT>(rcDestination.Width) <= m_desc.Width);
-    Assert(static_cast<UINT>(rcDestination.Y) +
-            static_cast<UINT>(rcDestination.Height) <= m_desc.Height);
-
-    //
-    // Get source information
-    //
-
-    UINT uTexWidth, uTexHeight;
-    pD3DTexture->GetTextureSize(&uTexWidth, &uTexHeight);
-
-    Assert(uTexWidth > 0);
-    Assert(uTexHeight > 0);
-
-    Assert(static_cast<UINT>(rcDestination.Width) <= uTexWidth);
-    Assert(static_cast<UINT>(rcDestination.Height) <= uTexHeight);
-
-    //
-    // Compute coordinates at corners
-    //
-
-    rLeft   = static_cast<FLOAT>(rcDestination.X);
-    rTop    = static_cast<FLOAT>(rcDestination.Y);
-    rRight  = rLeft + static_cast<FLOAT>(rcDestination.Width);
-    rBottom = rTop + static_cast<FLOAT>(rcDestination.Height);
-
-    ruRight = static_cast<FLOAT>(rcDestination.Width) / static_cast<FLOAT>(uTexWidth);
-    rvBottom = static_cast<FLOAT>(rcDestination.Height) / static_cast<FLOAT>(uTexHeight);
-
-    //
-    // Set device state
-    //
-
-    Assert(m_fInScene);
-
-    IFC(SetTexture(0, pD3DTexture));
-
-    IFC(SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, D3DMCS_COLOR1));
-    IFC(SetRenderState(D3DRS_SPECULARMATERIALSOURCE, D3DMCS_COLOR1));
-
-    // No need to set sampler state since we won't sample beyond texture bounds
-    IFC(SetRenderState_Texture(
-        blendMode,
-        TBA_Diffuse,
-        MilBitmapInterpolationMode::NearestNeighbor,
-        0
-        ));
-
-    CD3DVertexBufferDUV2 *pBuffer;
-
-    IFC(StartPrimitive(&pBuffer));
-
-    IFC(pBuffer->GetNewVertices(
-        4,            // Number of new vertices
-        &pVertex      // Pointer to vertices requested
-        ));
-
-    //
-    // Generate vertices and triangle fan
-    //
-    //    0-------3
-    //    |\      ^
-    //    |  \    |
-    //    |    \  |
-    //    |      \|
-    //    1 ----> 2
-    //
-    // Future Consideration:   Move to use 'normal' vertex buffers
-    //  This only uses fan at the moment because that is what is exposed for
-    //  this pattern.  If text rendering moves to use Hw Pipeline then this
-    //  should move too.
-    //
-
-    pVertex[0].SetXYDUV0(rLeft, rTop, 0xffffffff, 0.0f, 0.0f);
-    pVertex[1].SetXYDUV0(rLeft, rBottom, 0xffffffff, 0.0f, rvBottom);
-    pVertex[2].SetXYDUV0(rRight, rBottom, 0xffffffff, ruRight, rvBottom);
-    pVertex[3].SetXYDUV0(rRight, rTop, 0xffffffff, ruRight, 0.0f);
-
-    //
-    // Finish up
-    //
-
-    IFC(EndPrimitiveFan(&m_vbBufferDUV2));
-
-Cleanup:
-    RRETURN(HandleDIE(hr));
-}
-
 
 //+-----------------------------------------------------------------------------
 //
@@ -4507,9 +2476,7 @@ CD3DDeviceLevel1::GetSupportedTextureFormat(
         if (fmtBitmapSource == MilPixelFormat::RGB128bppFloat)
         {
             // Special case MilPixelFormat::RGB128bppFloat
-            fmtTextureSource = fUseAlpha
-                               ? m_fmtSupportFor128bppPRGBAFloat
-                               : m_fmtSupportFor128bppRGBFloat;
+            fmtTextureSource = MilPixelFormat::PRGBA128bppFloat;
         }
         else
         {
@@ -4527,7 +2494,7 @@ CD3DDeviceLevel1::GetSupportedTextureFormat(
                 // Convert to MilPixelFormat::BGR32bpp101010 as it has enough
                 // precision and there is no alpha channel.
                 //
-                fmtTextureSource = m_fmtSupportFor32bppBGR101010;
+                fmtTextureSource = MilPixelFormat::BGR32bpp101010;
             }
             else
             {
@@ -4536,7 +2503,7 @@ CD3DDeviceLevel1::GetSupportedTextureFormat(
                 // the alpha channel and/or enough precision.
                 //
                 //
-                fmtTextureSource = m_fmtSupportFor128bppPRGBAFloat;
+                fmtTextureSource = MilPixelFormat::PRGBA128bppFloat;
             }
         }
 
@@ -4557,12 +2524,12 @@ CD3DDeviceLevel1::GetSupportedTextureFormat(
         if (!fUseAlpha)
         {
             // No alpha channel => MilPixelFormat::BGR32bpp
-            fmtTextureSource = m_fmtSupportFor32bppBGR;
+            fmtTextureSource = MilPixelFormat::BGR32bpp;
         }
         else
         {
             // Alpha channel => MilPixelFormat::PBGRA32bpp
-            fmtTextureSource = m_fmtSupportFor32bppPBGRA;
+            fmtTextureSource = MilPixelFormat::PBGRA32bpp;
         }
 
         Assert(   (fmtTextureSource == MilPixelFormat::BGR32bpp)
@@ -4583,7 +2550,6 @@ CD3DDeviceLevel1::GetSupportedTextureFormat(
     RRETURN(hr);
 }
 
-
 //+-----------------------------------------------------------------------------
 //
 //  Member:
@@ -4593,31 +2559,18 @@ CD3DDeviceLevel1::GetSupportedTextureFormat(
 //      Given a destination format select a multisample format
 //
 
-D3DMULTISAMPLE_TYPE
+DXGI_SAMPLE_DESC
 CD3DDeviceLevel1::GetSupportedMultisampleType(
     MilPixelFormat::Enum fmtDestinationSurface        // Format of target surface
     ) const
 {
-    D3DMULTISAMPLE_TYPE MultisampleType;
+    DXGI_SAMPLE_DESC SampleDesc;
+    
+    SampleDesc.Count = 4;
+    SampleDesc.Quality = 0;
 
-    if (fmtDestinationSurface == MilPixelFormat::BGR32bpp)
-    {
-        MultisampleType = m_multisampleTypeFor32bppBGR;
-    }
-    else if (fmtDestinationSurface == MilPixelFormat::PBGRA32bpp)
-    {
-        MultisampleType = m_multisampleTypeFor32bppPBGRA;
-    }
-    else
-    {
-        Assert(fmtDestinationSurface == MilPixelFormat::BGR32bpp101010);
-        MultisampleType = m_multisampleTypeFor32bppBGR101010;
-    }
-
-
-    return MultisampleType;
+    return SampleDesc;
 }
-
 
 //+-----------------------------------------------------------------------------
 //
@@ -4682,17 +2635,7 @@ CD3DDeviceLevel1::SetClipRect(
     {
         if (SupportsScissorRect())
         {
-            if (prcNewClip == &rcTargetSurface ||
-                RtlEqualMemory(prcNewClip, &rcTargetSurface, sizeof(*prcNewClip)))
-            {
-                // This optimization removes the scissor rect when rectangular
-                // clipping is turned off.
-                IFC(SetScissorRect(NULL));
-            }
-            else
-            {
-                IFC(SetScissorRect(prcNewClip));
-            }
+            IFC(SetScissorRect(prcNewClip));
         }
         else
         {
@@ -4783,12 +2726,13 @@ HRESULT
 CD3DDeviceLevel1::CreateDepthBuffer(
     UINT uWidth,
     UINT uHeight,
-    D3DMULTISAMPLE_TYPE MultisampleType,
-    __deref_out_ecount(1) CD3DSurface ** const ppSurface
-    )
+    UINT uiMultisampleCount,
+    UINT uiMultisampleQuality,
+    __deref_out_ecount(1) CD3DTexture** const ppTexture
+)
 {
     HRESULT hr = S_OK;
-    D3DSurface* pD3DSurface = NULL;
+    D3DTexture* pD3DTexture = NULL;
 
 
     //   What depth buffer should be used
@@ -4799,45 +2743,39 @@ CD3DDeviceLevel1::CreateDepthBuffer(
 
         BEGIN_DEVICE_ALLOCATION;
 
-        hr = m_pD3DDevice->CreateDepthStencilSurface(
-            uWidth,
-            uHeight,
-            kD3DDepthFormat,
-            MultisampleType,
-            0,
-            false, /* fDiscard */
-            &pD3DSurface,
-            NULL // HANDLE* pSharedHandle
-            );
-
-        // In the event that we've failed because we're out of video memory and we're attempting
-        // to multisample, we should break out of the BEGIN_DEVICE_ALLOCATION loop.
-        // CHwSurfaceRenderTarget::Begin3DInternal will reduce the multisample level and retry.
-        //
-        // Rationale: We only enable 3D AA on WDDM which has virtualized video memory.  If
-        //            WDDM is reporting OOVM we're in really bad shape.
-        //
-        if ((hr == D3DERR_OUTOFVIDEOMEMORY) && (MultisampleType != D3DMULTISAMPLE_NONE))
-        {
-            break;
-        }
+        ID3D11Texture2D* pDepthStencil = NULL;
+        D3D11_TEXTURE2D_DESC descDepth;
+        descDepth.Width = uWidth;
+        descDepth.Height = uHeight;
+        descDepth.MipLevels = 1;
+        descDepth.ArraySize = 1;
+        descDepth.Format = kD3DDepthFormat;
+        descDepth.SampleDesc.Count = uiMultisampleCount;
+        descDepth.SampleDesc.Quality = uiMultisampleQuality;
+        descDepth.Usage = D3D11_USAGE_DEFAULT;
+        descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+        descDepth.CPUAccessFlags = 0;
+        descDepth.MiscFlags = 0;
+        hr = m_pD3DDevice->CreateTexture2D(&descDepth, NULL, &pD3DTexture);
 
         END_DEVICE_ALLOCATION;
 
         IFC(hr); // placed here to avoid jumping to cleanup immediately on OOVM
     }
 
-    IFC(CD3DSurface::Create(&m_resourceManager, pD3DSurface, ppSurface));
+    CD3DVidMemOnlyTexture* pVidMemOnlyTexture = nullptr;
+    IFC(CD3DVidMemOnlyTexture::Create(pD3DTexture, false, this, &pVidMemOnlyTexture));
+    *ppTexture = pVidMemOnlyTexture;
 
 Cleanup:
-    ReleaseInterfaceNoNULL(pD3DSurface);
+    ReleaseInterfaceNoNULL(pD3DTexture);
     RRETURN(HandleDIE(hr));
 }
 
 //+-----------------------------------------------------------------------------
 //
 //  Member:
-//      CD3DDeviceLevel1::SetDepthStencilSurface
+//      CD3DDeviceLevel1::SetDepthStencilTexture
 //
 //  Synopsis:
 //      Turns ZEnable on and off and delegates to
@@ -4845,8 +2783,8 @@ Cleanup:
 //
 //------------------------------------------------------------------------------
 HRESULT
-CD3DDeviceLevel1::SetDepthStencilSurface(
-    __in_ecount_opt(1) CD3DSurface *pSurface
+CD3DDeviceLevel1::SetDepthStencilTexture(
+    __in_ecount_opt(1) CD3DTexture *pTexture
     )
 {
     HRESULT hr = S_OK;
@@ -4855,7 +2793,7 @@ CD3DDeviceLevel1::SetDepthStencilSurface(
     // Enable or disable z-buffer
     //
 
-    if (pSurface)
+    if (pTexture)
     {
         IFC(SetRenderState(
             D3DRS_ZENABLE,
@@ -4880,9 +2818,9 @@ CD3DDeviceLevel1::SetDepthStencilSurface(
     //
 
     Assert(m_pCurrentRenderTargetNoRef);
-    m_pDepthStencilBufferForCurrentRTNoRef = pSurface;
+    m_pDepthStencilBufferForCurrentRTNoRef = pTexture;
 
-    IFC(SetDepthStencilSurfaceInternal(pSurface));
+    IFC(SetDepthStencilTextureInternal(pTexture));
 
 Cleanup:
     if (FAILED(hr))
@@ -4891,7 +2829,7 @@ Cleanup:
         // Otherwise who knows what the clipping state will be
         IGNORE_HR(SetRenderState(D3DRS_ZENABLE, D3DZB_FALSE)); // HRESULT ignored
         IGNORE_HR(SetRenderState(D3DRS_STENCILENABLE, D3DZB_FALSE)); // HRESULT ignored
-        IGNORE_HR(SetDepthStencilSurfaceInternal(NULL));
+        IGNORE_HR(SetDepthStencilTextureInternal(NULL));
     }
     RRETURN(HandleDIE(hr));
 }
@@ -4908,14 +2846,14 @@ Cleanup:
 //
 //------------------------------------------------------------------------------
 void
-CD3DDeviceLevel1::ReleaseUseOfDepthStencilSurface(
-    __in_ecount_opt(1) CD3DSurface *pSurface    // a surface that will no
+CD3DDeviceLevel1::ReleaseUseOfDepthStencilTexture(
+    __in_ecount_opt(1) CD3DTexture* pTexture    // a surface that will no
                                                 // longer be valid
     )
 {
     AssertDeviceEntry(*this);
 
-    if (pSurface)
+    if (pTexture)
     {
         //
         // It's possible for the state manager to have a different
@@ -4925,348 +2863,18 @@ CD3DDeviceLevel1::ReleaseUseOfDepthStencilSurface(
         // always call to state manager.
         //
 
-        IGNORE_HR(ReleaseUseOfDepthStencilSurfaceInternal(pSurface));
+        IGNORE_HR(ReleaseUseOfDepthStencilTextureInternal(pTexture));
 
         //
         // If "current" depth/stencil is released then note that there is no
         // d/s buffer for current RT.
         //
 
-        if (m_pDepthStencilBufferForCurrentRTNoRef == pSurface)
+        if (m_pDepthStencilBufferForCurrentRTNoRef == pTexture)
         {
             m_pDepthStencilBufferForCurrentRTNoRef = NULL;
         }
     }
-}
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::SetLinearPalette
-//
-//  Synopsis:
-//      setup identical palette to the device. Intended to save video memory on
-//      alpha-only textures: when D3DFMT_A8 is not supported, we can use
-//      D3DFMT_P8 instead and save 75% of VM in comparison with D3DFMT_A8R8G8B8.
-//      We assume that palette is not used for another purposes, so this routine
-//      need to be called just once, and fixed palette number == 0 is used.
-//
-//------------------------------------------------------------------------------
-HRESULT
-CD3DDeviceLevel1::SetLinearPalette()
-{
-    HRESULT hr = S_OK;
-    PALETTEENTRY* pPal = (PALETTEENTRY*)WPFAlloc(
-        ProcessHeap,
-        Mt(CD3DDeviceLevel1),
-        sizeof(PALETTEENTRY)*256
-        );
-
-    IFCOOM(pPal);
-    for (unsigned int i = 0 ; i < 256; i++)
-         ((unsigned int*)pPal)[i] = i*0x01010101;
-
-    IFC( m_pD3DDevice->SetPaletteEntries(0, pPal) );
-    IFC( m_pD3DDevice->SetCurrentTexturePalette(0) );
-
-Cleanup:
-    if (pPal) WPFFree(ProcessHeap, pPal);
-    RRETURN(HandleDIE(hr));
-}
-
-
-#if DBG_STEP_RENDERING
-HRESULT
-CD3DDeviceLevel1::DbgSaveSurface(
-    __in_ecount(1) CD3DSurface *pD3DSurface,
-    __in_ecount(1) const MilPointAndSizeL &rcSave
-    )
-{
-    HRESULT hr;
-
-    Assert(rcSave.X >= 0);
-    Assert(rcSave.Y >= 0);
-    Assert(rcSave.Width > 0);
-    Assert(rcSave.Height > 0);
-
-    Assert(!m_pDbgSaveSurface);
-
-    D3DSURFACE_DESC const &d3dsd = pD3DSurface->Desc();
-
-    MIL_THR(CreateRenderTarget(
-        rcSave.Width,
-        rcSave.Height,
-        d3dsd.Format,
-        D3DMULTISAMPLE_NONE,
-        0,
-        false,
-        &m_pDbgSaveSurface
-        ));
-
-    if (SUCCEEDED(hr))
-    {
-        RECT rcSrc = {
-            rcSave.X, rcSave.Y,
-            rcSave.X + rcSave.Width, rcSave.Y + rcSave.Height
-            };
-
-        RECT rcDst = { 0, 0, rcSave.Width, rcSave.Height };
-
-        MIL_THR(StretchRect(
-            pD3DSurface,
-            &rcSrc,
-            m_pDbgSaveSurface,
-            &rcDst,
-            D3DTEXF_NONE
-            ));
-    }
-
-    if (FAILED(hr))
-    {
-        ReleaseInterface(m_pDbgSaveSurface);
-    }
-
-    RRETURN(HandleDIE(hr));
-}
-
-
-HRESULT
-CD3DDeviceLevel1::DbgRestoreSurface(
-    __inout_ecount(1) CD3DSurface *pD3DSurface,
-    __in_ecount(1) const MilPointAndSizeL &rcRestore
-    )
-{
-    HRESULT hr;
-
-    Assert(rcRestore.X >= 0);
-    Assert(rcRestore.Y >= 0);
-    Assert(rcRestore.Width > 0);
-    Assert(rcRestore.Height > 0);
-
-    Assert(m_pDbgSaveSurface);
-
-    RECT rcSrc = { 0, 0, rcRestore.Width, rcRestore.Height };
-    RECT rcDst = {
-        rcRestore.X, rcRestore.Y,
-        rcRestore.X + rcRestore.Width, rcRestore.Y + rcRestore.Height
-        };
-
-    hr = THR(StretchRect(
-        m_pDbgSaveSurface,
-        &rcSrc,
-        pD3DSurface,
-        &rcDst,
-        D3DTEXF_NONE
-        ));
-
-    m_pDbgSaveSurface->Release();
-    m_pDbgSaveSurface = NULL;
-
-    RRETURN(HandleDIE(hr));
-}
-#endif DBG_STEP_RENDERING
-
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::DrawBox
-//
-//  Synopsis:
-//      Takes a MilPointAndSize3F, generates a box primitive from that and
-//      renders it with the given fillmode and color.  It restores the fill mode
-//      when it's done rendering.
-//
-//------------------------------------------------------------------------------
-HRESULT
-CD3DDeviceLevel1::DrawBox(
-    __in_ecount(1) const MilPointAndSize3F *pbox,
-    const D3DFILLMODE d3dFillMode,
-    const DWORD dwColor
-    )
-{
-    HRESULT hr = S_OK;
-    CD3DVertexXYZDUV2 vecMeshBounds[8];
-    WORD wMeshTriangles[36];
-    D3DFILLMODE d3dOrigFillMode = D3DFILL_SOLID;
-    D3DCMPFUNC d3dOrigDepthTest = D3DCMP_LESSEQUAL;
-    bool fFillModeRetrieved = false;
-
-    IFC(GetFillMode(
-        &d3dOrigFillMode
-        ));
-
-    IFC(GetDepthTestFunction(
-        &d3dOrigDepthTest
-        ));
-
-    fFillModeRetrieved = true;
-
-    // Lower Left
-
-    vecMeshBounds[0].X = pbox->X;
-    vecMeshBounds[0].Y = pbox->Y;
-    vecMeshBounds[0].Z = pbox->Z;
-
-
-    // Lower Right
-
-    vecMeshBounds[1].X = pbox->X + pbox->LengthX;
-    vecMeshBounds[1].Y = pbox->Y;
-    vecMeshBounds[1].Z = pbox->Z;
-
-
-    // Upper Right
-
-    vecMeshBounds[2].X = pbox->X + pbox->LengthX;
-    vecMeshBounds[2].Y = pbox->Y + pbox->LengthY;
-    vecMeshBounds[2].Z = pbox->Z;
-
-
-    // Upper Left
-
-    vecMeshBounds[3].X = pbox->X;
-    vecMeshBounds[3].Y = pbox->Y + pbox->LengthY;
-    vecMeshBounds[3].Z = pbox->Z;
-
-
-    // Copy the 4 corners shifted by the length of z for the other half
-    // of the cube.
-
-    for (int i = 4; i < 8; i++)
-    {
-        vecMeshBounds[i].X = vecMeshBounds[i-4].X;
-        vecMeshBounds[i].Y = vecMeshBounds[i-4].Y;
-        vecMeshBounds[i].Z = vecMeshBounds[i-4].Z + pbox->LengthZ;
-    }
-
-    for (int i = 0; i < 8; i++)
-    {
-        vecMeshBounds[i].Diffuse = dwColor;
-        vecMeshBounds[i].U0 = 0.0f;
-        vecMeshBounds[i].V0 = 0.0f;
-        vecMeshBounds[i].U1 = 0.0f;
-        vecMeshBounds[i].V1 = 0.0f;
-    }
-
-    // Bottom Face
-
-    wMeshTriangles[0] = 0;
-    wMeshTriangles[1] = 2;
-    wMeshTriangles[2] = 1;
-
-    wMeshTriangles[3] = 0;
-    wMeshTriangles[4] = 3;
-    wMeshTriangles[5] = 2;
-
-    // Top Face
-
-    wMeshTriangles[6] = 4;
-    wMeshTriangles[7] = 5;
-    wMeshTriangles[8] = 6;
-
-    wMeshTriangles[9] = 4;
-    wMeshTriangles[10] = 6;
-    wMeshTriangles[11] = 7;
-
-
-    // Left Face
-
-    wMeshTriangles[12] = 0;
-    wMeshTriangles[13] = 4;
-    wMeshTriangles[14] = 3;
-
-    wMeshTriangles[15] = 3;
-    wMeshTriangles[16] = 4;
-    wMeshTriangles[17] = 7;
-
-
-    // Right Face
-
-    wMeshTriangles[18] = 1;
-    wMeshTriangles[19] = 2;
-    wMeshTriangles[20] = 5;
-
-    wMeshTriangles[21] = 2;
-    wMeshTriangles[22] = 6;
-    wMeshTriangles[23] = 5;
-
-
-    // Upper Face
-
-    wMeshTriangles[24] = 2;
-    wMeshTriangles[25] = 3;
-    wMeshTriangles[26] = 6;
-
-    wMeshTriangles[27] = 3;
-    wMeshTriangles[28] = 7;
-    wMeshTriangles[29] = 6;
-
-
-    // Lower Face
-
-    wMeshTriangles[30] = 0;
-    wMeshTriangles[31] = 1;
-    wMeshTriangles[32] = 4;
-
-    wMeshTriangles[33] = 1;
-    wMeshTriangles[34] = 5;
-    wMeshTriangles[35] = 4;
-
-
-    // Set Fill Mode
-
-    IFC(SetRenderState(
-        D3DRS_FILLMODE,
-        d3dFillMode
-        ));
-
-    IFC(SetRenderState(
-        D3DRS_ZFUNC,
-        D3DCMP_ALWAYS
-        ));
-
-    // Set FVF
-
-    IFC(SetFVF(vecMeshBounds[0].Format));
-
-    IFC(SetRenderState_AlphaSolidBrush());
-
-    // Draw the Mesh
-
-    IFC(DrawIndexedTriangleListUP(
-        8,
-        12,
-        wMeshTriangles,
-        vecMeshBounds,
-        sizeof(vecMeshBounds[0])
-        ));
-
-    IFC(SetRenderState(
-        D3DRS_FILLMODE,
-        d3dOrigFillMode
-        ));
-
-    IFC(SetRenderState(
-        D3DRS_ZFUNC,
-        d3dOrigDepthTest
-        ));
-
-Cleanup:
-    if (FAILED(hr) && fFillModeRetrieved)
-    {
-        IGNORE_HR(SetRenderState(
-            D3DRS_FILLMODE,
-            d3dOrigFillMode
-            ));
-
-        IGNORE_HR(SetRenderState(
-            D3DRS_ZFUNC,
-            d3dOrigDepthTest
-            ));
-    }
-
-    RRETURN(HandleDIE(hr));
 }
 
 //+-----------------------------------------------------------------------------
@@ -5353,38 +2961,7 @@ CD3DDeviceLevel1::DrawIndexedTriangleListUP(
 
     if (!fVBLockAcquired || !fIBLockAcquired)
     {
-        MtSetDefault(Mt(D3DDrawIndexedPrimitiveUP));
-
-        //
-        // Fall back to to the d3d version
-        //
-
-        //
-        // Whenever we call DrawPrimitiveUP, D3D resets the first stream
-        // and the index source to NULL vertex & index streams.  In order to
-        // keep our cached stream value identical to D3D's we need to set our
-        // stream and index sources to NULL as well.
-        //
-        IFC(SetStreamSource(
-            0,
-            NULL
-            ));
-
-        IFC(SetIndices(NULL));
-
-        IFC(m_pD3DDevice->DrawIndexedPrimitiveUP(
-            D3DPT_TRIANGLELIST,
-            0,
-            uNumVertices,
-            uPrimitiveCount,
-            pIndexData,
-            D3DFMT_INDEX16,
-            pVertexStreamZeroData,
-            uVertexStreamZeroStride
-            ));
-
-        UpdateMetrics(uNumVertices, uPrimitiveCount);
-
+        AssertMsg(0, "Lock should not have failed");
         goto Cleanup;
     }
 
@@ -5415,7 +2992,7 @@ CD3DDeviceLevel1::DrawIndexedTriangleListUP(
     // so setting it on each draw isn't costing us much.
     //
 
-    IFC(SetStreamSource(
+    IFC(SetVertexBuffer(
         m_pHwVertexBuffer->GetD3DBuffer(),
         uVertexStreamZeroStride
         ));
@@ -5430,15 +3007,12 @@ CD3DDeviceLevel1::DrawIndexedTriangleListUP(
 
     {
         MtSetDefault(Mt(D3DDrawIndexedPrimitive));
-
-        IFC(m_pD3DDevice->DrawIndexedPrimitive(
-            D3DPT_TRIANGLELIST,
-            uiCurrentVertex,
-            0,
-            uNumVertices,
+        m_pD3DDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        m_pD3DDeviceContext->DrawIndexed(
+            uPrimitiveCount * 3,
             uiCurrentIndex,
-            uPrimitiveCount
-            ));
+            uiCurrentVertex
+        );
     }
 
     UpdateMetrics(uNumVertices, uPrimitiveCount);
@@ -5477,14 +3051,12 @@ CD3DDeviceLevel1::DrawIndexedTriangleList(
     HRESULT hr = S_OK;
     MtSetDefault(Mt(D3DDrawIndexedPrimitive));
 
-    IFC(m_pD3DDevice->DrawIndexedPrimitive(
-        D3DPT_TRIANGLELIST,
-        uBaseVertexIndex,
-        uMinIndex,
-        cVertices,
+    m_pD3DDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_pD3DDeviceContext->DrawIndexed(
+        cPrimitives * 3,
         uStartIndex,
-        cPrimitives
-        ));
+        uMinIndex
+    );
 
     UpdateMetrics(cVertices, cPrimitives);
 
@@ -5510,11 +3082,11 @@ CD3DDeviceLevel1::DrawTriangleList(
     HRESULT hr = S_OK;
     MtSetDefault(Mt(D3DDrawPrimitive));
 
-    IFC(m_pD3DDevice->DrawPrimitive(
-        D3DPT_TRIANGLELIST,
-        uStartVertex,
-        cPrimitives
-        ));
+    m_pD3DDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_pD3DDeviceContext->Draw(
+        cPrimitives*3,
+        uStartVertex
+        );
 
     UpdateMetrics(cPrimitives*3, cPrimitives);
 
@@ -5540,158 +3112,13 @@ CD3DDeviceLevel1::DrawTriangleStrip(
     HRESULT hr = S_OK;
     MtSetDefault(Mt(D3DDrawPrimitive));
 
-    IFC(m_pD3DDevice->DrawPrimitive(
-        D3DPT_TRIANGLESTRIP,
-        uStartVertex,
-        cPrimitives
-        ));
+    m_pD3DDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    m_pD3DDeviceContext->Draw(
+        cPrimitives + 2,
+        uStartVertex
+    );
 
     UpdateMetrics(cPrimitives + 2, cPrimitives);
-
-Cleanup:
-    RRETURN(HandleDIE(hr));
-}
-
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CD3DDeviceLevel1::DrawLargePrimitiveUP
-//
-//  Synopsis:
-//      Draw a primitive that exceeds the max primitive count on the device by
-//      calling DrawPrimUP multiple times.
-//
-//------------------------------------------------------------------------------
-HRESULT
-CD3DDeviceLevel1::DrawLargePrimitiveUP(
-    D3DPRIMITIVETYPE primitiveType,
-    UINT uPrimitiveCount,
-    __in_xcount(
-        //
-        // Vertex counts are:
-        //
-        // D3DPT_LINELIST - PrimitiveCount*2
-        // D3DPT_TRIANGLESTRIP - PrimitiveCount+2
-        // D3DPT_TRIANGLEFAN - PrimitiveCount+2    <- Although, fans are not currently supported by this method.
-        //
-        uVertexStreamZeroStride * ((primitiveType == D3DPT_LINELIST) ? uPrimitiveCount*2 : uPrimitiveCount+2)
-        ) const void* pVertexStreamZeroData,
-    UINT uVertexStreamZeroStride
-    )
-{
-    HRESULT hr = S_OK;
-    const BYTE *pbVertexStreamPosition = static_cast<const BYTE *>(pVertexStreamZeroData);
-
-    UINT uMaxPrimitiveCount = 0;
-
-    //
-    // Check for supported primitive types and compute max primitives for the 0xffff case
-    //
-    // (From the d3d docs) MaxPrimitiveCount (is the) Maximum number of primitives for each
-    // D3DDeviceContext::DrawPrimitive call. There are two cases:
-    //
-    // - If MaxPrimitiveCount is not equal to 0xffff, you can draw at most MaxPrimitiveCount
-    //   primitives with each draw call.
-    //
-    // - However, if MaxPrimitiveCount equals 0xffff, you can still draw at most MaxPrimitiveCount
-    //   primitive, but you may also use no more than MaxPrimitiveCount unique vertices (since each
-    //   primitive can potentially use three different vertices).
-
-
-    switch (primitiveType)
-    {
-    case D3DPT_LINELIST:
-        uMaxPrimitiveCount = 0xffff / 2;
-        break;
-
-    case D3DPT_TRIANGLELIST:
-        uMaxPrimitiveCount = 0xffff / 3;
-        break;
-
-    case D3DPT_TRIANGLESTRIP:
-        uMaxPrimitiveCount = 0xffff - 2;
-        break;
-
-    default:
-        //
-        // For completeness, we should also implement triangle fans here.  However,
-        // this is unused by trapezoidal AA and we only draw triangle fans
-        // with 4 vertices (which is always within the primitive count allowed on our
-        // supported cards), so the triangle fan case is left unimplemented for the
-        // moment since it is not currently needed.
-        //
-        AssertMsg(0, "Unsupported primitive type");
-        IFC(E_NOTIMPL);
-    }
-
-    if (m_caps.MaxPrimitiveCount != 0xffff)
-    {
-        uMaxPrimitiveCount = static_cast<UINT>(m_caps.MaxPrimitiveCount);
-    }
-
-    //
-    // Call DrawPrimitiveUP multiple times
-    //
-
-    while (uPrimitiveCount > 0)
-    {
-        MtSetDefault(Mt(D3DDrawPrimitiveUP));
-        UINT uDrawPrimCount = min(uPrimitiveCount, uMaxPrimitiveCount);
-
-        //
-        // Call draw primitive UP
-        //
-
-        //
-        // Whenever we call DrawPrimitiveUP, D3D resets the first stream source
-        // to a NULL vertex stream.  In order to keep our cached stream value
-        // identical to D3D's we need to set our stream source to NULL as well.
-        //
-        IFC(SetStreamSource(
-            0,
-            NULL
-            ));
-
-        IFC(m_pD3DDevice->DrawPrimitiveUP(
-            primitiveType,
-            uDrawPrimCount,
-            pbVertexStreamPosition,
-            uVertexStreamZeroStride
-            ));
-
-        UpdateMetrics(0, uDrawPrimCount);
-
-        //
-        // Advance
-        //
-
-        uPrimitiveCount -= uDrawPrimCount;
-
-        switch (primitiveType)
-        {
-        case D3DPT_LINELIST:
-            // We used uDrawPrimCount*2 vertices (because linelists have 2 vertices per
-            // primitive), so advance by that amount now.
-            pbVertexStreamPosition += uVertexStreamZeroStride*2*uDrawPrimCount;
-            UpdateMetrics(2 * uDrawPrimCount, 0);
-            break;
-
-        case D3DPT_TRIANGLELIST:
-            pbVertexStreamPosition += uVertexStreamZeroStride*3*uDrawPrimCount;
-            UpdateMetrics(3 * uDrawPrimCount, 0);
-            break;
-
-        case D3DPT_TRIANGLESTRIP:
-            // Each vertex after the first 2 defines a new triangle, so the total
-            // vertex count we used is uDrawPrimCount+2.  However, since
-            // we need to duplicate the last two vertices to ensure we continue
-            // the strip properly, we only advance uPrimitiveCount vertices.
-            pbVertexStreamPosition += uVertexStreamZeroStride*uDrawPrimCount;
-            UpdateMetrics(uDrawPrimCount + 2, 0);
-            break;
-        }
-    }
 
 Cleanup:
     RRETURN(HandleDIE(hr));
@@ -5715,23 +3142,7 @@ CD3DDeviceLevel1::CopyD3DTexture(
 {
     HRESULT hr = S_OK;
 
-    D3DSurface *pD3DSurfaceSource      = NULL;
-    D3DSurface *pD3DSurfaceDestination = NULL;
-
-    IFC(pD3DSourceTexture->GetSurfaceLevel(0, &pD3DSurfaceSource));
-    IFC(pD3DDestinationTexture->GetSurfaceLevel(0, &pD3DSurfaceDestination));
-
-    IFC(m_pD3DDevice->StretchRect(
-        pD3DSurfaceSource,
-        NULL,
-        pD3DSurfaceDestination,
-        NULL,
-        D3DTEXF_NONE
-        ));
-
-Cleanup:
-    ReleaseInterfaceNoNULL(pD3DSurfaceSource);
-    ReleaseInterfaceNoNULL(pD3DSurfaceDestination);
+    m_pD3DDeviceContext->CopyResource(pD3DDestinationTexture, pD3DSourceTexture);
 
     RRETURN(HandleDIE(hr));
 }
@@ -5751,15 +3162,14 @@ Cleanup:
 //------------------------------------------------------------------------------
 HRESULT
 CD3DDeviceLevel1::DrawPrimitiveUP(
-    D3DPRIMITIVETYPE primitiveType,
+    D3D11_PRIMITIVE_TOPOLOGY primitiveType,
     UINT uPrimitiveCount,
     __in_xcount(
         //
         // Vertex counts are:
         //
-        // D3DPT_LINELIST - PrimitiveCount*2
-        // D3DPT_TRIANGLESTRIP - PrimitiveCount+2
-        // D3DPT_TRIANGLEFAN - PrimitiveCount+2
+        // D3D11_PRIMITIVE_TOPOLOGY_LINELIST - PrimitiveCount*2
+        // D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP - PrimitiveCount+2
         //
         uVertexStreamZeroStride * ((primitiveType == D3DPT_LINELIST) ? uPrimitiveCount*2 : uPrimitiveCount+2)
         ) const void* pVertexStreamZeroData,
@@ -5782,45 +3192,15 @@ CD3DDeviceLevel1::DrawPrimitiveUP(
 
     switch (primitiveType)
     {
-    case D3DPT_LINELIST:
+    case D3D11_PRIMITIVE_TOPOLOGY_LINELIST:
         uNumVertices = uPrimitiveCount*2;
         break;
 
-    case D3DPT_TRIANGLELIST:
+    case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST:
         uNumVertices = uPrimitiveCount*3;
         break;
 
-    case D3DPT_TRIANGLEFAN:
-        {
-            uNumVertices = uPrimitiveCount+2;
-
-            //
-            // Add bandwidth contribution
-            //
-            if (g_pMediaControl)
-            {
-
-                const CD3DVertexXYZDUV2 *pVertices =
-                    static_cast<const CD3DVertexXYZDUV2 *>(pVertexStreamZeroData);
-
-                CD3DVertexXYZDUV2 v1 = pVertices[0];
-
-                for (UINT i = 0; i < uPrimitiveCount; i++)
-                {
-                    CD3DVertexXYZDUV2 v2 = pVertices[1];
-                    CD3DVertexXYZDUV2 v3 = pVertices[2];
-
-                    //  Area = abs((xB*yA-xA*yB)+(xC*yB-xB*yC)+(xA*yC-xC*yA))/2
-                    float rArea = fabs((v2.X*v1.Y-v1.X*v2.Y) + (v3.X*v2.Y-v2.X*v3.Y) + (v1.X*v3.Y-v3.X*v1.Y))/2.0f;
-                    g_lPixelsFilledPerFrame += CFloatFPU::Ceiling(rArea);
-
-                    pVertices += 1;
-                }
-            }
-            break;
-        }
-
-    case D3DPT_TRIANGLESTRIP:
+    case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP:
         {
             uNumVertices = uPrimitiveCount+2;
 
@@ -5854,26 +3234,6 @@ CD3DDeviceLevel1::DrawPrimitiveUP(
     }
 
     //
-    // If the primitive count exceeds the max available on the device,
-    // use multiple DrawPrimitiveUP calls.
-    //
-    // See DrawLargePrimitiveUP for explanation of the 0xffff case.
-    //
-
-    if (   uPrimitiveCount > m_caps.MaxPrimitiveCount
-        || (m_caps.MaxPrimitiveCount == 0xffff && uNumVertices > 0xffff))
-    {
-        IFC(DrawLargePrimitiveUP(
-            primitiveType,
-            uPrimitiveCount,
-            pVertexStreamZeroData,
-            uVertexStreamZeroStride
-            ));
-
-        goto Cleanup;
-    }
-
-    //
     // Try to lock both the IB/VB for the fast path case
     //
 
@@ -5885,36 +3245,6 @@ CD3DDeviceLevel1::DrawPrimitiveUP(
         ));
 
     fLockAcquired = SUCCEEDED(hr);
-
-    if (!fLockAcquired)
-    {
-        MtSetDefault(Mt(D3DDrawPrimitiveUP));
-
-        //
-        // Fall back to to the d3d version
-        //
-
-        //
-        // Whenever we call DrawPrimitiveUP, D3D resets the first stream source
-        // to a NULL vertex stream.  In order to keep our cached stream value
-        // identical to D3D's we need to set our stream source to NULL as well.
-        //
-        IFC(SetStreamSource(
-            NULL,
-            0
-            ));
-
-        IFC(m_pD3DDevice->DrawPrimitiveUP(
-            primitiveType,
-            uPrimitiveCount,
-            pVertexStreamZeroData,
-            uVertexStreamZeroStride
-            ));
-
-        UpdateMetrics(uNumVertices, uPrimitiveCount);
-
-        goto Cleanup;
-    }
 
     //
     // Update vertices
@@ -5934,7 +3264,7 @@ CD3DDeviceLevel1::DrawPrimitiveUP(
     // so setting it on each draw isn't costing us much.
     //
 
-    IFC(SetStreamSource(
+    IFC(SetVertexBuffer(
         m_pHwVertexBuffer->GetD3DBuffer(),
         uVertexStreamZeroStride
         ));
@@ -5946,11 +3276,12 @@ CD3DDeviceLevel1::DrawPrimitiveUP(
     {
         MtSetDefault(Mt(D3DDrawPrimitive));
 
-        IFC(m_pD3DDevice->DrawPrimitive(
-            primitiveType,
-            uiCurrentVertex,
-            uPrimitiveCount
-            ));
+        m_pD3DDeviceContext->IASetPrimitiveTopology(primitiveType);
+
+        m_pD3DDeviceContext->Draw(
+            uNumVertices,
+            uiCurrentVertex
+            );
     }
 
     UpdateMetrics(uNumVertices, uPrimitiveCount);
@@ -6019,49 +3350,8 @@ CD3DDeviceLevel1::CheckDeviceState(
 {
     HRESULT hr = S_OK;
 
-    //
-    // CheckDeviceState call and subsequent logic are only valid with D3D9.L
-    //
-
-    if (!m_pD3DDeviceEx)
-    {
-        IFC(E_NOTIMPL);
-    }
-
-    MIL_THR(m_pD3DDeviceEx->CheckDeviceState(hwnd));
-
-    if (hr == S_PRESENT_MODE_CHANGED)
-    {
-        IFC(WGXERR_DISPLAYSTATEINVALID);
-    }
-    else if (hr == S_PRESENT_OCCLUDED)
-    {
-        //
-        // In the windowed case we can't keep checking our device state until
-        // we're valid again before we render, since all rendering will
-        // stop.  If a window is straddling 2 monitors and one side gets
-        // occluded the other won't render.  So if we're windowed, we keep
-        // rendering as if nothing has happened.
-        //
-
-        hr = S_OK;
-    }
-    else if (   hr == D3DERR_DEVICELOST
-             || hr == D3DERR_DEVICEHUNG     // Hw Adapter timed out and has
-                                            // been reset by the OS
-             || hr == D3DERR_DEVICEREMOVED  // Hw Adapter has been removed
-        )
-    {
-        MIL_THR(WGXERR_DISPLAYSTATEINVALID);
-        MarkUnusable(false /* This call is already entry protected. */);
-    }
-
-Cleanup:
-    EventWriteWClientUceCheckDeviceStateInfo(hwnd, hr);
-
-    RRETURN1(hr, S_PRESENT_OCCLUDED);
+    return hr;
 }
-
 
 //+-----------------------------------------------------------------------------
 //
@@ -6080,48 +3370,6 @@ CD3DDeviceLevel1::WaitForVBlank(UINT uSwapChainIndex)
     END_MILINSTRUMENTATION_HRESULT_LIST
 
     HRESULT hr = WGXERR_NO_HARDWARE_DEVICE;
-
-    if (m_pD3DDeviceEx)
-    {
-        // The first time WaitForVBlank is called make
-        // sure the device driver has support
-        // DX has a 100ms timeout in WaitForVBlank so it will return even when
-        // the device does not support VBlank event.
-        // If it takes >= 100ms to return from the call we
-        // know the driver doesn't support waiting on vblank
-        if (!m_fHWVBlankTested)
-        {
-            m_fHWVBlankTested = true;
-            ULONGLONG ullStart;
-            ULONGLONG ullEnd;
-            ULONGLONG ullFreq;
-            IFCW32(QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER *>(&ullFreq)));
-            IFCW32(QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER *>(&ullStart)));
-            MIL_THR(m_pD3DDeviceEx->WaitForVBlank(uSwapChainIndex));
-            IFCW32(QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER *>(&ullEnd)));
-
-            ullEnd -= ullStart;
-            ullEnd = (ullEnd * 1000) / ullFreq;
-
-            // Precision on the timeout is not as good as
-            // QPC so reduce the test value about one quantum
-            // or 75ms
-            m_fHWVBlank = SUCCEEDED(hr) && (ullEnd < 75);
-            TraceTag((0, "WFVB %I64u %d\n", ullEnd, m_fHWVBlank));
-            if (!m_fHWVBlank)
-            {
-                hr = WGXERR_NO_HARDWARE_DEVICE;
-            }
-        }
-        else if (m_fHWVBlank)
-        {
-            MIL_THR(m_pD3DDeviceEx->WaitForVBlank(uSwapChainIndex));
-        }
-        if (FAILED(hr))
-        {
-            hr = WGXERR_NO_HARDWARE_DEVICE;
-        }
-    }
 
   Cleanup:
     RRETURN(HandleDIE(hr));
@@ -6252,44 +3500,9 @@ CD3DDeviceLevel1::GetNumQueuedPresents(
     )
 {
     HRESULT hr = S_OK;
-    bool fForceFlush = (m_uNumSuccessfulPresentsSinceMarkerFlush >= NUM_PRESENTS_BEFORE_GPU_MARKER_FLUSH);
 
     *puNumQueuedPresents = 0;
 
-    if (   !AreGPUMarkersTested()
-        || !AreGPUMarkersEnabled()
-        ||  IsLDDMDevice()
-            )
-    {
-        goto Cleanup;
-    }
-
-    IFC(ConsumePresentMarkers(
-        fForceFlush
-        ));
-
-    //
-    // If we're over our queue limit, and we didn't flush before, try with a flush.
-    //
-    if (   m_rgpMarkerActive.GetCount() > 2
-        && fForceFlush == false
-           )
-    {
-        IFC(ConsumePresentMarkers(
-            true
-            ));
-    }
-
-    //
-    // We only return a queue of presents if we know that markers are working,
-    // so if we haven't seen a marker consumed, don't return the size of the array.
-    //
-    if (HaveGPUMarkersBeenConsumed())
-    {
-        *puNumQueuedPresents = m_rgpMarkerActive.GetCount();
-    }
-
-Cleanup:
     RRETURN(hr);
 }
 
@@ -6333,8 +3546,11 @@ CD3DDeviceLevel1::InsertGPUMarker(
     //
     if (!AreGPUMarkersTested())
     {
+        D3D11_QUERY_DESC desc;
+        desc.Query = D3D11_QUERY_EVENT;
+        desc.MiscFlags = 0;
         MIL_THR(m_pD3DDevice->CreateQuery(
-            D3DQUERYTYPE_EVENT,
+            &desc,
             NULL
             ));
 
@@ -6369,13 +3585,16 @@ CD3DDeviceLevel1::InsertGPUMarker(
     }
     else
     {
-        IDirect3DQuery9 *pQuery = NULL;
-        IFC(m_pD3DDevice->CreateQuery(D3DQUERYTYPE_EVENT, &pQuery));
+        ID3D11Query* pQuery = NULL;
+        D3D11_QUERY_DESC desc;
+        desc.Query = D3D11_QUERY_EVENT;
+        desc.MiscFlags = 0;
+        IFC(m_pD3DDevice->CreateQuery(&desc, &pQuery));
         pMarker = new CGPUMarker(pQuery, ullMarkerId);
         IFCOOM(pMarker);
     }
 
-    IFC(pMarker->InsertIntoCommandStream());
+    IFC(pMarker->InsertIntoCommandStream(m_pD3DDeviceContext));
     IFC(m_rgpMarkerActive.Add(pMarker));
 
     pMarker = NULL;
@@ -6440,6 +3659,7 @@ HRESULT CD3DDeviceLevel1::IsConsumedGPUMarker(
     Assert(uMarkerIndex < m_rgpMarkerActive.GetCount());
 
     MIL_THR(m_rgpMarkerActive[uMarkerIndex]->CheckStatus(
+        m_pD3DDeviceContext,
         fFlushMarkers,
         pfMarkerConsumed
         ));
@@ -6517,14 +3737,6 @@ Cleanup:
     RRETURN(hr);
 }
 
-void
-CD3DDeviceLevel1::InitializeIMediaDeviceConsumer(
-    __in_ecount(1) IMediaDeviceConsumer *pIMediaDeviceConsumer
-    )
-{
-    pIMediaDeviceConsumer->SetD3DDeviceContext(m_pD3DDevice);
-}
-
 #if DBG
 //+-----------------------------------------------------------------------------
 //
@@ -6573,49 +3785,34 @@ DbgInjectDIE(
 
 
 HRESULT
-CD3DDeviceLevel1::PrepareShaderEffectPipeline(bool useVS30)
+CD3DDeviceLevel1::PrepareShaderEffectPipeline()
 {
     HRESULT hr = S_OK;
     CD3DVertexXYZDUV2* pVertices = NULL;
 
-    // We have a vs_2_0 and vs_3_0 copy of the vertex shader in order to work around an issue with
-    // ATI cards.  ATI cards would fail to render ps_3_0 effects when using a vs_2_0 vertex shader.
-    // Both vertex shaders are identical outside of the version number.
-    // We still need a vs_2_0 version for machines with only shader model 2.0 support.
-    IDirect3DVertexShader9 *pVertexShader = NULL;
-    if (useVS30)
+    ID3D11VertexShader *pVertexShader = NULL;
+    if (m_pEffectPipelineVertexShader == NULL)
     {
-        if (m_pEffectPipelineVertexShader30 == NULL)
-        {
-            IFC(CreateVertexShaderFromResource(VS_ShaderEffects30, &m_pEffectPipelineVertexShader30));
-        }
-
-        pVertexShader = m_pEffectPipelineVertexShader30;
+        IFC(CreateVertexShaderFromResource(CD3DVertexXYZDUV2::Format(), VS_ShaderEffects30, &m_pEffectPipelineVertexShader));
     }
-    else
-    {
-        if (m_pEffectPipelineVertexShader20 == NULL)
-        {
-            IFC(CreateVertexShaderFromResource(VS_ShaderEffects20, &m_pEffectPipelineVertexShader20));
-        }
 
-        pVertexShader = m_pEffectPipelineVertexShader20;
-    }
+    pVertexShader = m_pEffectPipelineVertexShader;
 
     if (m_pEffectPipelineVertexBuffer == NULL)
     {
         IFC(CreateVertexBuffer(
             4 * sizeof(CD3DVertexXYZDUV2),
-            D3DUSAGE_WRITEONLY,
-            CD3DVertexXYZDUV2::Format,
-            D3DPOOL_DEFAULT,
+            D3D11_USAGE_DYNAMIC,
+            D3D11_CPU_ACCESS_WRITE,
             &m_pEffectPipelineVertexBuffer));
     }
 
     IFC(SetVertexShader(pVertexShader));
-    IFC(SetFVF(CD3DVertexXYZDUV2::Format));
+    IFC(SetInputLayoutFormat(CD3DVertexXYZDUV2::Format()));
 
-    IFC(m_pEffectPipelineVertexBuffer->Lock( 0, 0, reinterpret_cast<void**>(&pVertices), 0));
+    D3D11_MAPPED_SUBRESOURCE mappedSubresource;
+    IFC(m_pD3DDeviceContext->Map(m_pEffectPipelineVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubresource));
+    pVertices = reinterpret_cast<CD3DVertexXYZDUV2*>(mappedSubresource.pData);
 
     //   1---3
     //   | \ |
@@ -6626,21 +3823,21 @@ CD3DDeviceLevel1::PrepareShaderEffectPipeline(bool useVS30)
     pVertices[2].SetXYUV0(1.0f, 1.0f, 1.0f, 1.0f);
     pVertices[3].SetXYUV0(1.0f, 0, 1.0f, 0);
 
-    hr = m_pEffectPipelineVertexBuffer->Unlock();
+    m_pD3DDeviceContext->Unmap(m_pEffectPipelineVertexBuffer, 0);
+
     pVertices = NULL;
     IFC(hr);
 
-    IFC(SetStreamSource(m_pEffectPipelineVertexBuffer, sizeof(CD3DVertexXYZDUV2)));
+    IFC(SetVertexBuffer(m_pEffectPipelineVertexBuffer, sizeof(CD3DVertexXYZDUV2)));
 
 Cleanup:
     if (pVertices)
     {
-        IGNORE_HR(m_pEffectPipelineVertexBuffer->Unlock());
+        m_pD3DDeviceContext->Unmap(m_pEffectPipelineVertexBuffer, 0);
     }
 
     RRETURN(HandleDIE(hr));
 }
-
 
 //+-----------------------------------------------------------------------------
 //
@@ -6667,28 +3864,4 @@ CD3DDeviceLevel1::SetPassThroughPixelShader()
 Cleanup:
     RRETURN(hr);
 }
-
-//+-----------------------------------------------------------------------------
-//
-//  Function:
-//      CheckDeviceFloatingPointRenderTargetFormat
-//
-//  Synopsis:
-//      Returns true if the device supports A32R32B32G32F for render target
-//      textures.  Needed by built-in blur effect.
-//
-//------------------------------------------------------------------------------
-bool
-CD3DDeviceLevel1::Is128BitFPTextureSupported() const
-{
-    return (m_fmtSupportFor128bppPRGBAFloat == MilPixelFormat::PRGBA128bppFloat);
-}
-
-
-
-
-
-
-
-
 

@@ -221,7 +221,7 @@ CMilShaderEffectDuce::ApplyEffect(
         static_cast<float>(uIntermediateHeight), 
         pScaleTransform));
 
-    IFC(pDevice->PrepareShaderEffectPipeline(GetShaderMajorVersion() == 3));
+    IFC(pDevice->PrepareShaderEffectPipeline());
 
     //
     // EnsureState will configure our device for rendering into the destination pDestRt.

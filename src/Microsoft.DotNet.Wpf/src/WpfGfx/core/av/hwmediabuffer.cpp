@@ -72,7 +72,11 @@ CHWMFMediaBuffer::
     //
     if (m_surfaceLocked)
     {
+#ifndef DX11
         IGNORE_HR(m_pIBitmapSurface->UnlockRect());
+#else
+        m_pIBitmapSurface->Unmap();
+#endif
     }
 
     ReleaseInterface(m_pIBitmapSurface);
@@ -197,15 +201,22 @@ Init(
 
     GetUnderlyingDevice(m_pMixerDevice, &pIMixerDevice);
 
+#ifndef DX11
     IFC(m_pIMixerTexture->GetSurfaceLevel(0, &m_pIMixerSurface));
+#else
+    IFC(m_pIMixerTexture->QueryInterface(IID_IDXGISurface1, (void**)&m_pIMixerSurface));
+#endif
 
     //
     // Colorfill to black.
     //
+#ifndef DX11
     IFC(pIMixerDevice->ColorFill(m_pIMixerSurface, NULL, D3DCOLOR_XRGB(0, 0, 0)));
+#endif
 
     IFC(GetSurfaceDescription(D3DPOOL_SYSTEMMEM, &ddsd));
 
+#ifndef DX11
     //
     // Create the offscreen plain surface we will be using to capture the system
     // memory bitmap. This can be done on the mixer device. It must be since effects
@@ -218,7 +229,7 @@ Init(
             ddsd.Pool,      // System memory to write to other devices if necessary
             &m_pIBitmapSurface,
             NULL));                 // No shared handle
-
+#endif
     //
     // Create the client bitmap (no addref at this stage).
     //
@@ -279,7 +290,7 @@ CreateMixerTexture(
     IFC(GetSurfaceDescription(D3DPOOL_DEFAULT, &ddsd));
 
     GetUnderlyingDevice(m_pMixerDevice, &pIMixerDevice);
-
+#ifndef DX11
     IFC(pIMixerDevice->CreateTexture(
             ddsd.Width,
             ddsd.Height,
@@ -289,6 +300,7 @@ CreateMixerTexture(
             ddsd.Pool,
             &m_pIMixerTexture,
             NULL));         // No shared handle to the texture.
+#endif
 
 Cleanup:
 
@@ -386,7 +398,9 @@ GetSurfaceDescription(
     pD3DSurfaceDesc->MultiSampleType = D3DMULTISAMPLE_NONE;
     pD3DSurfaceDesc->MultiSampleQuality = 0;    // Multisample quality is irrelevant.
 
+#ifndef DX11
     hr = m_pRenderDevice->GetMinimalTextureDesc(pD3DSurfaceDesc, false, GMTD_CHECK_ALL | GMTD_NONPOW2CONDITIONAL_OK);
+#endif
 
     if (hr == S_FALSE) // means we can't create a big enough texture
     {
@@ -425,6 +439,7 @@ CopyBitmap(
     )
 {
     HRESULT             hr = S_OK;
+#ifndef DX11
     D3DDeviceContext    *pIMixerDevice = NULL;
     TRACEF(&hr);
 
@@ -515,6 +530,7 @@ Cleanup:
         hr = EvrPresenter::TreatNonSoftwareFallbackErrorAsUnknownHardwareError(hr);
     }
 
+#endif
     RRETURN(hr);
 }
 

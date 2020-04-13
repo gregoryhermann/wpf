@@ -85,8 +85,7 @@ interface IHwPrimaryColorSource;
 //      Basic blending operation HW can perform
 //
 //  WARNING:
-//      When changing this array, update the sc_PipeOpProperties and
-//      sc_tsoFromPipeOp tables.
+//      When changing this array, update the sc_PipeOpProperties table.
 //
 //------------------------------------------------------------------------------
 
@@ -167,31 +166,15 @@ struct HwPipelineItem
                                                         //  texture is an argument 
     CHwColorSource *pHwColorSource;                     // Color source for this      
                                                         //  stage                     
-    union
-    {
-        //
-        // Fixed Function specific data
-        //
-        struct 
-        {
-            HwBlendOp eBlendOp;                         // Blending operation
-            HwBlendParams oBlendParams;                 // Blending arguments
-            MilVertexFormatAttribute mvfaSourceLocation;// Vertex field used by
-        };
-
-        //
-        // Shader specific data
-        //
-        struct
-        {
-            const ShaderFunction *pFragment;                  // Shader Fragment
-                                                              // we'll use.
-            MilVertexFormatAttribute mvfaTextureCoordinates;  // A Texture coordinate
-                                                              // transform we need
-                                                              // calculated by the
-                                                              // VertexBuffer::Builder                                                              
-        };
-    };
+    //
+    // Shader specific data
+    //
+    const ShaderFunction *pFragment;                  // Shader Fragment
+                                                      // we'll use.
+    MilVertexFormatAttribute mvfaTextureCoordinates;  // A Texture coordinate
+                                                      // transform we need
+                                                      // calculated by the
+                                                      // VertexBuffer::Builder                                                              
 };
 
 
@@ -377,50 +360,6 @@ protected:
     static const int s_Invalid_Pipeline_Sampler = -1;
     static const int s_Invalid_Pipeline_Stage   = -1;
 };
-
-//+-----------------------------------------------------------------------------
-//
-//  Class:
-//      CHwFFPipeline
-//
-//  Synopsis:
-//      Pipeline that uses only fixed function calls.
-//
-//------------------------------------------------------------------------------
-
-class CHwFFPipeline :
-    public CHwPipeline
-{
-public:
-    friend class CHwFFPipelineBuilder;
-    
-    CHwFFPipeline(
-        __in_ecount(1) CD3DDeviceLevel1 *pDevice
-        )
-        : CHwPipeline(pDevice)
-    {};
-
-    override HRESULT InitializeForRendering(
-        MilCompositingMode::Enum CompositingMode,
-        __inout_ecount(1) IGeometryGenerator *pGeometryGenerator,
-        __inout_ecount(1) IHwPrimaryColorSource *pIPCS,
-        __in_ecount_opt(1) const IMILEffectList *pIEffects,
-        __in_ecount(1) const CHwBrushContext    *pEffectContext,
-        __in_ecount_opt(1) const CMILSurfaceRect *prcOutsideBounds = NULL,
-        bool fNeedInside = true
-        );
-
-private:
-    HRESULT SendRenderStates();
-    HRESULT SendFFStageState(
-        __in_ecount(1) HwPipelineItem &oFFItem
-        );
-    
-    override HRESULT SendDeviceStates(
-        __in_ecount_opt(1) const CHwVertexBuffer *pVB
-        );
-};
-
 
 //+-----------------------------------------------------------------------------
 //

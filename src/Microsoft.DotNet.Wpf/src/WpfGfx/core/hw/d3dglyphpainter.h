@@ -41,7 +41,7 @@ struct VertexFillData
     float kxWT, kyWT, dxWT, dyWT;
 
     // mask texture container
-    D3DTexture* pMaskTexture;
+    CD3DTexture* pMaskTexture;
 
     // offsets in texture space corresponding to shift by 1/3 pixel
     // along X-coordinate in render space

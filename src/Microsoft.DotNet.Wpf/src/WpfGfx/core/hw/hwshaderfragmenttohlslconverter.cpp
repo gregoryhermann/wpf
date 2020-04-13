@@ -1082,7 +1082,7 @@ CHwShaderFragmentToHLSLConverter::WriteVertexShaderOutputStruct(
         "\n"
         "struct VertexShaderOutput\n"
         "{\n"
-        "    float4 Position : POSITION;\n"
+        "    float4 Position : SV_Position;\n"
         "    float4 Diffuse  : COLOR0;\n"
         );
 
@@ -1276,11 +1276,19 @@ CHwShaderFragmentToHLSLConverter::WriteVertexShader(
     //
 
     AppendString(
-        "    float4 Position : POSITION,\n"
-        "    // Right now, only COLOR0 or NORMAL is used in a pass. The compiler\n"
-        "    // optimizes away what's not used.\n"
-        "    float4 Diffuse  : COLOR0,\n"
-        "    float3 Normal   : NORMAL,\n"
+        "    float4 Position : SV_Position,\n");
+
+    AppendString(
+        "    float4 Diffuse  : COLOR0,\n");
+
+    if (0)
+    {
+        OutputDebugStringA("TODO -- Use either diffuse or normal, based on vertex format\n");
+        AppendString(
+            "    float3 Normal   : NORMAL,\n");
+    }
+
+    AppendString(
         "    float2 UV_0     : TEXCOORD0,\n"
         "    float2 UV_1     : TEXCOORD1\n"
         "    )\n"
@@ -1623,7 +1631,7 @@ CHwShaderFragmentToHLSLConverter::WritePixelShader(
         "\n"
         "float4\n"
         "PixelShaderImpl(\n"
-        "    float4 Position : POSITION,\n"
+        "    float4 Position : SV_Position,\n"
         "    float4 Diffuse  : COLOR0"
         );
 
@@ -1725,7 +1733,7 @@ CHwShaderFragmentToHLSLConverter::WritePixelShader(
 
     AppendString(
         "\n"
-        "    ) : COLOR\n"
+        "    ) : SV_Target\n"
         "{\n"
         "    float4 curColor = Diffuse;\n\n"
         );

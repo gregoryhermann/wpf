@@ -104,7 +104,7 @@ CMilD3DImageDuce::GetBitmapSource(
     // back buffer. It's not the end of the world, but it's video memory
     // churn.
     //
-    else if (m_pInteropDeviceBitmap && !m_pInteropDeviceBitmap->IsHwRenderingDisabled())
+    else if (m_pInteropDeviceBitmap)
     {
         pIWGXBitmapSource = m_pInteropDeviceBitmap;
     }
@@ -204,7 +204,9 @@ CMilD3DImageDuce::ProcessUpdate(
     {
         // Fetch the last software copy of the user's surface. This will be NULL unless
         // both the front buffer is unavailable and software fallback has been enabled.
+#ifndef DX11
         IFC(m_pInteropDeviceBitmap->GetSoftwareBitmapSource(&m_pISoftwareBitmap));
+#endif
     }
 
     // Register the new resources.
@@ -251,38 +253,7 @@ CMilD3DImageDuce::ProcessPresent(
     __in_ecount(1) const MILCMD_D3DIMAGE_PRESENT* pCmd
     )
 {
-    HRESULT hr = S_OK;
-    HANDLE hEvent = UnwrapHandleFromUInt64(pCmd->hEvent);
-    IWGXBitmapSource *pISoftwareBitmap;
-
-    // On a synch channel, ProcessPresent will never happen. On the async
-    // channel we should never have system memory bitmap unless software
-    // fallback has been enabled.
-    Assert(!m_pISoftwareBitmap || (m_pInteropDeviceBitmap != NULL &&
-        m_pInteropDeviceBitmap->IsSoftwareFallbackEnabled()));
-
-    if (m_pInteropDeviceBitmap)
-    {
-        IFC(m_pInteropDeviceBitmap->Present());
-
-        // Fetch the last software copy of the user's surface. This will be NULL unless
-        // both the front buffer is unavailable and software fallback has been enabled.
-        IFC(m_pInteropDeviceBitmap->GetSoftwareBitmapSource(&pISoftwareBitmap));
-
-        // Store it in instance member, getting refcounts right (DDVSO 170719)
-        ReleaseInterface(m_pISoftwareBitmap);
-        m_pISoftwareBitmap = pISoftwareBitmap;
-
-        NotifyOnChanged(this);
-    }
-
-Cleanup:
-    // Even if Present failed, we always want to wake up the UI thread
-    MIL_TW32(SetEvent(hEvent));
-    // The UI thread duplicated the handle to make sure it survived. Close it now.
-    MIL_TW32(CloseHandle(hEvent));
-
-    RRETURN(hr);
+    RRETURN(S_OK);
 }
 
 //+------------------------------------------------------------------------

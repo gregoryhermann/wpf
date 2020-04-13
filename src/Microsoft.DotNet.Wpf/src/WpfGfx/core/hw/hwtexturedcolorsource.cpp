@@ -29,7 +29,8 @@ CHwTexturedColorSource::CHwTexturedColorSource(
     ) : m_pDevice(pDevice)
 {
     m_pFilterMode = &CD3DRenderState::sc_fmUnknown;
-    m_taU = m_taV = static_cast<D3DTEXTUREADDRESS>(0);
+    m_wrapModeU = MilBitmapWrapMode::Extend;
+    m_wrapModeV = MilBitmapWrapMode::Extend;
 
     m_fMaskWithSourceClip = false;
 
@@ -168,13 +169,12 @@ Cleanup:
 
 void CHwTexturedColorSource::SetFilterAndWrapModes(
     MilBitmapInterpolationMode::Enum interpolationMode,
-    D3DTEXTUREADDRESS taU,
-    D3DTEXTUREADDRESS taV
-    )
+    MilBitmapWrapMode::Enum wrapModeU,
+    MilBitmapWrapMode::Enum wrapModeV
+)
 {
     SetFilterMode(interpolationMode);
-
-    SetWrapModes(taU,taV);
+    SetWrapModes(wrapModeU, wrapModeV);
 }
 
 //+----------------------------------------------------------------------------
@@ -206,7 +206,7 @@ CHwTexturedColorSource::SetFilterMode(
     }
     else if (interpolationMode == MilBitmapInterpolationMode::Anisotropic)
     {
-        m_pFilterMode = m_pDevice->GetSupportedAnistotropicFilterMode();
+        m_pFilterMode = &CD3DRenderState::sc_fmAnisotropic;
     }
     else
     {
@@ -229,14 +229,13 @@ CHwTexturedColorSource::SetFilterMode(
 
 void
 CHwTexturedColorSource::SetWrapModes(
-    D3DTEXTUREADDRESS taU,
-    D3DTEXTUREADDRESS taV
-    )
+    MilBitmapWrapMode::Enum wrapModeU,
+    MilBitmapWrapMode::Enum wrapModeV
+)
 {
     // Set texture addressing/wrapping modes
-
-    m_taU = taU;
-    m_taV = taV;
+    m_wrapModeU = wrapModeU;
+    m_wrapModeV = wrapModeV;
 }
 
 //+----------------------------------------------------------------------------
@@ -316,6 +315,8 @@ CHwTexturedColorSource::SendDeviceStates(
 {
     HRESULT hr = S_OK;
 
+    OutputDebugStringA("Implement SendDeviceStates.");
+
     Assert(m_pDevice);
 
     IFC(m_pDevice->SetFilterMode(
@@ -323,34 +324,12 @@ CHwTexturedColorSource::SendDeviceStates(
         m_pFilterMode
         ));
 
-    IFC(m_pDevice->SetSamplerState(
+    IFC(m_pDevice->SetSamplerWrapState(
         dwSampler,
-        D3DSAMP_ADDRESSU,
-        m_taU
-        ));
-
-    IFC(m_pDevice->SetSamplerState(
-        dwSampler,
-        D3DSAMP_ADDRESSV,
-        m_taV
-        ));
-
-    if (m_taU == D3DTADDRESS_BORDER)
-    {
-        IFC(m_pDevice->SetSamplerState(
-            dwSampler,
-            D3DSAMP_BORDERCOLOR,
-            0
-            ));
-    }
-
-    IFC(m_pDevice->SetTextureStageState(
-        dwStage,
-        D3DTSS_TEXCOORDINDEX,
-        dwTexCoordIndex
-        ));
+        m_wrapModeU,
+        m_wrapModeV));
     
-    if (m_hTextureTransform == MILSP_INVALID_HANDLE)
+    if (m_hTextureTransform != MILSP_INVALID_HANDLE)
     {
         //
         // If a transform is passed set the Hardware to transform the texture
@@ -358,39 +337,22 @@ CHwTexturedColorSource::SendDeviceStates(
         // coordinates.
         //
 
-        if (!m_fUseHwTransform)
-        {
-            IFC(m_pDevice->SetTextureStageState(
-                dwStage,
-                D3DTSS_TEXTURETRANSFORMFLAGS,
-                D3DTTFF_DISABLE
-                ));
-        }
-        else
-        {
-            const MILMatrix3x2& matBrushCoordToTextureUV = GetBrushCoordToTextureUV();
-         
-            CMILMatrix matTrans = matrix::get_identity();
-            matTrans._11 = matBrushCoordToTextureUV.m_00;
-            matTrans._12 = matBrushCoordToTextureUV.m_01;
-            matTrans._21 = matBrushCoordToTextureUV.m_10;
-            matTrans._22 = matBrushCoordToTextureUV.m_11;
-            matTrans._31 = matBrushCoordToTextureUV.m_20;
-            matTrans._32 = matBrushCoordToTextureUV.m_21;
-    
-            Assert(dwStage < 8);
-    
-            IFC(m_pDevice->SetTransform(
-                static_cast<D3DTRANSFORMSTATETYPE>(D3DTS_TEXTURE0 + dwStage),
-                &matTrans
-                ));
-    
-            IFC(m_pDevice->SetTextureStageState(
-                dwStage,
-                D3DTSS_TEXTURETRANSFORMFLAGS,
-                D3DTTFF_COUNT2
-                ));
-        }
+        const MILMatrix3x2& matBrushCoordToTextureUV = GetBrushCoordToTextureUV();
+     
+        CMILMatrix matTrans = matrix::get_identity();
+        matTrans._11 = matBrushCoordToTextureUV.m_00;
+        matTrans._12 = matBrushCoordToTextureUV.m_01;
+        matTrans._21 = matBrushCoordToTextureUV.m_10;
+        matTrans._22 = matBrushCoordToTextureUV.m_11;
+        matTrans._31 = matBrushCoordToTextureUV.m_20;
+        matTrans._32 = matBrushCoordToTextureUV.m_21;
+
+        Assert(dwStage < 8);
+
+        IFC(m_pDevice->SetTextureTransform(
+            dwStage,
+            &matTrans
+            ));
     }
     // IFC(m_pDevice->SetTexture(dwSampler, ...)); done by subclass
 
@@ -424,59 +386,6 @@ CHwTexturedColorSource::SendShaderData(
 
 Cleanup:
     RRETURN(hr);
-}
-
-//+----------------------------------------------------------------------------
-//
-//  Member:    
-//      CHwTexturedColorSource::ConvertWrapModeToTextureAddressModes
-//
-//  Synopsis:  
-//      Converts a bitmap wrap mode into two dx texture addressing modes.
-//
-
-void
-CHwTexturedColorSource::ConvertWrapModeToTextureAddressModes(
-    MilBitmapWrapMode::Enum wrapMode,
-    __out_ecount(1) D3DTEXTUREADDRESS *ptaU,
-    __out_ecount(1) D3DTEXTUREADDRESS *ptaV
-    )
-{
-    switch (wrapMode)
-    {
-    case MilBitmapWrapMode::Extend:
-        *ptaU = D3DTADDRESS_CLAMP;
-        *ptaV = D3DTADDRESS_CLAMP;
-        break;
-
-    case MilBitmapWrapMode::FlipX:
-        *ptaU = D3DTADDRESS_MIRROR;
-        *ptaV = D3DTADDRESS_WRAP;
-        break;
-
-    case MilBitmapWrapMode::FlipY:
-        *ptaU = D3DTADDRESS_WRAP;
-        *ptaV = D3DTADDRESS_MIRROR;
-        break;
-
-    case MilBitmapWrapMode::FlipXY:
-        *ptaU = D3DTADDRESS_MIRROR;
-        *ptaV = D3DTADDRESS_MIRROR;
-        break;
-
-    case MilBitmapWrapMode::Tile:
-        *ptaU = D3DTADDRESS_WRAP;
-        *ptaV = D3DTADDRESS_WRAP;
-        break;
-
-    case MilBitmapWrapMode::Border:
-        *ptaU = D3DTADDRESS_BORDER;
-        *ptaV = D3DTADDRESS_BORDER;
-        break;
-
-    default:
-        RIPW(L"Unrecognized MILWrapMode");
-    }
 }
 
 //+----------------------------------------------------------------------------

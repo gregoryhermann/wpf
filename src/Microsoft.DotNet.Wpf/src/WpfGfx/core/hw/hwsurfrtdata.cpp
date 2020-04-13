@@ -41,7 +41,6 @@ WCHAR const *g_rgstrStockShaderNames[] = {
 //------------------------------------------------------------------------------
 CHwSurfaceRenderTargetSharedData::CHwSurfaceRenderTargetSharedData()
 {
-    m_pswFallback = NULL;
     m_pD3DDevice = NULL;
     m_pDrawBitmapScratchBrush = NULL;
     m_pHwDestinationTexturePoolBGR = NULL;
@@ -61,8 +60,6 @@ CHwSurfaceRenderTargetSharedData::CHwSurfaceRenderTargetSharedData()
 //------------------------------------------------------------------------------
 CHwSurfaceRenderTargetSharedData::~CHwSurfaceRenderTargetSharedData()
 {
-    delete m_pswFallback;
-
     ReleaseInterfaceNoNULL(m_pDrawBitmapScratchBrush);
     ReleaseInterfaceNoNULL(m_pHwShaderCache);
     ReleaseInterfaceNoNULL(m_pScratchHwBoxColorSource);
@@ -191,6 +188,7 @@ CHwSurfaceRenderTargetSharedData::ResetPerPrimitiveResourceUsage(
 
 HRESULT 
 CHwSurfaceRenderTargetSharedData::DerivePipelineShader(
+    D3DVertexType vertexType,
     __in_ecount(uNumPipelineItems) HwPipelineItem const * rgShaderPipelineItems,
     UINT uNumPipelineItems,
     __deref_out_ecount(1) CHwPipelineShader ** const ppHwShader
@@ -201,8 +199,8 @@ CHwSurfaceRenderTargetSharedData::DerivePipelineShader(
     PCSTR pHLSLSource = NULL;
     UINT cbHLSLSource = 0;
 
-    IDirect3DPixelShader9 *pPixelShader = NULL;
-    IDirect3DVertexShader9 *pVertexShader = NULL;
+    ID3D11PixelShader *pPixelShader = NULL;
+    ID3D11VertexShader* pVertexShader = NULL;
 
     //
     // Generate the shader source
@@ -216,6 +214,7 @@ CHwSurfaceRenderTargetSharedData::DerivePipelineShader(
         ));
 
     IFC(m_pD3DDevice->CompilePipelineVertexShader(
+        vertexType,
         pHLSLSource,
         cbHLSLSource,
         &pVertexShader
@@ -834,67 +833,4 @@ HRESULT CHwSurfaceRenderTargetSharedData::GetScratchDrawBitmapBrushNoAddRef(
 Cleanup:
     RRETURN(hr);
 }
-
-//+-----------------------------------------------------------------------------
-//
-//  Member:
-//      CHwSurfaceRenderTargetSharedData::GetSoftwareFallback
-//
-//  Synopsis:
-//      Lazily allocate and return SW fallback resource
-//
-//------------------------------------------------------------------------------
-HRESULT
-CHwSurfaceRenderTargetSharedData::GetSoftwareFallback(
-    __deref_out_ecount(1) CHwSoftwareFallback ** const ppSoftwareFallback,
-    HRESULT hrReasonForFallback
-    )
-{
-    HRESULT hr = S_OK;
-
-    *ppSoftwareFallback = NULL;
-
-    if (!m_pswFallback)
-    {
-        m_pswFallback = new CHwSoftwareFallback;
-        IFCOOM(m_pswFallback);
-
-        hr = THR(m_pswFallback->Init(m_pD3DDevice));
-        if (FAILED(hr))
-        {
-            delete m_pswFallback;
-            m_pswFallback = NULL;
-            goto Cleanup;
-        }
-    }
-
-    
-    if (ETW_ENABLED_CHECK(TRACE_LEVEL_INFORMATION))
-    {
-        if (hrReasonForFallback == D3DERR_OUTOFVIDEOMEMORY)
-        {
-            EventWriteUnexpectedSoftwareFallback(UnexpectedSWFallback_OutOfVideoMemory);
-        }
-        else if (hrReasonForFallback == E_NOTIMPL ||
-                 hrReasonForFallback == WGXERR_DEVICECANNOTRENDERTEXT)
-        {
-            // SW Fallback reasons is likely expected- don't log it.
-            //  there are some unexpcted cases where we return E_NOTIMPL.
-            // It would be nice to log those as well, perhaps by changing the return code.
-        }
-        else
-        {
-            EventWriteUnexpectedSoftwareFallback(UnexpectedSWFallback_UnexpectedPrimitiveFallback);
-        }
-    }
-
-    *ppSoftwareFallback = m_pswFallback;
-
-Cleanup:
-    RRETURN(hr);
-}
-
-
-
-
 

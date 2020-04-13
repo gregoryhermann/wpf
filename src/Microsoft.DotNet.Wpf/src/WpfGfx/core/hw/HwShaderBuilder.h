@@ -51,6 +51,7 @@ public:
         );
 
     HRESULT GetHwShader(
+        D3DVertexType vertexType,
         __deref_out_ecount(1) CHwPipelineShader **ppHwShader
         );
 

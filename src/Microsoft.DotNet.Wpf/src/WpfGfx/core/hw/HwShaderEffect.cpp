@@ -65,7 +65,7 @@ CHwPixelShaderEffect::Init(
 {
     HRESULT hr = S_OK;
 
-    IFC(pDevice->CreatePixelShader(reinterpret_cast<DWORD*>(pPixelShaderByteCode), &m_pD3DPixelShader));
+    IFC(pDevice->CreatePixelShader(reinterpret_cast<DWORD*>(pPixelShaderByteCode), sizeInBytes, &m_pD3DPixelShader));
 
     CD3DResource::Init(pDevice->GetResourceManager(), sizeInBytes /* this is a guess for the shader size, but that is ok */);
 

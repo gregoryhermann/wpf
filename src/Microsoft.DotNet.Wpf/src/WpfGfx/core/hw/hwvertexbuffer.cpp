@@ -1025,7 +1025,7 @@ CHwTVertexBuffer<TVertex>::Builder::RenderPrecomputedIndexedTriangles(
     IFC(pIndexBufferNoRef->Unlock());
     fIndexBufferLocked = false;
 
-    IFC(m_pDeviceNoRef->SetStreamSource(
+    IFC(m_pDeviceNoRef->SetVertexBuffer(
         pVertexBufferNoRef->GetD3DBuffer(),
         sizeof(TVertex)
         ));

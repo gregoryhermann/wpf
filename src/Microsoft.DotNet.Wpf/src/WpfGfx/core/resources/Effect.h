@@ -104,7 +104,7 @@ protected:
         __in CD3DDeviceLevel1 *pD3DDevice, 
         __in UINT uWidth, 
         __in UINT uHeight, 
-        __in D3DFORMAT d3dfmtTarget,
+        __in DXGI_FORMAT d3dfmtTarget,
         __out CD3DVidMemOnlyTexture **ppVidMemOnlyTexture
         );
 

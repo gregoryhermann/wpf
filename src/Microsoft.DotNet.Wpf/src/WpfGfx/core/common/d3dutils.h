@@ -14,34 +14,6 @@
 
 #pragma once
 
-//------------------------------------------------------------------------------
-//
-//  Defines: Flags for GetMinimalTextureDesc
-//
-//  Description:
-//  Flags passed to GetMinimalTextureDesc that control what fields
-//      of the surface description are checked.
-//
-//------------------------------------------------------------------------------
-
-#define GMTD_IGNORE_WIDTH     0x1
-#define GMTD_IGNORE_HEIGHT    0x2
-#define GMTD_IGNORE_FORMAT    0x4
-#define GMTD_NONPOW2CONDITIONAL_OK  0x10
-
-#define GMTD_CHECK_WIDTH      (GMTD_IGNORE_HEIGHT | \
-                                         GMTD_IGNORE_FORMAT)
-#define GMTD_CHECK_HEIGHT     (GMTD_IGNORE_WIDTH | \
-                                         GMTD_IGNORE_FORMAT)
-#define GMTD_CHECK_FORMAT     (GMTD_IGNORE_WIDTH | \
-                                         GMTD_IGNORE_HEIGHT)
-
-#define GMTD_CHECK_ALL        (GMTD_CHECK_WIDTH & \
-                                         GMTD_CHECK_HEIGHT & \
-                                         GMTD_CHECK_FORMAT)
-
-#define GMTD_DEFAULT          GMTD_CHECK_ALL
-
 //
 // The bitmap cache logic needs the mipmap levels to have a strict ordering 
 // policy.
@@ -71,37 +43,26 @@ enum TextureMipMapLevel
 //
 
 MIL_FORCEINLINE bool TextureAddressingAllowsConditionalNonPower2Usage(
-    D3DTEXTUREADDRESS taU,
-    D3DTEXTUREADDRESS taV
+    MilBitmapWrapMode::Enum wrapU,
+    MilBitmapWrapMode::Enum wrapV
     )
 {
     // Conditional non-power of two support only works when both texture
     // addressing modes are CLAMP (a.k.a. extend edge) despite presence of
     // D3DPTADDRESSCAPS_INDEPENDENTUV.
-    return ((taU == D3DTADDRESS_CLAMP) && (taV == D3DTADDRESS_CLAMP));
+    return ((wrapU == MilBitmapWrapMode::Extend) && (wrapV == MilBitmapWrapMode::Extend));
 }
 
 
 void PopulateSurfaceDesc(
-    D3DFORMAT fmtPixelFormat,
-    D3DPOOL d3dPool,
-    DWORD dwUsage, 
+    DXGI_FORMAT fmtPixelFormat,
     UINT uTextureWidth,
     UINT uTextureHeight,
-    __out_ecount(1) D3DSURFACE_DESC *pDesc 
-    );
-
-HRESULT GetMinimalTextureDesc(
-    __in_ecount(1) D3DDeviceContext *pD3DDevice,
-    D3DFORMAT AdapterFormat,
-    __in_ecount(1) D3DCAPS9 const *pcaps,
-    __inout_ecount(1) D3DSURFACE_DESC *pd3dsd,
-    BOOL fPalUsesAlpha,
-    DWORD dwFlags
+    __out_ecount(1) D3D11_TEXTURE2D_DESC* pDesc 
     );
 
 D3DFORMAT GetSuperiorSurfaceFormat(
-    D3DFORMAT d3dFormat,
+    DXGI_FORMAT d3dFormat,
     BOOL fPalUsesAlpha
     );
 

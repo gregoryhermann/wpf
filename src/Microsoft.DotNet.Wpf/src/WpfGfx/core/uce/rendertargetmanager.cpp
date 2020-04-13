@@ -287,7 +287,7 @@ CRenderTargetManager::IsGPUThrottlingEnabled(
     // If we don't have a display set, we are patiently waiting for this
     // partition to be able to render, so, assume we can't use GPU throtting.
     //
-    if (pDisplaySet == NULL || pDisplaySet->D3DExObject() != NULL)
+    if (pDisplaySet == NULL)
     {
         Assert(!*pfEnabled);
         goto Cleanup;

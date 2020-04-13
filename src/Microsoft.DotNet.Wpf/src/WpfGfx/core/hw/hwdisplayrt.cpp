@@ -42,7 +42,6 @@ CHwDisplayRenderTarget::Create(
     __in_ecount_opt(1) HWND hwnd,
     MilWindowLayerType::Enum eWindowLayerType,
     __in_ecount(1) CDisplay const *pDisplay,
-    D3DDEVTYPE type,
     MilRTInitialization::Flags dwFlags,
     __deref_out_ecount(1) CHwDisplayRenderTarget **ppRenderTarget
     )
@@ -55,8 +54,7 @@ CHwDisplayRenderTarget::Create(
 
     CD3DDeviceLevel1 *pD3DDevice = NULL;
 
-    D3DPRESENT_PARAMETERS D3DPresentParams;
-    UINT AdapterOrdinalInGroup;
+    UINT displayIndex;
 
     //
     // First, we try to find the d3d device and
@@ -64,27 +62,13 @@ CHwDisplayRenderTarget::Create(
     //
 
     CD3DDeviceManager *pD3DDeviceManager = CD3DDeviceManager::Get();
-    Assert(pDisplay->D3DObject()); // we should not get here with null pID3D
 
-    IFC(pD3DDeviceManager->GetD3DDeviceAndPresentParams(
+    IFC(pD3DDeviceManager->GetD3DDevice(
         hwnd,
         dwFlags,
         pDisplay,
-        type,
         &pD3DDevice,
-        &D3DPresentParams,
-        &AdapterOrdinalInGroup
-        ));
-
-    //
-    // Make sure render target format has been tested.
-    //
-
-    HRESULT const *phrTestGetDC;
-
-    IFC(pD3DDevice->CheckRenderTargetFormat(
-        D3DPresentParams.BackBufferFormat,
-        OUT &phrTestGetDC
+        &displayIndex
         ));
 
     //
@@ -92,24 +76,11 @@ CHwDisplayRenderTarget::Create(
     // with this format.
     //
 
-    if ((dwFlags & MilRTInitialization::PresentUsingMask) != MilRTInitialization::PresentUsingHal)
-    {
-        Assert(*phrTestGetDC != WGXERR_NOTINITIALIZED);
-
-        if (FAILED(*phrTestGetDC))
-        {
-            IFC(WGXERR_NO_HARDWARE_DEVICE);
-        }
-    }
-
-
     {
         DisplayId associatedDisplay = pDisplay->GetDisplayId();
 
         *ppRenderTarget = new CHwHWNDRenderTarget(
             pD3DDevice,
-            D3DPresentParams,
-            AdapterOrdinalInGroup,
             associatedDisplay,
             eWindowLayerType
             );
@@ -125,7 +96,6 @@ CHwDisplayRenderTarget::Create(
     IFC((*ppRenderTarget)->Init(
         hwnd,
         pDisplay,
-        type,
         dwFlags
         ));
 
@@ -153,7 +123,6 @@ HRESULT
 CHwDisplayRenderTarget::Init(
     __in_ecount_opt(1) HWND hwnd,
     __in_ecount(1) CDisplay const *pDisplay,
-    D3DDEVTYPE type,
     MilRTInitialization::Flags dwFlags
     )
 {
@@ -181,16 +150,13 @@ CHwDisplayRenderTarget::Init(
 //-------------------------------------------------------------------------
 CHwDisplayRenderTarget::CHwDisplayRenderTarget(
     __inout_ecount(1) CD3DDeviceLevel1 *pD3DDevice,
-    __in_ecount(1) D3DPRESENT_PARAMETERS const &D3DPresentParams,
-    UINT AdapterOrdinalInGroup,
+    DXGI_FORMAT format,
     DisplayId associatedDisplay
     ) :
-    m_D3DPresentParams(D3DPresentParams),
-    m_AdapterOrdinalInGroup(AdapterOrdinalInGroup),
     CHwSurfaceRenderTarget(
         pD3DDevice,
-        D3DFormatToPixelFormat(D3DPresentParams.BackBufferFormat, TRUE),
-        D3DPresentParams.BackBufferFormat,
+        D3DFormatToPixelFormat(format, TRUE),
+        format,
         associatedDisplay
         )
 {
@@ -534,6 +500,7 @@ CHwDisplayRenderTarget::PresentInternal(
 {
     HRESULT hr = S_OK;
 
+#if 0
     Assert(m_D3DPresentParams.hDeviceWindow == m_MILDC.GetHWND());
 
     if (m_D3DPresentParams.SwapEffect == D3DSWAPEFFECT_COPY)
@@ -548,6 +515,7 @@ CHwDisplayRenderTarget::PresentInternal(
             ));
     }
     else
+#endif
     {
         //
         // When we're flipping we may not specify source/dest rectangles and

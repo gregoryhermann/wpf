@@ -14,12 +14,11 @@
 class CD3DTexture : public CD3DResource
 {
 public:
-    static void DetermineUsageAndLevels(
+    static void DetermineLevels(
         __in_ecount(1) const CD3DDeviceLevel1 *pDevice,
         TextureMipMapLevel eMipMapLevel,
         UINT uTextureWidth,
         UINT uTextureHeight,
-        __out_ecount(1) DWORD *pdwUsage,
         __out_ecount(1) UINT *puLevels
         );
 
@@ -27,17 +26,6 @@ public:
         __out_ecount(1) UINT *puWidth, 
         __out_ecount(1) UINT *puHeight
         ) const;
-
-    void GetD3DBaseTexture(
-        __deref_out_ecount(1) IDirect3DBaseTexture9 **ppd3dBaseTexture
-        )
-    {
-        Assert(IsValid());
-        Assert(m_pD3DTexture);
-
-        *ppd3dBaseTexture = m_pD3DTexture;
-        (*ppd3dBaseTexture)->AddRef();
-    }
 
     __out_ecount(1) D3DTexture *GetD3DTextureNoRef() const
     {
@@ -47,29 +35,13 @@ public:
         return m_pD3DTexture;
     }
     
-    const D3DSURFACE_DESC& D3DSurface0Desc() const { return m_sdLevel0; }
+    const D3D11_TEXTURE2D_DESC& D3DSurface0Desc() const { return m_sdLevel0; }
+
+    ID3D11DepthStencilView* GetDepthStencilViewNoAddRef();
+    ID3D11RenderTargetView* GetRenderTargetViewNoAddRef();
+    ID3D11ShaderResourceView* GetShaderResourceViewNoAddRef();
 
     __range(1,32) UINT Levels() const { return m_cLevels; }
-
-    HRESULT GetD3DSurfaceLevel(
-        UINT Level,
-        __deref_out_ecount(1) CD3DSurface **ppSurfaceLevel
-        );
-
-    HRESULT GetID3DSurfaceLevel(
-        UINT uLevel,
-        __deref_out_ecount(1) D3DSurface **ppd3dSurfaceLevel
-        ) const
-    {
-        D3DTexture *pD3DTextureNoRef = GetD3DTextureNoRef();
-
-        Assert(pD3DTextureNoRef);
-
-        RRETURN(THR(pD3DTextureNoRef->GetSurfaceLevel(
-            uLevel,
-            ppd3dSurfaceLevel
-            )));
-    }
 
     HRESULT UpdateMipmapLevels();
 
@@ -78,12 +50,23 @@ public:
         return true;
     }
 
+    HRESULT ReadIntoSysMemBuffer(
+         __in_ecount(1) const CMilRectU &rcSource,
+         UINT cClipRects,
+         __in_ecount_opt(cClipRects) const CMilRectU *rgClipRects,
+         MilPixelFormat::Enum fmtBitmapOut,
+         UINT nStrideOut,
+         DBG_ANALYSIS_PARAM_COMMA(UINT cbBufferOut)
+         __out_bcount_full(cbBufferOut) BYTE *pbBufferOut
+         );
+
 protected:
     CD3DTexture();
     ~CD3DTexture();
 
     HRESULT Init(
         __inout_ecount(1) CD3DResourceManager *pResourceManager,
+        __in_ecount(1) CD3DDeviceLevel1* pDevice,
         __inout_ecount(1) D3DTexture *pD3DTexture
         );
 
@@ -104,14 +87,15 @@ private:
 protected:
 
     D3DTexture *m_pD3DTexture;
-    D3DSURFACE_DESC m_sdLevel0;
+    D3D11_TEXTURE2D_DESC m_sdLevel0;
+    CD3DDeviceLevel1* m_pDevice;
+    ID3D11DepthStencilView* m_pDepthStencilView;
+    ID3D11RenderTargetView* m_pRenderTargetView;
+    ID3D11ShaderResourceView* m_pShaderResourceView;
 
 private:
 
     __field_range(1,32) DWORD m_cLevels;
-
-    // Cache of surface levels
-    __field_ecount_full_opt(m_cLevels) CD3DSurface **m_rgSurfaceLevel;
 };
 
 

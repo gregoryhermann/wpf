@@ -93,8 +93,7 @@ HRESULT CDesktopRenderTarget::Create(
     // check whether any adapters don't support Hw acceleration or D3D is not
     // available.
     //
-    if (   pDisplaySet->IsNonLocalDisplayPresent()
-        || !pDisplaySet->D3DObject())
+    if (pDisplaySet->IsNonLocalDisplayPresent())
     {
         // If possible, just revert to Sw.  This simply prevents trying Hw and
         // later falling back.
@@ -105,8 +104,6 @@ HRESULT CDesktopRenderTarget::Create(
         else
         {
             // Otherwise propagate the error which prevented D3D usage
-            IFC(pDisplaySet->GetD3DInitializationError());
-            // D3D is available, but no hardware acceleration
             IFC(WGXERR_NO_HARDWARE_DEVICE);
         }
     }
@@ -312,18 +309,6 @@ HRESULT CDesktopRenderTarget::Init(
         // Is HW allowed?
         if (!(dwFlags & MilRTInitialization::SoftwareOnly))
         {
-            D3DDEVTYPE d3dDeviceType = D3DDEVTYPE_HAL;
-
-            if ((dwFlags & MilRTInitialization::UseRefRast))
-            {
-                d3dDeviceType = D3DDEVTYPE_REF;
-            }
-            else if ((dwFlags & MilRTInitialization::UseRgbRast) ||
-                     IsTagEnabled(tagUseRgbRasterizer))
-            {
-                d3dDeviceType = D3DDEVTYPE_SW;
-            }
-
             //
             // Create a hardware accelerated render target for this adapter.
             //
@@ -339,7 +324,6 @@ HRESULT CDesktopRenderTarget::Init(
                 m_hwnd,
                 eWindowLayerType,
                 pDisplay,
-                d3dDeviceType,
                 dwFlags,
                 &metadata.pHwDisplayRT
                 ));

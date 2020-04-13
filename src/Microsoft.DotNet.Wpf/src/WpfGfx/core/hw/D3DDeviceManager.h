@@ -57,14 +57,12 @@ public:
     CD3DDeviceManager();
     ~CD3DDeviceManager();
 
-    HRESULT GetD3DDeviceAndPresentParams(
+    HRESULT GetD3DDevice(
         __in_opt HWND hwnd,
         MilRTInitialization::Flags dwFlags,
         __in_ecount_opt(1) CDisplay const *pDisplay,
-        D3DDEVTYPE type,
         __deref_out_ecount(1) CD3DDeviceLevel1 **ppDeviceLevel1,
-        __out_ecount_opt(1) D3DPRESENT_PARAMETERS *pPresentParams,
-        __out_ecount_opt(1) UINT *pAdapterOrdinalInGroup
+        __out_ecount_opt(1) UINT *pDisplayIndex
         );
                       
     HRESULT AddAdapterStatusListener(__in IAdapterStatusListener *pListener);
@@ -86,11 +84,9 @@ public:
 
 private:
 
-    struct D3DDeviceCreationParameters : public D3DDEVICE_CREATION_PARAMETERS
+    struct D3DDeviceCreationParameters
     {
-        UINT MasterAdapterOrdinal;      // ordinal of master adapter for adapter group
-        UINT AdapterOrdinalInGroup;     // ordinal inside the adapter group
-        UINT NumberOfAdaptersInGroup;
+        UINT AdapterOrdinal;
         MilRTInitialization::Flags RTInitFlags;
     };
 
@@ -119,49 +115,22 @@ private:
         __in_ecount(1) CDisplaySet const * pNewDisplaySet
         );
 
-    HRESULT ComposeCreateParameters(
-        __in_opt HWND hwnd,
-        MilRTInitialization::Flags dwFlags,
-        UINT uAdapter,
-        D3DDEVTYPE type,
-        __out_ecount(1) D3DDeviceCreationParameters *pCreateParams
-        ) const;
-
-    static void ComposePresentParameters(
-        __in_ecount(1) D3DDISPLAYMODEEX const &displayMode,
-        __in_ecount(1) D3DDeviceCreationParameters const &CreateParams,
-        __out_ecount(1) D3DPRESENT_PARAMETERS *pD3DPresentParams
-        );
-
-    HRESULT GetDisplayMode(
-        __inout_ecount(1) D3DDeviceCreationParameters *pCreateParams,
-        __out_xcount_full(pCreateParams->NumberOfAdaptersInGroup) D3DDISPLAYMODEEX *rgDisplayModes
-        ) const;
-
     HRESULT FindDeviceMatch(
-        __inout_ecount(1) D3DDeviceCreationParameters *pCreateParams,
         UINT uStartIndex,
         UINT uLimitPlusOne,
         __deref_opt_out_ecount(1) CD3DDeviceLevel1 **ppDeviceLevel1
         ) const;
 
     HRESULT GetAvailableDevice(
-        __inout_ecount(1) D3DDeviceCreationParameters *pCreateParams,
         __deref_out_ecount(1) CD3DDeviceLevel1 **ppDeviceLevel1
         ) const;
 
     HRESULT CreateNewDevice(
-        __inout_ecount(1)
-        D3DDeviceCreationParameters *pD3DCreateParams,  // D3D Device creation
-                                                        // parameters
-        __inout_ecount(1)
-        D3DPRESENT_PARAMETERS *pBasePresentParams,      // Base D3D Presentation
-                                                        // parameters
-        __in_xcount(pD3DCreateParams->NumberOfAdaptersInGroup)
-        D3DDISPLAYMODEEX *rgDisplayModes,               // Array of display modes
-
+        __inout_ecount(1) IDXGIAdapter *pAdapter,
+        UINT displayIndex,
         __deref_out_ecount(1) CD3DDeviceLevel1 **ppDeviceLevel1
         );
+
 
     void NotifyDeviceLost(D3DDeviceInformation &info);
 
