@@ -111,7 +111,6 @@ CHwDeviceBitmapColorSource::CreateCommon(
     __in_ecount(1) const CMilRectU &rcBoundsRequired,
     __in_ecount_opt(1) const CD3DVidMemOnlyTexture *pVidMemTexture,
     __out_ecount(1) CacheParameters &oRealizationDesc,
-    __out_ecount(1) D3DSURFACE_DESC &d3dsd,
     __out_ecount(1) D3D11_TEXTURE2D_DESC &desc,
     __out_ecount(1) UINT &uLevels
     )
