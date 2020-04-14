@@ -20,8 +20,11 @@ float sampleStart : register(c1);
 float numSamples : register(c2);
 float4x4 weights : register(c3);
 
-sampler2D g_samSrcColor : register(s0);
-sampler2D g_samAccumColor : register(s1);
+texture2D g_samSrcColor : register(t0);
+SamplerState g_samSrcColorSamp : register(s0);
+
+texture2D g_samAccumColor : register(t1);
+SamplerState g_samAccumColorSamp : register(s1);
 
 static const float maxSamples = 15; // max samples in ps_2_0 is 16, but we can do 15 at
                                     // most to stay under the instruction limit
@@ -52,16 +55,16 @@ VS_OUTPUT VS( float4 position : POSITION, float4 color : COLOR0, float2 texcoord
 // Pixel Shader: VerticalBlur
 // Desc: Blurs the image vertically
 //-----------------------------------------------------------------------------
-float4 PS( VS_OUTPUT input ) : COLOR0
+float4 PS( VS_OUTPUT input ) : SV_Target
 {
     float2 Tex = input.TexCoord;
-    float4 Color = tex2D( g_samAccumColor, Tex);
+    float4 Color = g_samAccumColor.Sample(g_samAccumColorSamp, Tex);
     float2 sampleTex;
     sampleTex.x = Tex.x;
     for (int i = 0; i < maxSamples; i++)
     {
 	sampleTex.y = Tex.y + ((sampleStart + i) / size);
-        Color += (tex2D( g_samSrcColor, sampleTex ) * weights[i%4][i/4]); // matrices are column-major by default
+        Color += (g_samSrcColor.Sample( g_samSrcColorSamp, sampleTex ) * weights[i%4][i/4]); // matrices are column-major by default
     }
     
     return Color;
