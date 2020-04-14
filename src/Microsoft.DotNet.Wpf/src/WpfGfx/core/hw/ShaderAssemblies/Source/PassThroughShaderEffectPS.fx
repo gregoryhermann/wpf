@@ -10,12 +10,14 @@ struct VS_OUTPUT
     float2 UV        : TEXCOORD0;
 };
 
-sampler2D g_samSrcColor : register(s0);
+texture2D g_samSrcColor : register(t0);
+SamplerState g_samSrcColorSamp : register(s0);
+
 
 //--------------------------------------------------------------------------------------
 // Pixel Shader
 //--------------------------------------------------------------------------------------
-float4 PS(VS_OUTPUT input) : COLOR0
+float4 PS(VS_OUTPUT input) : SV_Target
 {
-    return tex2D( g_samSrcColor, input.UV);
+    return g_samSrcColor.Sample(g_samSrcColorSamp, input.UV);
 }
