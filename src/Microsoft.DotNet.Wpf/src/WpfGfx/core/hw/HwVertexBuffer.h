@@ -295,18 +295,6 @@ public:
     
     //+------------------------------------------------------------------------
     //
-    //  Member:    AddLineAsTriangleStrip
-    //
-    //  Synopsis:  Add a horizontal line using a trinagle strip
-    //
-    //-------------------------------------------------------------------------
-    HRESULT AddLineAsTriangleStrip(
-        __in_ecount(1) const TVertex *pBegin, // Begin
-        __in_ecount(1) const TVertex *pEnd    // End
-        );
-
-    //+------------------------------------------------------------------------
-    //
     //  Member:    SendInputLayout
     //
     //  Synopsis:  Send contained input layout to device

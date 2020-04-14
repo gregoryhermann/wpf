@@ -655,32 +655,14 @@ CHwRasterizer::Setup(
 
     m_pDeviceNoRef = pD3DDevice;
 
-    //
-    // PS#856364-2003/07/01-ashrafm  Remove pixel center fixup
-    //
-    // Incoming coordinate space uses integers at upper-left of pixel (pixel
-    // center are half integers) at device level.
-    //
-    // Rasterizer uses the coordinate space with integers at pixel center.
-    //
-    // To convert from center (1/2, 1/2) to center (0, 0) we need to subtract
-    // 1/2 from each coordinate in device space.
-    //
-    // See InitializeEdges in aarasterizer.ccp to see how we unconvert for
-    // antialiased rendering.
-    //
-
-    CMILMatrix matWorldHPCToDeviceIPC;
     if (pmatWorldToDevice)
     {
-        matWorldHPCToDeviceIPC = *pmatWorldToDevice;
+        m_matWorldToDevice = *pmatWorldToDevice;
     }
     else
     {
-        matWorldHPCToDeviceIPC.SetToIdentity();
+        m_matWorldToDevice.SetToIdentity();
     }
-    matWorldHPCToDeviceIPC.SetDx(matWorldHPCToDeviceIPC.GetDx() - 0.5f);
-    matWorldHPCToDeviceIPC.SetDy(matWorldHPCToDeviceIPC.GetDy() - 0.5f);
 
     //
     // Set local state.
@@ -690,7 +672,6 @@ CHwRasterizer::Setup(
 
     IFC(pShape->ConvertToGpPath(*m_prgPoints, *m_prgTypes));
 
-    m_matWorldToDevice = matWorldHPCToDeviceIPC;
     m_fillMode = pShape->GetFillMode();
 
     //  There's an opportunity for early clipping here
@@ -1238,6 +1219,8 @@ CHwRasterizer::OutputTrapezoids(
         rSubpixelRightInvSlope    = static_cast<float>(pEdgeRight->Dx) + static_cast<float>(pEdgeRight->ErrorUp)/rSubpixelRightErrorDown;
         rSubpixelRightAbsInvSlope = fabsf(rSubpixelRightInvSlope);
 
+//        rPixelXLeftDelta  = 0.5f * rSubpixelLeftAbsInvSlope;
+//        rPixelXRightDelta = 0.5f * rSubpixelRightAbsInvSlope;
         rPixelXLeftDelta  = 0.5f + 0.5f * rSubpixelLeftAbsInvSlope;
         rPixelXRightDelta = 0.5f + 0.5f * rSubpixelRightAbsInvSlope;
 

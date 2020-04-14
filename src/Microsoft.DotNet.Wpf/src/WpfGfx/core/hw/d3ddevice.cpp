@@ -2007,8 +2007,6 @@ CD3DDeviceLevel1::SetSurfaceToClippingMatrix(
 {
     HRESULT hr = S_OK;
 
-    m_matSurfaceToClip.reset_to_identity();
-
     //
     // The SurfaceToClip matrix is used to change our coordinate system to
     // the one DX needs...
@@ -2043,24 +2041,7 @@ CD3DDeviceLevel1::SetSurfaceToClippingMatrix(
     // This diagram of the surface and homogeneous in a single dimension (x) may
     // be more helpful.  From this diagram we can directly derive the required
     // surface to homogeneous clipping transform.  The viewport (V) is given in
-    // surface coordinate space.  In homogeneous clipping space -1 is exactly
-    // 1/2 pixel in (right) from the viewport left (V.L).  +1 is exactly 1/2
-    // pixel right of the viewport right (V.R).  The lightable (writeable) area
-    // is filled with a \/\/ pattern.
-    //
-    //           V.L+1/2               V.R+1/2
-    //              |                     |         W-1/2  W+1/2
-    //        1/2   |<-- V.R-V.L = V.W -->|           |     |
-    //     0  |     |                     |           |  W  |
-    //     +--+--+--+--+-- ... --+-----+--+--+-----+--+--+  +  +
-    //     |     |\/\/\|/\     /\|/\/\/|     |     |     |
-    //     |  *  |\/*/\|/\     /\|/\/\/|  *  |     |  *  |  * (Imaginary)
-    //     |     |\/\/\|/\     /\|/\/\/|     |     |     |
-    //     +-----+--+--+-- ... --+-----+-----+-----+--+--+  +  +
-    //              |                     |
-    //             -1   <---- +2 ---->   +1
-    //
-    //
+    // surface coordinate space.  
     // Now lets find a scale and translation matrix that maps surface space to
     // clipping space.
     //
@@ -2072,60 +2053,11 @@ CD3DDeviceLevel1::SetSurfaceToClippingMatrix(
     //          Sx = 2 / V.W
     //
 
-    FLOAT flRecipViewWidth = 1.0f / static_cast<FLOAT>(prcViewport->Width);
-
-    m_matSurfaceToClip._11 = 2.0f * flRecipViewWidth;
-
-    //
-    // Now we can solve a linear equation to find Tx.  In matrix form:
-    //
-    //          <x'> = <x> * Sx * Tx
-    //
-    // But since we only have a single dimension and specifically a scale and
-    // translate matrix we can express this as:
-    //
-    //          x' = x * Sx + Tx
-    //
-    // Solving for Tx
-    //
-    //          Tx = x' - x * Sx
-    //
-    // Using the left matching coordinates and already solved Sx we have
-    //
-    //          Tx = -1 -(V.L+1/2) * 2/V.W                  (substitution)
-    //             = -1 -2V.L/V.W - 1/V.W                   (distribution)
-    //             = -V.L*2/V.W - 1 - 1/V.W
-    //             = -V.L*Sx - 1 - 1/V.W
-    //             = - (V.L*Sx + 1 + 1/V.W)
-    //
-
-    m_matSurfaceToClip._41 =
-        - (  static_cast<FLOAT>(prcViewport->X) * m_matSurfaceToClip._11
-           + 1
-           + flRecipViewWidth);
-
-    //
-    // Computing the Y components is very similar except that in homongenous
-    // clipping space +Y is up instead of down as in surface space.  Scaling
-    // the Y components by -1 corrects for this.
-    //
-    //          Sy = -2 / V.H
-    //
-
-    FLOAT flRecipViewHeight = 1.0f / static_cast<FLOAT>(prcViewport->Height);
-
-    m_matSurfaceToClip._22 = -2.0f * flRecipViewHeight;
-
-    //
-    //          Ty = - (-V.T*2/V.H - 1 - 1/V.H)
-    //             = (-V.T)*(-2/V.H) + 1 + 1/V.H
-    //             = -V.T*Sy + 1 + 1/V.H
-    //
-
-    m_matSurfaceToClip._42 =
-        - static_cast<FLOAT>(prcViewport->Y) * m_matSurfaceToClip._22
-        + 1
-        + flRecipViewHeight;
+    m_matSurfaceToClip.reset_to_identity();
+    m_matSurfaceToClip._11 = 2.0f / prcViewport->Width;
+    m_matSurfaceToClip._22 = -2.f / prcViewport->Height;
+    m_matSurfaceToClip._41 = -1.f;
+    m_matSurfaceToClip._42 = 1.f;
 
     //
     // Set the 2D transforms for the state manager.  The world and view

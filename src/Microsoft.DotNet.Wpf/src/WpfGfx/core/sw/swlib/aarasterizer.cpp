@@ -1437,19 +1437,13 @@ InitializeEdges(
         // Bezier flattener can continue to operate in its optimal 28.4
         // format.
         //
-        // PS#856364-2003/07/01-JasonHa  Remove pixel center fixup
-        //
-        // We also apply a half-pixel offset here so that the antialiasing
-        // code can assume that the pixel centers are at half-pixel
-        // coordinates, not on the integer coordinates.
 
         POINT *point = pointArray;
         INT i = vertexCount;
 
         do {
-            point->x = (point->x + 8) << c_nShift;
-            point->y = (point->y + 8) << c_nShift;
-
+            point->x = point->x << c_nShift;
+            point->y = point->y << c_nShift;
         } while (point++, --i != 0);
 
         yClipTopInteger <<= c_nShift;
@@ -2957,8 +2951,8 @@ RasterizePath(
             // Given matrix transforms points to device space in half-pixel-center
             // notation. We need integer-pixel-center notation here, so we
             // adjust the matrix to shift all the coordinates by 1/2 of pixel.
-            matrix.SetDx(matrix.GetDx() - 0.5f);
-            matrix.SetDy(matrix.GetDy() - 0.5f);
+            matrix.SetDx(matrix.GetDx());
+            matrix.SetDy(matrix.GetDy());
 
             AppendScaleToMatrix(&matrix, TOREAL(16), TOREAL(16));
 

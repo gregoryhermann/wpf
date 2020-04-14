@@ -222,11 +222,6 @@ CHwTVertexBuffer<TVertex>::AddLine(
     pVertices[1].ptPt.X = v1.x;
     pVertices[1].ptPt.Y = v1.y;
     pVertices[1].Diffuse = reinterpret_cast<const DWORD &>(v1.a);
-
-    if (fUseTriangles)
-    {
-        IFC(AddLineAsTriangleStrip(pVertices,pVertices+1));
-    }
     
   Cleanup:
     RRETURN(hr);
@@ -1652,8 +1647,8 @@ CHwTVertexBuffer<TVertex>::Builder::AddComplexScan(
                 iBegin = max(iBegin, min(iEnd, m_rcOutsideBounds.left));
                 iEnd = min(iEnd, max(iBegin, m_rcOutsideBounds.right));
             }
-            float rPixelXBegin = float(iBegin) + 0.5f;
-            float rPixelXEnd = float(iEnd) + 0.5f;
+            float rPixelXBegin = float(iBegin);
+            float rPixelXEnd = float(iEnd);
 
             //
             // Output line (linelist or tristrip) for a pixel
@@ -1697,84 +1692,6 @@ CHwTVertexBuffer<TVertex>::Builder::AddComplexScan(
     }
 
 Cleanup:
-    RRETURN(hr);
-}
-//+----------------------------------------------------------------------------
-//
-//  Member:    CHwTVertexBuffer<TVertex>::Builder::AddLineAsTriangleStrip
-//
-//  Synopsis:  Adds a horizontal line as a triangle strip to work around
-//             issue in D3D9 where horizontal lines with y = 0 may not render.
-//
-//              Line clipping in D3D9
-//             This behavior will change in D3D10 and this work-around will no
-//             longer be needed.  (Pixel center conventions will also change.)
-//              
-//-----------------------------------------------------------------------------
-template <class TVertex>
-HRESULT
-CHwTVertexBuffer<TVertex>::AddLineAsTriangleStrip(
-    __in_ecount(1) const TVertex *pBegin, // Begin
-    __in_ecount(1) const TVertex *pEnd    // End
-    )
-{
-    HRESULT hr = S_OK;
-    TVertex *pVertex;
-
-    // Collect pertinent data from vertices.
-    Assert(pBegin->ptPt.Y == pEnd->ptPt.Y);
-    Assert(pBegin->Diffuse == pEnd->Diffuse);
-
-    // Offset begin and end X left by 0.5 because the line starts on the first
-    // pixel center and ends on the center of the pixel after the line segment.
-    const float x0 = pBegin->ptPt.X - 0.5f;
-    const float x1 = pEnd->ptPt.X - 0.5f;
-    const float y = pBegin->ptPt.Y;
-    const DWORD dwDiffuse = pBegin->Diffuse;
-
-    //
-    // Add the vertices
-    //
-
-    IFC(AddTriStripVertices(6, &pVertex));
-
-    //
-    // Duplicate the first vertex.  Assuming that the previous two
-    // vertices in the tristrip are coincident then the first three
-    // vertices here create degenerate triangles.  If this is the
-    // beginning of the strip the first two vertices fill the pipe,
-    // the third creates a degenerate vertex.  In either case the
-    // fourth creates the first triangle in our quad.
-    // 
-    pVertex[0].ptPt.X = x0;
-    pVertex[0].ptPt.Y = y  - 0.5f;
-    pVertex[0].Diffuse = dwDiffuse;
-    
-    // Offset two vertices up and two down to form a 1-pixel-high quad.
-    // Order is TL-BL-TR-BR.
-    pVertex[1].ptPt.X = x0;
-    pVertex[1].ptPt.Y = y  - 0.5f;
-    pVertex[1].Diffuse = dwDiffuse;
-    pVertex[2].ptPt.X = x0;
-    pVertex[2].ptPt.Y = y  + 0.5f;
-    pVertex[2].Diffuse = dwDiffuse;
-    pVertex[3].ptPt.X = x1;
-    pVertex[3].ptPt.Y = y  - 0.5f;
-    pVertex[3].Diffuse = dwDiffuse;
-    pVertex[4].ptPt.X = x1;
-    pVertex[4].ptPt.Y = y  + 0.5f;
-    pVertex[4].Diffuse = dwDiffuse;
-    
-    //
-    // Duplicate the last vertex. This creates a degenerate triangle
-    // and sets up the next tristrip to create three more degenerate
-    // triangles.
-    // 
-    pVertex[5].ptPt.X = x1;
-    pVertex[5].ptPt.Y = y  + 0.5f;
-    pVertex[5].Diffuse = dwDiffuse;
-
-  Cleanup:
     RRETURN(hr);
 }
 
@@ -2551,12 +2468,6 @@ CHwTVertexBuffer<TVertex>::Builder::ExpandVertices()
     
             if (AreWaffling())
             {
-                // When we are waffling we only use tri strips for AddLineAsTriangleStrip so we know that
-                // there are 6 vertices in each triangle strip.
-                #if DBG
-                Assert(!m_pVB->m_fDbgNonLineSegmentTriangleStrip);
-                #endif
-
                 // Assert that there are an intergral quantitiy of groups of size 6.
                 Assert(uNumVertices % 6 == 0);
 
