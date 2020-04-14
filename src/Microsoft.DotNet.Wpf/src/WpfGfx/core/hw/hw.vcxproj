@@ -18,28 +18,23 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  
   <PropertyGroup>
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <CLRSupport>false</CLRSupport>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ExecutablePath>$(Console_SdkRoot)bin;$(VCInstallDir)bin\x86_amd64;$(VCInstallDir)bin;$(WindowsSDK_ExecutablePath_x86);$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(MSBuildToolsPath32);$(FxCopDir);$(PATH);</ExecutablePath>
-    <IncludePath>$(Console_SdkIncludeRoot)</IncludePath>
-    <ReferencePath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</ReferencePath>
-    <LibraryPath>$(Console_SdkLibPath)</LibraryPath>
-    <LibraryWPath>$(Console_SdkLibPath);$(Console_SdkWindowsMetadataPath)</LibraryWPath>
-    <SourcePath>$(VC_ATLMFC_SourcePath)</SourcePath>
-    <ExcludePath>$(VC_IncludePath);$(VC_ATLMFC_IncludePath);$(WindowsSDK_IncludePath);$(MSBuildToolsPath);$(MSBuildToolsPath32);$(VC_LibraryPath_ATL_x64);</ExcludePath>
-  </PropertyGroup>
+
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <Import Project="$(WpfCppProps)" />
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <PropertyGroup Label="Globals">
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />  
+
+<PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{a27af0f3-ca2a-42cf-a962-a3f3b0e83d35}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <TargetName>hw</TargetName>
   </PropertyGroup>
+  
   <ItemDefinitionGroup>
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -50,14 +45,17 @@
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(ResourceFileIncludePath)</AdditionalIncludeDirectories>
     </ResourceCompile>
   </ItemDefinitionGroup>
+  
   <ItemGroup>
     <ClCompile Include="precomp.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
+
   <ItemGroup>
     <ResourceCompile Include="hw.rc" />
   </ItemGroup>
+
   <ItemGroup>
     <ClCompile Include="BitmapOfDeviceBitmaps.cpp" />
     <ClCompile Include="d3ddevice.cpp" />
@@ -129,9 +127,10 @@
     <ClCompile Include="swfallback.cpp" />
     <ClCompile Include="Waffler.cpp" />
   </ItemGroup>
+
   <ItemGroup>
     <AdditionalLinkerInputs Include="$(IntermediateOutputPath)hw.res" />
   </ItemGroup>
-  <Import Project="ShaderAssemblies.targets" />
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-</Project>
+  
+  <Import Project="ShaderAssemblies.targets"/>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />  </Project>
