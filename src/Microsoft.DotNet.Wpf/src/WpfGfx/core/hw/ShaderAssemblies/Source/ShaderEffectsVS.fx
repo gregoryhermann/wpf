@@ -10,7 +10,7 @@ float4x4 deviceTransform : register(C0); // uses C0, C1, C2, C3
 //--------------------------------------------------------------------------------------
 struct VS_INPUT
 {
-    float4 Position : POSITION;
+    float4 Position : SV_Position;
     float4 Diffuse  : COLOR0;
     float2 UV0      : TEXCOORD0;
     float2 UV1      : TEXCOORD1;
@@ -18,7 +18,7 @@ struct VS_INPUT
 
 struct VS_OUTPUT
 {
-    float4 Position  : POSITION;
+    float4 Position  : SV_Position;
     float4 Color     : COLOR0;
     float2 UV        : TEXCOORD0;
 };
