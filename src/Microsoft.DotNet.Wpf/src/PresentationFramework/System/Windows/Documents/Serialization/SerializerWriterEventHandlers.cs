@@ -11,6 +11,8 @@
     
         EventHandlers used with the XpsDocumentWriter and XPSEmitter classes.                                                                                
 --*/
+#if ENABLE_PRINT
+
 #if !DONOTREFPRINTINGASMMETA
 using System.Printing;
 #endif
@@ -272,3 +274,4 @@ namespace System.Windows.Documents.Serialization
         WritingCancelledEventArgs   e
         );
 }
+#endif

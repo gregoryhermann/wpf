@@ -27,6 +27,14 @@ namespace MS.Internal.Markup
 using MS.Utility;
 using MS.Internal.WindowsBase;
 
+namespace System.Reflection
+{
+    public interface ICustomTypeProvider
+    {
+        Type GetCustomType();
+    }
+}
+
 namespace System.Windows.Markup
 #else
 namespace System.Xaml

@@ -22,7 +22,9 @@ using System.Windows.Media;
 using System.Windows.Markup;
 using System.Windows.Threading;
 using System.Text;
+#if NEVER
 using Accessibility;
+#endif
 using MS.Internal;
 using MS.Internal.Controls;
 using MS.Internal.Data;
@@ -53,7 +55,7 @@ namespace System.Windows.Controls.Primitives
     [ContentProperty("Child")]
     public class Popup : FrameworkElement, IAddChild
     {
-        #region Constructors
+#region Constructors
 
         static Popup()
         {
@@ -79,9 +81,9 @@ namespace System.Windows.Controls.Primitives
             _secHelper = new PopupSecurityHelper();
         }
 
-        #endregion
+#endregion
 
-        #region Properties
+#region Properties
 
         /// <summary>
         ///     The DependencyProperty for the TreatMousePlacementAsBottom property.
@@ -856,9 +858,9 @@ namespace System.Windows.Controls.Primitives
             return BooleanBoxes.Box(SystemParameters.DropShadow && ((Popup)d).AllowsTransparency);
         }
 
-        #endregion
+#endregion
 
-        #region Helper Functions
+#region Helper Functions
 
         /// <summary>
         ///     Hooks up a Popup to a child.
@@ -992,9 +994,9 @@ namespace System.Windows.Controls.Primitives
             return true;
         }
 
-        #endregion
+#endregion
 
-        #region Events
+#region Events
 
         /// <summary>
         ///     Event indicating that IsOpen has changed to true.
@@ -1031,9 +1033,9 @@ namespace System.Windows.Controls.Primitives
         /// </summary>
         internal event EventHandler PopupCouldClose;
 
-        #endregion
+#endregion
 
-        #region Layout
+#region Layout
 
         /// <summary>
         ///     Invoked when remeasuring the control is required.
@@ -1049,9 +1051,9 @@ namespace System.Windows.Controls.Primitives
         }
 
 
-        #endregion
+#endregion
 
-        #region Input
+#region Input
 
         /// <summary>
         ///     Called when the mouse left button is pressed on this subtree
@@ -1278,9 +1280,9 @@ namespace System.Windows.Controls.Primitives
             }
         }
 
-        #endregion
+#endregion
 
-        #region IAddChild
+#region IAddChild
 
         ///<summary>
         /// Called to Add the object as a Child.
@@ -1313,9 +1315,9 @@ namespace System.Windows.Controls.Primitives
             Child = lbl;
         }
 
-        #endregion
+#endregion
 
-        #region Tree Behavior
+#region Tree Behavior
 
         // Invalidate resources on the popup root
         internal override void OnThemeChanged()
@@ -1411,9 +1413,9 @@ namespace System.Windows.Controls.Primitives
             private Popup _popup;
         }
 
-        #endregion
+#endregion
 
-        #region Implementation
+#region Implementation
 
         // Gets the root visual of the tree containing child
         private static Visual GetRootVisual(Visual child)
@@ -1891,7 +1893,7 @@ namespace System.Windows.Controls.Primitives
             }
         }
 
-        #region Saved exception
+#region Saved exception
 
         // When an exception aborts the measure of PopupRoot's subtree, we save
         // it in an uncommon field.  The exception can cause a null-reference much
@@ -1907,9 +1909,9 @@ namespace System.Windows.Controls.Primitives
             set { SavedExceptionField.SetValue(this, value); }
         }
 
-        #endregion Saved exception
+#endregion Saved exception
 
-        #region Positioning
+#region Positioning
 
         /// <summary>
         /// Reposition the Popup
@@ -2845,12 +2847,12 @@ namespace System.Windows.Controls.Primitives
 
 #pragma warning restore 6523
 
-        #endregion Positioning
+#endregion Positioning
 
 
-        #endregion
+#endregion
 
-        #region Private Properties
+#region Private Properties
 
         private bool IsTransparent
         {
@@ -2883,9 +2885,9 @@ namespace System.Windows.Controls.Primitives
             set { _cacheValid[(int)CacheBits.IsDragDropActive] = value; }
         }
 
-        #endregion
+#endregion
 
-        #region Data
+#region Data
 
         internal const double Tolerance = 1.0e-2; // allow errors in double calculations
 
@@ -2919,9 +2921,9 @@ namespace System.Windows.Controls.Primitives
             IsIgnoringMouseEvents   = 0x200,
         }
 
-        #endregion
+#endregion
 
-        #region Popup Security Helper
+#region Popup Security Helper
 
         private const double RestrictPercentage = 0.75; // This is how much the max dimensions will be reduced by
 
@@ -3438,7 +3440,7 @@ namespace System.Windows.Controls.Primitives
                         IntPtr lResult = AutomationInteropProvider.ReturnRawElementProvider(Handle, IntPtr.Zero, new IntPtr(NativeMethods.OBJID_CLIENT), RootProviderForHwnd);
                         if (lResult != IntPtr.Zero)
                         {
-                            IAccessible acc = null;
+                            IntPtr acc = IntPtr.Zero;
                             int hr = NativeMethods.S_FALSE;
                             Guid iid = new Guid(MS.Internal.AppModel.IID.Accessible);
                             hr = UnsafeNativeMethods.ObjectFromLresult(lResult, ref iid, IntPtr.Zero, ref acc);
@@ -3481,7 +3483,7 @@ namespace System.Windows.Controls.Primitives
             private const string WebOCWindowClassName = "Shell Embedding";
         }
 
-        #endregion
+#endregion
 
         /// <summary>
         /// Helper to find the (left, top) of the monitor that contains the placement target, in screen coordinates. 

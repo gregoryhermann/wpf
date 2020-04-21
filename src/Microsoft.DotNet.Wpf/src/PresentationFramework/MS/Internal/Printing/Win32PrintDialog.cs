@@ -4,6 +4,7 @@
 
 #if !DONOTREFPRINTINGASMMETA
 
+#if ENABLE_PRINT
 
 using System;
 using System.Printing.Interop;
@@ -22,7 +23,7 @@ namespace MS.Internal.Printing
     /// </summary>
     internal partial class Win32PrintDialog
     {
-        #region Constructor
+#region Constructor
 
         /// <summary>
         /// Constructs an instance of the Win32PrintDialog.  This class is used for
@@ -39,9 +40,9 @@ namespace MS.Internal.Printing
             _pageRangeSelection = PageRangeSelection.AllPages;
         }
 
-        #endregion Constructor
+#endregion Constructor
 
-        #region Internal methods
+#region Internal methods
 
         /// <summary>
         /// Displays a modal Win32 print dialog to allow the user to select the desired
@@ -138,9 +139,9 @@ namespace MS.Internal.Printing
             return result;
         }
 
-        #endregion Internal methods
+#endregion Internal methods
 
-        #region Internal properties
+#region Internal properties
 
         internal PrintTicket PrintTicket
         {
@@ -153,7 +154,6 @@ namespace MS.Internal.Printing
                 _printTicket = value;
             }
         }
-
         internal PrintQueue PrintQueue
         {
             get
@@ -165,6 +165,7 @@ namespace MS.Internal.Printing
                 _printQueue = value;
             }
         }
+
 
         /// <summary>
         /// Gets or sets the minimum page number allowed in the page ranges.
@@ -272,9 +273,9 @@ namespace MS.Internal.Printing
             }
         }
 
-        #endregion Internal properties
+#endregion Internal properties
 
-        #region Private methods
+#region Private methods
 
         /// <summary>
         /// Probe to see if printing support is installed
@@ -302,9 +303,9 @@ namespace MS.Internal.Printing
             }
         }
 
-        #endregion
+#endregion
 
-        #region Private data
+#region Private data
 
         private
         PrintTicket _printTicket;
@@ -336,7 +337,9 @@ namespace MS.Internal.Printing
         private
         const char RightToLeftMark = '\u200F';
 
-        #endregion Private data
+#endregion Private data
     }
 }
+#endif
+
 #endif

@@ -646,6 +646,7 @@ namespace System.Windows.Controls
         /// </summary>
         protected override void OnPrintCommand()
         {
+#if ENABLE_PRINT
 #if !DONOTREFPRINTINGASMMETA
             System.Windows.Xps.XpsDocumentWriter docWriter;
             System.Printing.PrintDocumentImageableArea ia = null;
@@ -715,6 +716,7 @@ namespace System.Windows.Controls
                 base.OnPrintCommand();
             }
 #endif // DONOTREFPRINTINGASMMETA
+#endif
         }
 
         /// <summary>
@@ -722,6 +724,7 @@ namespace System.Windows.Controls
         /// </summary>
         protected override void OnCancelPrintCommand()
         {
+#if ENABLE_PRINT
 #if !DONOTREFPRINTINGASMMETA
             if (_printingState != null)
             {
@@ -732,6 +735,7 @@ namespace System.Windows.Controls
                 base.OnCancelPrintCommand();
             }
 #endif // DONOTREFPRINTINGASMMETA
+#endif
         }
 
         /// <summary>
@@ -758,7 +762,7 @@ namespace System.Windows.Controls
             }
         }
 
-        #endregion Protected Methods
+#endregion Protected Methods
 
         //-------------------------------------------------------------------
         //
@@ -766,7 +770,7 @@ namespace System.Windows.Controls
         //
         //-------------------------------------------------------------------
 
-        #region Internal Methods
+#region Internal Methods
 
         /// <summary>
         /// Allows FrameworkElement to augment the EventRoute.
@@ -907,7 +911,7 @@ namespace System.Windows.Controls
             return null;
         }
 
-        #endregion Internal Methods
+#endregion Internal Methods
 
         //-------------------------------------------------------------------
         //
@@ -915,7 +919,7 @@ namespace System.Windows.Controls
         //
         //-------------------------------------------------------------------
 
-        #region Internal Properties
+#region Internal Properties
 
         /// <summary>
         /// ContentPosition representing currently viewed content.
@@ -941,7 +945,7 @@ namespace System.Windows.Controls
             get { return (_printingState != null); }
         }
 
-        #endregion Internal Properties
+#endregion Internal Properties
 
         //-------------------------------------------------------------------
         //
@@ -949,7 +953,7 @@ namespace System.Windows.Controls
         //
         //-------------------------------------------------------------------
 
-        #region Private Methods
+#region Private Methods
 
         /// <summary>
         /// Handler for LayoutUpdated event raised by the LayoutSystem.
@@ -1086,6 +1090,7 @@ namespace System.Windows.Controls
         /// </summary>
         private void ClearPrintingState()
         {
+#if ENABLE_PRINT
 #if !DONOTREFPRINTINGASMMETA
             if (_printingState != null)
             {
@@ -1118,6 +1123,7 @@ namespace System.Windows.Controls
                 CommandManager.InvalidateRequerySuggested();
             }
 #endif // DONOTREFPRINTINGASMMETA
+#endif
         }
 
         /// <summary>
@@ -1242,7 +1248,7 @@ namespace System.Windows.Controls
             UpdateCanDecreaseZoom();
         }
 
-        #region Commands
+#region Commands
 
         /// <summary>
         /// Set up Command and RoutedCommand bindings.
@@ -1366,9 +1372,9 @@ namespace System.Windows.Controls
             DocumentViewerHelper.KeyDownHelper(e, ((FlowDocumentPageViewer)sender)._findToolBarHost);
         }
 
-        #endregion Commands
+#endregion Commands
 
-        #region Static Methods
+#region Static Methods
 
         /// <summary>
         /// Coerce the value for Zoom property.
@@ -1467,9 +1473,9 @@ namespace System.Windows.Controls
             }
         }
 
-        #endregion Static Methods
+#endregion Static Methods
 
-        #endregion Private Methods
+#endregion Private Methods
 
         //-------------------------------------------------------------------
         //
@@ -1477,7 +1483,7 @@ namespace System.Windows.Controls
         //
         //-------------------------------------------------------------------
 
-        #region Private Properties
+#region Private Properties
 
         /// <summary>
         /// Returns FindToolBar, if enabled.
@@ -1487,7 +1493,7 @@ namespace System.Windows.Controls
             get { return (_findToolBarHost != null) ? _findToolBarHost.Child as FindToolBar : null; }
         }
 
-        #endregion Private Properties
+#endregion Private Properties
 
         //-------------------------------------------------------------------
         //
@@ -1495,7 +1501,7 @@ namespace System.Windows.Controls
         //
         //-------------------------------------------------------------------
 
-        #region Private Fields
+#region Private Fields
 
         private Decorator _findToolBarHost;         // Host for FindToolbar
         private ContentPosition _contentPosition;   // Current position to be maintained during zooming and resizing.
@@ -1506,7 +1512,7 @@ namespace System.Windows.Controls
 
         private const string _findToolBarHostTemplateName = "PART_FindToolBarHost"; //Name for the Find Toolbar host.
 
-        #endregion Private Fields
+#endregion Private Fields
 
         //-------------------------------------------------------------------
         //
@@ -1514,7 +1520,7 @@ namespace System.Windows.Controls
         //
         //-------------------------------------------------------------------
 
-        #region IJournalState Members
+#region IJournalState Members
 
         [Serializable]
         private class JournalState : CustomJournalStateInternal
@@ -1572,7 +1578,7 @@ namespace System.Windows.Controls
             }
         }
 
-        #endregion IJournalState Members
+#endregion IJournalState Members
 
         //-------------------------------------------------------------------
         //
@@ -1580,7 +1586,7 @@ namespace System.Windows.Controls
         //
         //-------------------------------------------------------------------
 
-        #region DTypeThemeStyleKey
+#region DTypeThemeStyleKey
 
         /// <summary>
         /// Returns the DependencyObjectType for the registered ThemeStyleKey's default
@@ -1593,7 +1599,7 @@ namespace System.Windows.Controls
 
         private static DependencyObjectType _dType;
 
-        #endregion DTypeThemeStyleKey
+#endregion DTypeThemeStyleKey
     }
 }
 

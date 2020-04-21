@@ -2,7 +2,7 @@
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
   <PropertyGroup>
 
-    <TargetFramework>netcoreapp5.0</TargetFramework>
+    <TargetFramework>netstandard2.1</TargetFramework>
     <Platforms>AnyCPU;x64</Platforms>
 
     <EnableDefaultItems>false</EnableDefaultItems>
@@ -22,7 +22,6 @@
     <Page Include="InstallationError.xaml" />
     <Page Include="TenFeetInstallationError.xaml" />
     <Page Include="TenFeetInstallationProgress.xaml" />
-    <Page Include="MS\Internal\Documents\FindToolbar.xaml" />
     <Page Include="themes\MediaCenterTheme.xaml" />
     <Page Include="themes\Aero.NormalColor.xaml">
       <GenerateTheme>true</GenerateTheme>
@@ -81,130 +80,12 @@
     <Compile Include="PresentationUIStyleResources.cs" />
     <Compile Include="TenFeetInstallationProgress.xaml.cs" />
     <Compile Include="TenFeetInstallationError.xaml.cs" />
-    <Compile Include="MS\Internal\Documents\AccountType.cs" />
-    <Compile Include="MS\Internal\Documents\CertificatePriorityStatus.cs" />
-    <Compile Include="MS\Internal\Documents\CredentialManagerDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="MS\Internal\Documents\CredentialManagerDialog.Designer.cs" />
-    <Compile Include="MS\Internal\Documents\DocumentStatusResources.cs" />
-    <Compile Include="MS\Internal\Documents\DocumentSignatureManager.cs" />
-    <Compile Include="MS\Internal\Documents\DigitalSignature.cs" />
-    <Compile Include="MS\Internal\Documents\DigitalSignatureProvider.cs" />
-    <Compile Include="MS\Internal\Documents\DialogBaseForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="MS\Internal\Documents\DialogDivider.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="MS\Internal\Documents\FindToolbar.xaml.cs" />
-    <Compile Include="MS\Internal\Documents\IDigitalSignatureProvider.cs" />
-    <Compile Include="MS\Internal\Documents\PeoplePickerWrapper.cs" />
-    <Compile Include="MS\Internal\Documents\RequestedSignatureDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="MS\Internal\Documents\RequestedSignatureDialog.Designer.cs" />
-    <Compile Include="MS\Internal\Documents\RMEnrollmentPage1.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="MS\Internal\Documents\RMEnrollmentPage1.Designer.cs" />
-    <Compile Include="MS\Internal\Documents\RMEnrollmentPage2.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="MS\Internal\Documents\RMEnrollmentPage2.Designer.cs" />
-    <Compile Include="MS\Internal\Documents\RMEnrollmentPage3.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="MS\Internal\Documents\RMEnrollmentPage3.Designer.cs" />
-    <Compile Include="MS\Internal\Documents\RMPermissions.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="MS\Internal\Documents\RMPermissions.Designer.cs" />
-    <Compile Include="MS\Internal\Documents\RMPublishingDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="MS\Internal\Documents\RMPublishingDialog.Designer.cs" />
-    <Compile Include="MS\Internal\Documents\RMPublishingDialog.RightsTable.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="MS\Internal\Documents\SignaturePolicy.cs" />
-    <Compile Include="MS\Internal\Documents\SignatureResourceHelper.cs" />
-    <Compile Include="MS\Internal\Documents\signaturestatus.cs" />
-    <Compile Include="MS\Internal\Documents\SignatureSummaryDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="MS\Internal\Documents\SignatureSummaryDialog.Designer.cs" />
-    <Compile Include="MS\Internal\Documents\SigningDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="MS\Internal\Documents\SigningDialog.Designer.cs " />
-    <Compile Include="MS\Internal\Documents\SigningProgress.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="MS\Internal\Documents\SigningProgress.Designer.cs" />
-    <Compile Include="MS\Internal\Documents\RightsManagementLicense.cs" />
-    <Compile Include="MS\Internal\Documents\RightsManagementManager.cs" />
-    <Compile Include="MS\Internal\Documents\RightsManagementPermissions.cs" />
-    <Compile Include="MS\Internal\Documents\RightsManagementPolicy.cs" />
-    <Compile Include="MS\Internal\Documents\RightsManagementProvider.cs" />
-    <Compile Include="MS\Internal\Documents\IRightsManagementProvider.cs" />
-    <Compile Include="MS\Internal\Documents\RightsManagementResourceHelper.cs" />
-    <Compile Include="MS\Internal\Documents\RightsManagementStatus.cs" />
-    <Compile Include="MS\Internal\Documents\RightsManagementUser.cs" />
-    <Compile Include="MS\Internal\Documents\DocumentApplicationDocumentViewer.cs" />
-    <Compile Include="MS\Internal\Documents\Application\AddressUtility.cs" />
-    <Compile Include="MS\Internal\Documents\Application\CommandEnforcer.cs" />
-    <Compile Include="MS\Internal\Documents\Application\DocumentApplicationState.cs" />
-    <Compile Include="MS\Internal\Documents\Application\DocumentApplicationJournalEntryEventArgs.cs" />
-    <Compile Include="MS\Internal\Documents\Application\DocumentProperties.cs" />
-    <Compile Include="MS\Internal\Documents\Application\DocumentPropertiesDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="MS\Internal\Documents\Application\DocumentPropertiesDialog.Designer.cs" />
-    <Compile Include="MS\Internal\Documents\Application\NativeDirectoryServicesQueryAPIs.cs" />
-    <Compile Include="MS\Internal\Documents\Application\NavigationHelper.cs" />
-    <Compile Include="MS\Internal\Documents\Application\PageTextBox.cs" />
-    <Compile Include="MS\Internal\Documents\Application\RightsManagementErrorHandler.cs" />
-    <Compile Include="MS\Internal\Documents\Application\StatusInfoItem.cs" />
-    <Compile Include="MS\Internal\Documents\Application\XpsViewerException.cs" />
-    <Compile Include="MS\Internal\Documents\Application\ZoomComboBox.cs" />
-    <Compile Include="MS\Internal\Documents\Application\ChainOfDependencies.cs" />
-    <Compile Include="MS\Internal\Documents\Application\ChainOfResponsibility.cs" />
-    <Compile Include="MS\Internal\Documents\Application\CriticalFileToken.cs" />
-    <Compile Include="MS\Internal\Documents\Application\Document.cs" />
-    <Compile Include="MS\Internal\Documents\Application\DocumentManager.cs" />
-    <Compile Include="MS\Internal\Documents\Application\DocumentStream.cs" />
-    <Compile Include="MS\Internal\Documents\Application\FileController.cs" />
-    <Compile Include="MS\Internal\Documents\Application\FileDocument.cs" />
-    <Compile Include="MS\Internal\Documents\Application\FilePresentation.cs" />
-    <Compile Include="MS\Internal\Documents\Application\HostedController.cs" />
-    <Compile Include="MS\Internal\Documents\Application\IChainOfDependenciesNode.cs" />
-    <Compile Include="MS\Internal\Documents\Application\IChainOfResponsibiltyNode.cs" />
-    <Compile Include="MS\Internal\Documents\Application\IDocumentController.cs" />
-    <Compile Include="MS\Internal\Documents\Application\PackageController.cs" />
-    <Compile Include="MS\Internal\Documents\Application\PackageDocument.cs" />
-    <Compile Include="MS\Internal\Documents\Application\RestrictedTransactionalPackage.cs" />
-    <Compile Include="MS\Internal\Documents\Application\RightsController.cs" />
-    <Compile Include="MS\Internal\Documents\Application\RightsDocument.cs" />
-    <Compile Include="MS\Internal\Documents\Application\RightsManagementSuppressedStream.cs" />
-    <Compile Include="MS\Internal\Documents\Application\SuppressedPackageProperties.cs" />
-    <Compile Include="MS\Internal\Documents\Application\StreamDocument.cs" />
-    <Compile Include="MS\Internal\Documents\Application\StreamHelper.cs" />
-    <Compile Include="MS\Internal\Documents\Application\StreamProxy.cs" />
-    <Compile Include="MS\Internal\Documents\Application\Trace.cs" />
-    <Compile Include="MS\Internal\Documents\Application\TransactionalPackage.cs" />
-    <Compile Include="MS\Internal\Documents\Application\WriteableOnDemandPackagePart.cs" />
-    <Compile Include="MS\Internal\Documents\Application\WriteableOnDemandStream.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="$(WpfSourceDir)System.Xaml\System.Xaml.csproj" />
     <ProjectReference Include="$(WpfSourceDir)PresentationFramework\PresentationFramework.csproj" />
     <ProjectReference Include="$(WpfSourceDir)WindowsBase\WindowsBase.csproj" />
-    <ProjectReference Include="$(WpfSourceDir)System.Printing\System.Printing.vcxproj">
-      <UndefineProperties>TargetFramework;TargetFrameworks</UndefineProperties>
-    </ProjectReference>
-    <ProjectReference Include="$(WpfSourceDir)ReachFramework\ReachFramework.csproj" />
     <ProjectReference Include="$(WpfSourceDir)UIAutomation\UIAutomationProvider\UIAutomationProvider.csproj" />
     <ProjectReference Include="$(WpfSourceDir)UIAutomation\UIAutomationTypes\UIAutomationTypes.csproj" />
 
@@ -216,8 +97,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Private.Winforms" Version="$(MicrosoftPrivateWinformsVersion)" />
-    <PackageReference Include="System.Windows.Extensions" Version="$(SystemWindowsExtensionsPackageVersion)" />
     <PackageReference Include="Microsoft.Win32.Registry" Version="$(MicrosoftWin32RegistryPackageVersion)" />
     <PackageReference Include="System.Drawing.Common" Version="$(SystemDrawingCommonVersion)" />
     <PackageReference Include="$(SystemDirectoryServicesPackage)" Version="$(SystemDirectoryServicesVersion)" />

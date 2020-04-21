@@ -26,6 +26,12 @@ using MS.Internal.Documents;            // FindToolBar
 using MS.Internal.KnownBoxes;           // BooleanBoxes
 using MS.Internal.AppModel;             // IJournalState
 
+namespace System.Windows.Documents.Serialization
+{
+    internal class WritingCompletedEventArgs : EventArgs { }
+    internal class WritingCancelledEventArgs : EventArgs { }
+}
+
 namespace System.Windows.Controls
 {
     /// <summary>
@@ -532,6 +538,7 @@ namespace System.Windows.Controls
         /// </summary>
         protected virtual void OnPrintCommand()
         {
+#if ENABLE_PRINT
 #if !DONOTREFPRINTINGASMMETA
             System.Windows.Xps.XpsDocumentWriter docWriter;
             System.Printing.PrintDocumentImageableArea ia = null;
@@ -608,6 +615,7 @@ namespace System.Windows.Controls
                 OnPrintCompleted();
             }
 #endif // DONOTREFPRINTINGASMMETA
+#endif
         }
 
         /// <summary>
@@ -615,12 +623,14 @@ namespace System.Windows.Controls
         /// </summary>
         protected virtual void OnCancelPrintCommand()
         {
+#if ENABLE_PRINT
 #if !DONOTREFPRINTINGASMMETA
             if (_printingState != null)
             {
                 _printingState.XpsDocumentWriter.CancelAsync();
             }
 #endif // DONOTREFPRINTINGASMMETA
+#endif
         }
 
         /// <summary>
@@ -755,7 +765,7 @@ namespace System.Windows.Controls
             return new FlowDocumentScrollViewerAutomationPeer(this);
         }
 
-        #endregion Protected Methods
+#endregion Protected Methods
 
         //-------------------------------------------------------------------
         //
@@ -763,7 +773,7 @@ namespace System.Windows.Controls
         //
         //-------------------------------------------------------------------
 
-        #region Protected Properties
+#region Protected Properties
 
         /// <summary>
         /// Returns enumerator to logical children.
@@ -780,7 +790,7 @@ namespace System.Windows.Controls
             }
         }
 
-        #endregion Protected Properties
+#endregion Protected Properties
 
         //-------------------------------------------------------------------
         //
@@ -788,7 +798,7 @@ namespace System.Windows.Controls
         //
         //-------------------------------------------------------------------
 
-        #region Internal Methods
+#region Internal Methods
 
         /// <summary>
         /// Allows FrameworkElement to augment the EventRoute.
@@ -866,7 +876,7 @@ namespace System.Windows.Controls
             return null;
         }
 
-        #endregion Internal Methods
+#endregion Internal Methods
 
         //-------------------------------------------------------------------
         //
@@ -874,7 +884,7 @@ namespace System.Windows.Controls
         //
         //-------------------------------------------------------------------
 
-        #region Internal Properties
+#region Internal Properties
 
         /// <summary>
         /// Access to the ScrollViewer in FlowDocumentScrollViewer style
@@ -914,7 +924,7 @@ namespace System.Windows.Controls
             }
         }
 
-        #endregion Internal Properties
+#endregion Internal Properties
 
         //-------------------------------------------------------------------
         //
@@ -922,7 +932,7 @@ namespace System.Windows.Controls
         //
         //-------------------------------------------------------------------
 
-        #region Private Methods
+#region Private Methods
 
         /// <summary>
         /// Enables/disables the FindToolBar.
@@ -1071,9 +1081,11 @@ namespace System.Windows.Controls
                     CommandManager.RemovePreviewCanExecuteHandler(_contentHost, new CanExecuteRoutedEventHandler(PreviewCanExecuteRoutedEventHandler));
                 }
 
+#if ENABLE_PRINT
                 // Unregister for XpsDocumentWriter events.
                 _printingState.XpsDocumentWriter.WritingCompleted -= new WritingCompletedEventHandler(HandlePrintCompleted);
                 _printingState.XpsDocumentWriter.WritingCancelled -= new WritingCancelledEventHandler(HandlePrintCancelled);
+#endif
 
                 // Restore old page metrics on FlowDocument.
                 Document.PagePadding = _printingState.PagePadding;
@@ -1085,7 +1097,7 @@ namespace System.Windows.Controls
                 CommandManager.InvalidateRequerySuggested();
             }
 #endif // DONOTREFPRINTINGASMMETA
-        }
+            }
 
         /// <summary>
         /// Makes sure the target is visible in the client area.
@@ -1312,7 +1324,7 @@ namespace System.Windows.Controls
             fe.SetBinding(dp, binding);
         }
 
-        #region Commands
+#region Commands
 
         /// <summary>
         /// Set up Command and RoutedCommand bindings.
@@ -1585,9 +1597,9 @@ namespace System.Windows.Controls
             DocumentViewerHelper.KeyDownHelper(e, ((FlowDocumentScrollViewer)sender)._findToolBarHost);
         }
 
-        #endregion Commands
+#endregion Commands
 
-        #region Static Methods
+#region Static Methods
 
         /// <summary>
         /// Wrapper around IScrollInfo.MakeVisible
@@ -1775,9 +1787,9 @@ namespace System.Windows.Controls
             }
         }
 
-        #endregion Static Methods
+#endregion Static Methods
 
-        #endregion Private Methods
+#endregion Private Methods
 
         //-------------------------------------------------------------------
         //
@@ -1785,7 +1797,7 @@ namespace System.Windows.Controls
         //
         //-------------------------------------------------------------------
 
-        #region Private Properties
+#region Private Properties
 
         /// <summary>
         /// Returns FindToolBar, if enabled.
@@ -1803,7 +1815,7 @@ namespace System.Windows.Controls
             get { return (_contentHost != null) ? _contentHost.Content as FlowDocumentView : null; }
         }
 
-        #endregion Private Properties
+#endregion Private Properties
 
         //-------------------------------------------------------------------
         //
@@ -1811,7 +1823,7 @@ namespace System.Windows.Controls
         //
         //-------------------------------------------------------------------
 
-        #region Private Fields
+#region Private Fields
 
         private TextEditor _textEditor;             // Text editor (enables text selection)
         private Decorator _findToolBarHost;         // Host for FindToolBar
@@ -1831,7 +1843,7 @@ namespace System.Windows.Controls
         private static RoutedUICommand _commandLineLeft;    // Private LineLeft command
         private static RoutedUICommand _commandLineRight;   // Private LineRight command
 
-        #endregion Private Fields
+#endregion Private Fields
 
         //-------------------------------------------------------------------
         //
@@ -1839,7 +1851,7 @@ namespace System.Windows.Controls
         //
         //-------------------------------------------------------------------
 
-        #region IAddChild Members
+#region IAddChild Members
 
         /// <summary>
         /// Called to add the object as a Child.
@@ -1874,7 +1886,7 @@ namespace System.Windows.Controls
             XamlSerializerUtil.ThrowIfNonWhiteSpaceInAddText(text, this);
         }
 
-        #endregion IAddChild Members
+#endregion IAddChild Members
 
         //-------------------------------------------------------------------
         //
@@ -1882,7 +1894,7 @@ namespace System.Windows.Controls
         //
         //-------------------------------------------------------------------
 
-        #region IServiceProvider Members
+#region IServiceProvider Members
 
         /// <summary>
         /// Returns service objects associated with this control.
@@ -1913,7 +1925,7 @@ namespace System.Windows.Controls
             return service;
         }
 
-        #endregion IServiceProvider Members
+#endregion IServiceProvider Members
 
         //-------------------------------------------------------------------
         //
@@ -1921,7 +1933,7 @@ namespace System.Windows.Controls
         //
         //-------------------------------------------------------------------
 
-        #region IJournalState Members
+#region IJournalState Members
 
         [Serializable]
         private class JournalState : CustomJournalStateInternal
@@ -1979,7 +1991,7 @@ namespace System.Windows.Controls
             }
         }
 
-        #endregion IJournalState Members
+#endregion IJournalState Members
 
         //-------------------------------------------------------------------
         //
@@ -1987,7 +1999,7 @@ namespace System.Windows.Controls
         //
         //-------------------------------------------------------------------
 
-        #region DTypeThemeStyleKey
+#region DTypeThemeStyleKey
 
         /// <summary>
         /// Returns the DependencyObjectType for the registered ThemeStyleKey's default
@@ -2000,6 +2012,6 @@ namespace System.Windows.Controls
 
         private static DependencyObjectType _dType;
 
-        #endregion DTypeThemeStyleKey
+#endregion DTypeThemeStyleKey
     }
 }

@@ -8,7 +8,6 @@ using System.Diagnostics;
 
 namespace MS.Win32
 {
-    using Accessibility;
     using SRCS = System.Runtime.CompilerServices;
     using System.Runtime.ConstrainedExecution;
     using System.Runtime.InteropServices;

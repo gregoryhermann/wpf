@@ -29,7 +29,7 @@ namespace MS.Internal.FontCache
         //
         //------------------------------------------------------
 
-        #region Internal Methods
+#region Internal Methods
 
         /// <summary>
         /// Attempts to release all allocated memory.  Has no effect if the cache
@@ -140,7 +140,7 @@ namespace MS.Internal.FontCache
             ReleaseBuffer(uints, UIntsIndex);
         }
 
-        #endregion Internal Methods
+#endregion Internal Methods
 
         //------------------------------------------------------
         //
@@ -148,7 +148,7 @@ namespace MS.Internal.FontCache
         //
         //------------------------------------------------------
 
-        #region Private Methods
+#region Private Methods
 
         /// <summary>
         /// Searches for an array in the cache.
@@ -211,7 +211,7 @@ namespace MS.Internal.FontCache
             }
         }
 
-        #endregion Private Methods
+#endregion Private Methods
 
         //------------------------------------------------------
         //
@@ -219,7 +219,7 @@ namespace MS.Internal.FontCache
         //
         //------------------------------------------------------
 
-        #region Private Fields
+#region Private Fields
 
         // Max number of elements in any cached array.  If a request if made for a larger array
         // it will always be allocated from the heap.
@@ -244,6 +244,6 @@ namespace MS.Internal.FontCache
         // scenario a change might be worthwhile.
         static private Array[] _buffers;
 
-        #endregion Private Fields
+#endregion Private Fields
     }
 }

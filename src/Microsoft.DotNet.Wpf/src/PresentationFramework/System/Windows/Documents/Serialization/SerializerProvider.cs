@@ -10,6 +10,8 @@
 //              See spec at <Need to post existing spec>
 // 
 
+#if ENABLE_PRINT
+
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -252,4 +254,6 @@ namespace System.Windows.Documents.Serialization
         #endregion
     }
 }
+#endif
+
 #endif

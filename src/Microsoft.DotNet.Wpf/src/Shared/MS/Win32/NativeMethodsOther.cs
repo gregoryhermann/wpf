@@ -4,7 +4,6 @@
 
 namespace MS.Win32
 {
-    using Accessibility;
     using System;
     using System.Runtime.ConstrainedExecution;
     using System.Runtime.InteropServices;

@@ -4,7 +4,6 @@
       System.Xaml;
       PresentationBuildTasks;
       PresentationCore;
-      DirectWriteForwarder;
       PresentationFramework;
       ReachFramework;
       UIAutomationClient;

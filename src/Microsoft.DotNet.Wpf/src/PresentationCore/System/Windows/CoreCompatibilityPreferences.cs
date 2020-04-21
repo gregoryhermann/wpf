@@ -18,6 +18,7 @@ namespace System.Windows
         {
             // user can use config file to set preferences
             NameValueCollection appSettings = null;
+#if NEVER
             try
             {
                 appSettings = ConfigurationManager.AppSettings;
@@ -25,6 +26,7 @@ namespace System.Windows
             catch (ConfigurationErrorsException)
             {
             }
+#endif
 
             if (appSettings != null)
             {
@@ -33,9 +35,9 @@ namespace System.Windows
             }
         }
 
-        #endregion Constructor
+#endregion Constructor
 
-        #region CLR compat flags
+#region CLR compat flags
 
         internal static bool TargetsAtLeast_Desktop_V4_5
         {
@@ -51,9 +53,9 @@ namespace System.Windows
             }
         }
 
-        #endregion CLR compat flags
+#endregion CLR compat flags
 
-        #region IsAltKeyRequiredInAccessKeyDefaultScope
+#region IsAltKeyRequiredInAccessKeyDefaultScope
 
         // We decided NOT to opt-in this feature by default.
         private static bool _isAltKeyRequiredInAccessKeyDefaultScope = false;
@@ -82,9 +84,9 @@ namespace System.Windows
             return IsAltKeyRequiredInAccessKeyDefaultScope;
         }
 
-        #endregion IsAltKeyRequiredInAccessKeyDefaultScope
+#endregion IsAltKeyRequiredInAccessKeyDefaultScope
 
-        #region IncludeAllInkInBoundingBox
+#region IncludeAllInkInBoundingBox
 
         // GlyphRun.ComputeInkBoundingBox is supposed to return a box that contains
         // all the ink in the GlyphRun, but in some circumstances it computes a
@@ -133,9 +135,9 @@ namespace System.Windows
             }
         }
 
-        #endregion IncludeAllInkInBoundingBox
+#endregion IncludeAllInkInBoundingBox
 
-        #region EnableMultimonitorDisplayClipping
+#region EnableMultimonitorDisplayClipping
 
         private static bool? _enableMultiMonitorDisplayClipping = null;
 
@@ -173,7 +175,7 @@ namespace System.Windows
             }
         }
 
-        #endregion
+#endregion
 
         private static void Seal()
         {

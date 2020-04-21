@@ -2,6 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+#if ENABLE_PRINT
+
 #if !DONOTREFPRINTINGASMMETA
 //
 // Description: Plug-in document serializers implement this abstract class
@@ -75,4 +77,6 @@ namespace System.Windows.Documents.Serialization
         public abstract void Cancel();
     }
 }
+#endif
+
 #endif

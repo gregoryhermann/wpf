@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+#if NEVER
 
 using System;
 using System.Diagnostics;
@@ -1424,3 +1425,5 @@ namespace Microsoft.Internal.AlphaFlattener
         #endregion
     }
 } // end of namespace
+
+#endif

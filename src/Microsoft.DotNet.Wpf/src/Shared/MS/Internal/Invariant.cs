@@ -232,10 +232,13 @@ namespace MS.Internal
         {
             get
             {
-                RegistryKey key;
                 bool enabled;
 
                 enabled = false;
+
+#if NEVER
+
+                RegistryKey key;
 
                 //extracting all the data under an elevation.
                 object dbgJITDebugLaunchSettingValue;
@@ -257,11 +260,12 @@ namespace MS.Internal
                         enabled = dbgManagedDebuggerValue != null && dbgManagedDebuggerValue.Length > 0;
                     }
                 }
+#endif
                 return enabled;
             }
         }
 
-        #endregion Private Properties
+#endregion Private Properties
 
         //------------------------------------------------------
         //
@@ -269,7 +273,7 @@ namespace MS.Internal
         //
         //------------------------------------------------------
 
-        #region Private Fields
+#region Private Fields
 
         // Property specifying whether or not the user wants to enable expensive
         // verification diagnostics.
@@ -283,7 +287,7 @@ namespace MS.Internal
             = false;
 #endif
 
-        #endregion Private Fields
+#endregion Private Fields
     }
 }
 

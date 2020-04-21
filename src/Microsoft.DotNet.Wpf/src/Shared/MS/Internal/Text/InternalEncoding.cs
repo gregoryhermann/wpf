@@ -15,7 +15,9 @@ namespace MS.Internal.Text
 
         static InternalEncoding()
         {
+#if NEVER
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+#endif
         }
 
         internal static Encoding GetEncoding(int codepage)

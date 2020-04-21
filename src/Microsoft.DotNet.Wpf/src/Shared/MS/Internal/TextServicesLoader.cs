@@ -194,9 +194,10 @@ namespace MS.Internal
 
         private static bool TIPsWantToRun()
         {
+            bool tipsWantToRun = false;
+#if NEVER
             object obj;
             RegistryKey key;
-            bool tipsWantToRun = false;
 
             key = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\CTF", false);
 
@@ -211,10 +212,11 @@ namespace MS.Internal
 
             // Loop through all the TIP entries for machine and current user.
             tipsWantToRun = IterateSubKeys(Registry.LocalMachine, "SOFTWARE\\Microsoft\\CTF\\TIP",new IterateHandler(SingleTIPWantsToRun), true) == EnableState.Enabled;
-
+#endif
             return tipsWantToRun;
         }
 
+#if NEVER
         // Returns EnableState.Enabled if one or more TIPs are installed and
         // enabled for the current user.
         private static EnableState SingleTIPWantsToRun(RegistryKey keyLocalMachine, string subKeyName, bool localMachine)
@@ -323,8 +325,9 @@ namespace MS.Internal
 
             return state;
         }
+#endif
 
-        #endregion Private Methods
+#endregion Private Methods
 
         //------------------------------------------------------
         //
@@ -338,7 +341,7 @@ namespace MS.Internal
         //
         //------------------------------------------------------
 
-        #region Private Fields
+#region Private Fields
 
         // String consts used to validate registry entires.
         private const int CLSIDLength = 38;  // {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}
@@ -352,9 +355,10 @@ namespace MS.Internal
             Enabled,    // Assembly is enabled.
             Disabled    // Assembly is disabled.
         };
-
+#if NEVER
         // Callback delegate for the IterateSubKeys method.
         private delegate EnableState IterateHandler(RegistryKey key, string subKeyName, bool localMachine);
+#endif
 
         // Install state.
         private enum InstallState
@@ -370,6 +374,6 @@ namespace MS.Internal
         private static InstallState s_servicesInstalled = InstallState.Unknown;
         private static object s_servicesInstalledLock = new object();
 
-        #endregion Private Fields
+#endregion Private Fields
     }
 }

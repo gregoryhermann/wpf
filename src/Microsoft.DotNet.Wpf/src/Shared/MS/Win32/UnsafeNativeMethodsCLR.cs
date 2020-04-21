@@ -4,7 +4,6 @@
 
 namespace MS.Win32
 {
-    using Accessibility;
     using System.Runtime.InteropServices;
     using System.Runtime.InteropServices.ComTypes;
     using System.Runtime.ConstrainedExecution;
@@ -339,7 +338,7 @@ namespace MS.Win32
 #endif
 
         [DllImport("oleacc.dll")]
-        internal static extern int ObjectFromLresult(IntPtr lResult, ref Guid iid, IntPtr wParam, [In, Out] ref IAccessible ppvObject);
+        internal static extern int ObjectFromLresult(IntPtr lResult, ref Guid iid, IntPtr wParam, [In, Out] ref IntPtr ppvObject);
 
         [DllImport("user32.dll")]
         internal static extern bool IsWinEventHookInstalled(int winevent);
@@ -2266,7 +2265,7 @@ namespace MS.Win32
 #if !DRT && !UIAUTOMATIONTYPES
     [ComImport(), Guid("00020400-0000-0000-C000-000000000046"), InterfaceTypeAttribute(ComInterfaceType.InterfaceIsIUnknown)]
     public interface IDispatch {
-    #region <KeepInSync With="IDispatchEx">
+#region <KeepInSync With="IDispatchEx">
 
          int GetTypeInfoCount();
 
@@ -2310,12 +2309,12 @@ namespace MS.Win32
                 [Out, MarshalAs(UnmanagedType.LPArray)]
                   IntPtr [] pArgErr);
 
-    #endregion
+#endregion
     }
 
     [ComImport(), Guid("A6EF9860-C720-11D0-9337-00A0C90DCAA9"), InterfaceTypeAttribute(ComInterfaceType.InterfaceIsIUnknown)]
     public interface IDispatchEx : IDispatch {
-    #region <KeepInSync With="IDispatch">
+#region <KeepInSync With="IDispatch">
 
          new int GetTypeInfoCount();
 
@@ -2358,7 +2357,7 @@ namespace MS.Win32
                 [Out, MarshalAs(UnmanagedType.LPArray)]
                   IntPtr [] pArgErr);
 
-    #endregion
+#endregion
 
         [PreserveSig]
         HR GetDispID(
@@ -2402,7 +2401,7 @@ namespace MS.Win32
 
 #endif
 
-    #region WebBrowser Related Definitions
+#region WebBrowser Related Definitions
         [ComImport(), Guid("D30C1661-CDAF-11d0-8A3E-00C04FC9E26E"),
         TypeLibType(TypeLibTypeFlags.FHidden | TypeLibTypeFlags.FDual | TypeLibTypeFlags.FOleAutomation)]
         public interface IWebBrowser2
@@ -2760,10 +2759,10 @@ namespace MS.Win32
         [ComImport, Guid("332C4425-26CB-11D0-B483-00C04FD90119"), InterfaceType(ComInterfaceType.InterfaceIsDual)]
         internal interface IHTMLDocument2: IHTMLDocument
         {
-            #region IHTMLDocument - base interface
+#region IHTMLDocument - base interface
             [return: MarshalAs(UnmanagedType.Interface)]
             new object GetScript();
-            #endregion
+#endregion
             IHTMLElementCollection GetAll();
             [return: MarshalAs(UnmanagedType.Interface)]
             /*IHTMLElement*/object GetBody();
@@ -3059,7 +3058,7 @@ namespace MS.Win32
             [PreserveSig] int GetZoneMappings();
         }
 #endif
-    #endregion WebBrowser Related Definitions
+#endregion WebBrowser Related Definitions
 
         [DllImport(ExternDll.User32, SetLastError=true, CharSet=CharSet.Auto)]
         public static extern uint GetRawInputDeviceList(

@@ -21,7 +21,6 @@ using System.Diagnostics;
 #endif
 namespace MS.Win32
 {
-    using Accessibility;
     using System.Runtime.CompilerServices;
     using System.Runtime.ConstrainedExecution;
     using System.Runtime.InteropServices;

@@ -2,7 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-
+#if ENABLE_PRINT
 
 using System;
 using System.Collections;
@@ -37,7 +37,7 @@ namespace System.Windows.Xps.Serialization
     internal sealed class NgcSerializationManager :
                           PackageSerializationManager
     {
-        #region Constructor
+#region Constructor
         /// <summary>
         /// This constructor take PrintQueue parameter
         /// </summary>
@@ -58,9 +58,9 @@ namespace System.Windows.Xps.Serialization
             this._isSimulating          = false;
             this._printTicketManager    = new NgcPrintTicketManager(_printQueue);
         }
-        #endregion Construtor
+#endregion Construtor
 
-        #region PackageSerializationManager override
+#region PackageSerializationManager override
         /// <summary>
         /// The function will serializer the avalon content to the printer spool file.
         /// SaveAsXaml is not a propriate name. Maybe it should be "Print"
@@ -382,9 +382,9 @@ namespace System.Windows.Xps.Serialization
             }
         }
 
-        #endregion PackageSerializationManager override
+#endregion PackageSerializationManager override
 
-        #region Internal Properties
+#region Internal Properties
         /// <summary>
         ///
         /// </summary>
@@ -430,9 +430,9 @@ namespace System.Windows.Xps.Serialization
             }
         }
 
-        #endregion Internal Properties
+#endregion Internal Properties
 
-        #region Internal Methods
+#region Internal Methods
         internal
         void
         StartDocument(
@@ -719,9 +719,9 @@ namespace System.Windows.Xps.Serialization
             return isRequired;
         }
 
-        #endregion Internal Methods
+#endregion Internal Methods
 
-        #region Private Member
+#region Private Member
         private     PrintQueue             _printQueue;
         private     int                    _startDocCnt;
         private     bool                   _isStartPage;
@@ -732,12 +732,12 @@ namespace System.Windows.Xps.Serialization
         private     NgcPrintTicketManager  _printTicketManager;
         private     bool                   _isPrintTicketMerged;
         private     Size                    _pageSize = new Size(816,1056);
-        #endregion Private Member
+#endregion Private Member
     };
 
     internal sealed class NgcPrintTicketManager
     {
-        #region constructor
+#region constructor
 
         public
         NgcPrintTicketManager(
@@ -755,9 +755,9 @@ namespace System.Windows.Xps.Serialization
             this.m_validatedPrintTicketCache = new MS.Internal.Printing.MostFrequentlyUsedCache<string, PrintTicket>(s_PrintTicketCacheMaxCount);
         }
 
-        #endregion constructor
+#endregion constructor
 
-        #region Public Methods
+#region Public Methods
 
         public
         void
@@ -899,9 +899,9 @@ namespace System.Windows.Xps.Serialization
             return printTicket;
         }
 
-        #endregion Public Methods
+#endregion Public Methods
 
-        #region Public Properties
+#region Public Properties
 
         public
         PrintTicket
@@ -915,10 +915,10 @@ namespace System.Windows.Xps.Serialization
             }
         }
 
-        #endregion Public Properties
+#endregion Public Properties
 
 
-        #region Private Members
+#region Private Members
 
         // duplicated code with metrodevice.cs is bad
 
@@ -959,14 +959,14 @@ namespace System.Windows.Xps.Serialization
         bool            _isActiveUpdated;
 
 
-        #endregion Private Members
+#endregion Private Members
     }
 
 
     internal sealed class MXDWSerializationManager
     {
 
-        #region constructor
+#region constructor
 
         public
         MXDWSerializationManager(
@@ -992,7 +992,7 @@ namespace System.Windows.Xps.Serialization
             GdiDevice.DeleteDeviceContext();
         }
 
-        #endregion constructor
+#endregion constructor
 
         public
         void
@@ -1072,3 +1072,4 @@ namespace System.Windows.Xps.Serialization
 
 }
 
+#endif

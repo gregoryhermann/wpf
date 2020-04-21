@@ -899,6 +899,7 @@ namespace System.IO.Packaging
                 }
             }
 
+#if ENABLE_CERT_UI
             // any suitable certificates available?
             if (collection.Count > 0)
             {
@@ -909,11 +910,12 @@ namespace System.IO.Packaging
                     X509cert = collection[0];   // return the first one
                 }
             }
+#endif
 
             return X509cert;
         }
 
-        #region Private Members
+#region Private Members
         //------------------------------------------------------
         //
         //  Private Methods
@@ -1402,7 +1404,7 @@ namespace System.IO.Packaging
         private static readonly String _originToSignatureRelationshipType = "http://schemas.openxmlformats.org/package/2006/relationships/digital-signature/signature";
         private static readonly String _defaultSignaturePartNamePrefix = "/package/services/digital-signature/xml-signature/";
         private static readonly String _defaultSignaturePartNameExtension = ".psdsxs";
-        #endregion Private Members
+#endregion Private Members
     }
 }
 

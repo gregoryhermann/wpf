@@ -30,6 +30,7 @@ namespace System.Windows
 
             // user can use config file to set preferences
             NameValueCollection appSettings = null;
+#if NEVER
             try
             {
                 appSettings = ConfigurationManager.AppSettings;
@@ -37,6 +38,7 @@ namespace System.Windows
             catch (ConfigurationErrorsException)
             {
             }
+#endif
 
             if (appSettings != null)
             {
@@ -47,9 +49,9 @@ namespace System.Windows
             }
         }
 
-        #endregion Constructor
+#endregion Constructor
 
-        #region TargetsDesktop_V4_0
+#region TargetsDesktop_V4_0
 
         // CLR's BinaryCompatibility class doesn't expose a convenient way to determine
         // if the app targets 4.0 exactly.  We use that a lot, so encapsulate it here
@@ -60,9 +62,9 @@ namespace System.Windows
             get { return _targetsDesktop_V4_0; }
         }
 
-        #endregion TargetsDesktop_V4_0
+#endregion TargetsDesktop_V4_0
 
-        #region AreInactiveSelectionHighlightBrushKeysSupported
+#region AreInactiveSelectionHighlightBrushKeysSupported
 
 #if NETFX && !NETCOREAPP
         private static bool _areInactiveSelectionHighlightBrushKeysSupported = BinaryCompatibility.TargetsAtLeast_Desktop_V4_5 ? true : false;
@@ -96,9 +98,9 @@ namespace System.Windows
             return AreInactiveSelectionHighlightBrushKeysSupported;
         }
 
-        #endregion AreInactiveSelectionHighlightBrushKeysSupported
+#endregion AreInactiveSelectionHighlightBrushKeysSupported
 
-        #region KeepTextBoxDisplaySynchronizedWithTextProperty
+#region KeepTextBoxDisplaySynchronizedWithTextProperty
 
 #if NETFX && !NETCOREAPP
         private static bool _keepTextBoxDisplaySynchronizedWithTextProperty = BinaryCompatibility.TargetsAtLeast_Desktop_V4_5 ? true : false;
@@ -170,7 +172,7 @@ namespace System.Windows
             return KeepTextBoxDisplaySynchronizedWithTextProperty;
         }
 
-        #endregion KeepTextBoxDisplaySynchronizedWithTextProperty
+#endregion KeepTextBoxDisplaySynchronizedWithTextProperty
 
         // There is a bug in the Windows desktop window manager which can cause
         // incorrect z-order for windows when several conditions are all met:
@@ -181,7 +183,7 @@ namespace System.Windows
         // To avoid this window manager bug, this option causes SetWindowPos() to be used instead of
         // ShowWindow() for topmost windows, avoiding condition (c).  Ideally the window manager bug
         // will be fixed, but the risk of making a change there is considered too great at this time.
-        #region UseSetWindowPosForTopmostWindows
+#region UseSetWindowPosForTopmostWindows
 
         private static bool _useSetWindowPosForTopmostWindows = false; // use old behavior by default
 
@@ -220,9 +222,9 @@ namespace System.Windows
             }
         }
 
-        #endregion UseSetWindowPosForTopmostWindows
+#endregion UseSetWindowPosForTopmostWindows
 
-        #region VSP45Compat
+#region VSP45Compat
 
         // VirtualizingStackPanel added support for virtualization-when-grouping in 4.5,
         // generalizing and subsuming the support for virtualizing a TreeView that existed in 4.0.
@@ -270,9 +272,9 @@ namespace System.Windows
             }
         }
 
-        #endregion VSP45Compat
+#endregion VSP45Compat
 
-        #region ScrollingTrace
+#region ScrollingTrace
 
         private static string _scrollingTraceTarget;
 
@@ -333,9 +335,9 @@ namespace System.Windows
             //          VirtualizaingStackPanel.ScrollTracer.Flush()
         }
 
-        #endregion ScrollingTrace
+#endregion ScrollingTrace
 
-        #region ShouldThrowOnCopyOrCutFailure
+#region ShouldThrowOnCopyOrCutFailure
 
         private static bool _shouldThrowOnCopyOrCutFailure = false;
 
@@ -404,7 +406,7 @@ namespace System.Windows
             }
         }
 
-        #endregion ShouldThrowOnCopyOrCutFailure
+#endregion ShouldThrowOnCopyOrCutFailure
 
         private static void Seal()
         {

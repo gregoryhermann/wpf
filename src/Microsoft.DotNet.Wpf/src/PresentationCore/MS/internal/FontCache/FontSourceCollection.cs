@@ -165,7 +165,7 @@ namespace MS.Internal.FontCache
                                 }
                                 files = fontPaths.Keys;
                             }
-}
+                        }
                         else
                         {
                             if (_tryGetCompositeFontsOnly)
@@ -237,18 +237,18 @@ namespace MS.Internal.FontCache
             }
         }
 
-        
+
         #region IEnumerable<FontSource> Members
 
-        IEnumerator<Text.TextInterface.IFontSource> System.Collections.Generic.IEnumerable<Text.TextInterface.IFontSource>.GetEnumerator()
+        IEnumerator<IFontSource> System.Collections.Generic.IEnumerable<Text.TextInterface.IFontSource>.GetEnumerator()
         {
             SetFontSources();
             return (IEnumerator<Text.TextInterface.IFontSource>)_fontSources.GetEnumerator();
         }
 
-        #endregion
+#endregion
 
-        #region IEnumerable Members
+#region IEnumerable Members
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
         {
@@ -256,7 +256,7 @@ namespace MS.Internal.FontCache
             return _fontSources.GetEnumerator();
         }
 
-        #endregion
+#endregion
     
 
         private Uri                         _uri;

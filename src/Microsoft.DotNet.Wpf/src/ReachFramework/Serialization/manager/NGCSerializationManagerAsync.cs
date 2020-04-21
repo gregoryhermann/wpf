@@ -23,6 +23,7 @@ using System.Windows.Threading;
 using MS.Internal;
 using Microsoft.Internal.AlphaFlattener;
 
+#if ENABLE_PRINT
 
 //
 // Ngc = Next Generation Converter. It means to convert the avalon element tree
@@ -37,7 +38,7 @@ namespace System.Windows.Xps.Serialization
     internal sealed class NgcSerializationManagerAsync :
                           PackageSerializationManager
     {
-        #region Constructor
+#region Constructor
 
         /// <summary>
         /// This constructor take PrintQueue parameter
@@ -65,9 +66,9 @@ namespace System.Windows.Xps.Serialization
             _printTicketManager              = new NgcPrintTicketManager(_printQueue);
         }
 
-        #endregion Construtor
+#endregion Construtor
 
-        #region PackageSerializationManager override
+#region PackageSerializationManager override
 
         /// <summary>
         /// The function will serializer the avalon content to the printer spool file.
@@ -157,12 +158,12 @@ namespace System.Windows.Xps.Serialization
             //
             // PreSharp uses message numbers that the C# compiler doesn't know about.
             // Disable the C# complaints, per the PreSharp documentation.
-            #pragma warning disable 1634, 1691
+#pragma warning disable 1634, 1691
             //
             // PreSharp complains about catching NullReference (and other) exceptions.
             // This is an async model and we need to catch all exception ourselves and then
             // send them to the completion delegate
-            #pragma warning disable 56500
+#pragma warning disable 56500
             try
             {
                 if(!_serializationOperationCanceled)
@@ -215,8 +216,8 @@ namespace System.Windows.Xps.Serialization
 
                 return null;
             }
-            #pragma warning restore 56500
-            #pragma warning restore 1634, 1691
+#pragma warning restore 56500
+#pragma warning restore 1634, 1691
 
             return null;
         }
@@ -236,12 +237,12 @@ namespace System.Windows.Xps.Serialization
             //
             // PreSharp uses message numbers that the C# compiler doesn't know about.
             // Disable the C# complaints, per the PreSharp documentation.
-            #pragma warning disable 1634, 1691
+#pragma warning disable 1634, 1691
             //
             // PreSharp complains about catching NullReference (and other) exceptions.
             // This is an async model and we need to catch all exception ourselves and then
             // send them to the completion delegate
-            #pragma warning disable 56500
+#pragma warning disable 56500
             try
             {
                 // This logic must be mirrored in IsAsyncWorkPending see remarks.
@@ -347,8 +348,8 @@ namespace System.Windows.Xps.Serialization
 
                 return null;
             }
-            #pragma warning restore 56500
-            #pragma warning restore 1634, 1691
+#pragma warning restore 56500
+#pragma warning restore 1634, 1691
 
             return null;
         }
@@ -619,9 +620,9 @@ namespace System.Windows.Xps.Serialization
                 return null;
             }
         }
-        #endregion PackageSerializationManager override
+#endregion PackageSerializationManager override
 
-        #region Internal Properties
+#region Internal Properties
 
         /// <summary>
         ///
@@ -670,9 +671,9 @@ namespace System.Windows.Xps.Serialization
             }
         }
 
-        #endregion Internal Properties
+#endregion Internal Properties
 
-        #region Internal Methods
+#region Internal Methods
 
         /// <summary>
         ///
@@ -1069,9 +1070,9 @@ namespace System.Windows.Xps.Serialization
             return null;
         }
 
-        #endregion Internal Methods
+#endregion Internal Methods
 
-        #region Private Member
+#region Private Member
 
         private     Dispatcher              _dispatcher;
         private     PrintQueue              _printQueue;
@@ -1089,7 +1090,8 @@ namespace System.Windows.Xps.Serialization
         private     bool                    _isPrintTicketMerged;
         private     Size                    _pageSize;
 
-        #endregion Private Member
+#endregion Private Member
     };
 }
 
+#endif

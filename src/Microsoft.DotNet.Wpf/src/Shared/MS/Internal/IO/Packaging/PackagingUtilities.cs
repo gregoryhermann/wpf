@@ -540,6 +540,7 @@ namespace MS.Internal.IO.Packaging
         private static bool UserHasProfile()
         {
             bool userHasProfile = false;
+#if NEVER
             RegistryKey userProfileKey = null;
             try
             {
@@ -553,7 +554,7 @@ namespace MS.Internal.IO.Packaging
                 if (userProfileKey != null)
                     userProfileKey.Close();
             }
-
+#endif
             return userHasProfile;
         }
 

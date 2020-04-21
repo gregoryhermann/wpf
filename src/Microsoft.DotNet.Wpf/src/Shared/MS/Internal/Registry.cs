@@ -45,9 +45,13 @@ namespace MS.Internal
 
         internal static bool ReadLocalMachineBool(string key, string valueName)
         {
+#if NEVER
             string keyPath = "HKEY_LOCAL_MACHINE\\" + key;
             object value = Registry.GetValue(keyPath, valueName, null);
             return value is int && (int)value != 0;
+#else
+            return false;
+#endif
         }
     };
 }

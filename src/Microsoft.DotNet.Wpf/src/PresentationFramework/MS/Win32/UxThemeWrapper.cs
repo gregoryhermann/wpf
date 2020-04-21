@@ -276,8 +276,10 @@ namespace MS.Win32
                 }
 
 #if DEBUG
+
                 // for debugging, config file can override the theme name
                 NameValueCollection appSettings = null;
+#if NEVER
                 try
                 {
                     appSettings = ConfigurationManager.AppSettings;
@@ -285,6 +287,7 @@ namespace MS.Win32
                 catch (ConfigurationErrorsException)
                 {
                 }
+#endif
 
                 if (appSettings != null)
                 {

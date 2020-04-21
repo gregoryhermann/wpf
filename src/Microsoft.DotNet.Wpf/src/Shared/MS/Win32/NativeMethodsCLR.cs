@@ -5,7 +5,6 @@
 #pragma warning disable 649 // Disable CS0649: "field is never assigned to"
 
 namespace MS.Win32 {
-    using Accessibility;
     using System.Runtime.InteropServices;
     using System;
     using System.Collections;

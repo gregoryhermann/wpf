@@ -235,9 +235,10 @@ internal static class SecurityHelper
 
 
 #if WINDOWS_BASE
+
         ///
         /// Read and return a registry value.
-       static internal object ReadRegistryValue( RegistryKey baseRegistryKey, string keyName, string valueName )
+        static internal object ReadRegistryValue( RegistryKey baseRegistryKey, string keyName, string valueName )
        {
             object value = null;
 
@@ -252,7 +253,8 @@ internal static class SecurityHelper
 
             return value;
         }
+
 #endif // WINDOWS_BASE
-}
+    }
 }
 

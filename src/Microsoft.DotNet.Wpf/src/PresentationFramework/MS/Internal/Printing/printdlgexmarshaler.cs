@@ -2,6 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+#if ENABLE_PRINT
+
 #if !DONOTREFPRINTINGASMMETA
 
 using System;
@@ -25,7 +27,7 @@ namespace MS.Internal.Printing
         /// </summary>
         private sealed class PrintDlgExMarshaler : IDisposable
         {
-            #region Constructor
+#region Constructor
 
             /// <summary>
             /// Construct and initialize a PrintDlgExMarshaler instance.
@@ -48,18 +50,18 @@ namespace MS.Internal.Printing
                 _unmanagedPrintDlgEx = IntPtr.Zero;
             }
 
-            #endregion Constructor
+#endregion Constructor
 
-            #region Finalizer
+#region Finalizer
 
             ~PrintDlgExMarshaler()
             {
                 this.Dispose(true);
             }
 
-            #endregion Finalizer
+#endregion Finalizer
 
-            #region Internal properties
+#region Internal properties
 
             /// <summary>
             /// Gets an IntPtr that points to unmanaged memory that represents
@@ -73,9 +75,9 @@ namespace MS.Internal.Printing
                 }
             }
 
-            #endregion Internal properties
+#endregion Internal properties
 
-            #region Internal methods
+#region Internal methods
 
             /// <summary>
             /// This method synchronizes the internal PRINTDLGEX unmanaged data
@@ -169,9 +171,9 @@ namespace MS.Internal.Printing
                 _unmanagedPrintDlgEx = AllocateUnmanagedPrintDlgExStruct();
             }
 
-            #endregion Internal methods
+#endregion Internal methods
 
-            #region Private helper methods
+#region Private helper methods
 
             /// <summary>
             /// Clean up any resources being used.
@@ -839,9 +841,9 @@ namespace MS.Internal.Printing
                 return hDevMode;
             }
 
-            #endregion Private helper methods
+#endregion Private helper methods
 
-            #region Private data
+#region Private data
 
             private
             Win32PrintDialog _dialog;
@@ -852,9 +854,9 @@ namespace MS.Internal.Printing
             private
             IntPtr _ownerHandle;
 
-            #endregion Private data
+#endregion Private data
 
-            #region IDisposable implementation
+#region IDisposable implementation
 
             /// <summary>
             /// Implements the Dispose method for IDisposable.  This ensures that
@@ -869,8 +871,10 @@ namespace MS.Internal.Printing
                 GC.SuppressFinalize(this);
             }
 
-            #endregion IDisposable implementation
+#endregion IDisposable implementation
         }
     }
 }
+#endif
+
 #endif

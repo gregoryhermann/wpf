@@ -21,6 +21,7 @@ namespace System.Windows
         {
             // user can use config file to set preferences
             NameValueCollection appSettings = null;
+#if NEVER
             try
             {
                 appSettings = ConfigurationManager.AppSettings;
@@ -28,7 +29,7 @@ namespace System.Windows
             catch (ConfigurationErrorsException)
             {
             }
-
+#endif
             if (appSettings != null)
             {
                 SetHandleDispatcherRequestProcessingFailureFromAppSettings(appSettings);
@@ -37,9 +38,9 @@ namespace System.Windows
             SetMatchPackageSignatureMethodToPackagePartDigestMethod(appSettings);
         }
 
-        #endregion constructor
+#endregion constructor
 
-        #region ReuseDispatcherSynchronizationContextInstance
+#region ReuseDispatcherSynchronizationContextInstance
         /// <summary>
         ///     WPF 4.0 had a performance optimization where it would
         ///     frequently reuse the same instance of the
@@ -110,9 +111,9 @@ namespace System.Windows
         private static bool _reuseDispatcherSynchronizationContextInstance = false;
 #endif
 
-        #endregion ReuseDispatcherSynchronizationContextInstance
+#endregion ReuseDispatcherSynchronizationContextInstance
 
-        #region FlowDispatcherSynchronizationContextPriority
+#region FlowDispatcherSynchronizationContextPriority
         /// <summary>
         ///     WPF <= 4.0 a DispatcherSynchronizationContext always used
         ///     DispatcherPriority.Normal to satisfy
@@ -161,9 +162,9 @@ namespace System.Windows
         private static bool _flowDispatcherSynchronizationContextPriority = true;
 #endif
 
-        #endregion FlowDispatcherSynchronizationContextPriority
+#endregion FlowDispatcherSynchronizationContextPriority
 
-        #region InlineDispatcherSynchronizationContextSend
+#region InlineDispatcherSynchronizationContextSend
         /// <summary>
         ///     WPF <= 4.0 a DispatcherSynchronizationContext always used
         ///     DispatcherPriority.Normal to satisfy
@@ -210,9 +211,9 @@ namespace System.Windows
 #else
         private static bool _inlineDispatcherSynchronizationContextSend = true;
 #endif
-        #endregion InlineDispatcherSynchronizationContextSend    
+#endregion InlineDispatcherSynchronizationContextSend    
 
-        #region MatchPackageSignatureMethodToPackagePartDigestMethod
+#region MatchPackageSignatureMethodToPackagePartDigestMethod
 
         private static bool _matchPackageSignatureMethodToPackagePartDigestMethod = true;
 
@@ -254,7 +255,7 @@ namespace System.Windows
             return false;
         }
 
-        #region Registry
+#region Registry
 
         /// <summary>
         /// Contains the setting for whether SignatureMethods should be set to match the strength of the selected
@@ -300,12 +301,12 @@ namespace System.Windows
         /// </summary>
         private const string MatchPackageSignatureMethodToPackagePartDigestMethodValue = "MatchPackageSignatureMethodToPackagePartDigestMethod";
 
-        #endregion
+#endregion
 
 
-        #endregion
+#endregion
 
-        #region HandleDispatcherRequestProcessingFailure
+#region HandleDispatcherRequestProcessingFailure
 
         /// <summary>
         ///     A Dispatcher can become unresponsive when it is unable to
@@ -371,7 +372,7 @@ namespace System.Windows
         private static HandleDispatcherRequestProcessingFailureOptions
                         _handleDispatcherRequestProcessingFailure;
 
-        #endregion HandleDispatcherRequestProcessingFailure
+#endregion HandleDispatcherRequestProcessingFailure
 
         private static void Seal()
         {

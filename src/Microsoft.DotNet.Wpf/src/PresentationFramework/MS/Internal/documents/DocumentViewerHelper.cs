@@ -485,7 +485,9 @@ namespace MS.Internal.Documents
     internal class FlowDocumentPrintingState
     {
 #if !DONOTREFPRINTINGASMMETA
+#if ENABLE_PRINT
         internal System.Windows.Xps.XpsDocumentWriter XpsDocumentWriter;
+#endif
 #endif //DONOTREFPRINTINGASMMETA
         internal Size PageSize;
         internal Thickness PagePadding;

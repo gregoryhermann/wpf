@@ -578,6 +578,7 @@ namespace System.Windows.Controls.Primitives
         /// </summary>
         protected virtual void OnPrintCommand()
         {
+#if ENABLE_PRINT
 #if !DONOTREFPRINTINGASMMETA
             System.Windows.Xps.XpsDocumentWriter docWriter;
             System.Printing.PrintDocumentImageableArea ia = null;
@@ -618,6 +619,7 @@ namespace System.Windows.Controls.Primitives
                 }
             }
 #endif // DONOTREFPRINTINGASMMETA
+#endif
         }
 
         /// <summary>
@@ -625,12 +627,14 @@ namespace System.Windows.Controls.Primitives
         /// </summary>
         protected virtual void OnCancelPrintCommand()
         {
+#if ENABLE_PRINT
 #if !DONOTREFPRINTINGASMMETA
             if (_documentWriter != null)
             {
                 _documentWriter.CancelAsync();
             }
 #endif // DONOTREFPRINTINGASMMETA
+#endif
         }
 
         /// <summary>
@@ -658,7 +662,7 @@ namespace System.Windows.Controls.Primitives
             AttachTextEditor();
         }
 
-        #endregion Protected Methods
+#endregion Protected Methods
 
         //-------------------------------------------------------------------
         //
@@ -666,7 +670,7 @@ namespace System.Windows.Controls.Primitives
         //
         //-------------------------------------------------------------------
 
-        #region Protected Properties
+#region Protected Properties
 
         /// <summary>
         /// Returns enumerator to logical children.
@@ -683,7 +687,7 @@ namespace System.Windows.Controls.Primitives
             }
         }
 
-        #endregion Protected Properties
+#endregion Protected Properties
 
         //-------------------------------------------------------------------
         //
@@ -691,7 +695,7 @@ namespace System.Windows.Controls.Primitives
         //
         //-------------------------------------------------------------------
 
-        #region Internal Methods
+#region Internal Methods
 
         /// <summary>
         /// Determines whether DocumentPageView is a master page.
@@ -719,7 +723,7 @@ namespace System.Windows.Controls.Primitives
             return DocumentViewerHelper.Find(findToolBar, _textEditor, _textView, masterPageTextView);
         }
 
-        #endregion Internal Methods
+#endregion Internal Methods
 
         //-------------------------------------------------------------------
         //
@@ -727,7 +731,7 @@ namespace System.Windows.Controls.Primitives
         //
         //-------------------------------------------------------------------
 
-        #region Internal Properties
+#region Internal Properties
 
         /// <summary>
         /// Whether text selection is enabled or disabled.
@@ -766,7 +770,7 @@ namespace System.Windows.Controls.Primitives
             }
         }
 
-        #endregion Internal Properties
+#endregion Internal Properties
 
         //-------------------------------------------------------------------
         //
@@ -774,7 +778,7 @@ namespace System.Windows.Controls.Primitives
         //
         //-------------------------------------------------------------------
 
-        #region Private Methods
+#region Private Methods
 
         /// <summary>
         /// Retrieves an ITextPointer from the MasterPage.
@@ -1441,6 +1445,7 @@ namespace System.Windows.Controls.Primitives
         /// </summary>
         private void CleanUpPrintOperation()
         {
+#if ENABLE_PRINT
 #if !DONOTREFPRINTINGASMMETA
             if (_documentWriter != null)
             {
@@ -1452,9 +1457,10 @@ namespace System.Windows.Controls.Primitives
                 CommandManager.InvalidateRequerySuggested();
             }
 #endif // DONOTREFPRINTINGASMMETA
+#endif
         }
 
-        #region Commands
+#region Commands
 
         /// <summary>
         /// Set up Command and RoutedCommand bindings.
@@ -1511,7 +1517,8 @@ namespace System.Windows.Controls.Primitives
             DocumentViewerBase dv = target as DocumentViewerBase;
             Invariant.Assert(dv != null, "Target of CanExecuteRoutedEventHandler must be DocumentViewerBase.");
             Invariant.Assert(args != null, "args cannot be null.");
-  
+
+#if ENABLE_PRINT
             // DocumentViewerBase is capable of execution of the majority of its commands.
             // Special rules:
             // a) Print command is enabled when Document is attached and printing is not in progress.
@@ -1526,6 +1533,7 @@ namespace System.Windows.Controls.Primitives
                 args.CanExecute = (dv._documentWriter != null);
             }
             else
+#endif
             {
                 args.CanExecute = true;
             }
@@ -1599,9 +1607,9 @@ namespace System.Windows.Controls.Primitives
             }
         }
 
-        #endregion Commands
+#endregion Commands
 
-        #region Static Methods
+#region Static Methods
 
         /// <summary>
         /// Called from the event handler to make sure the target is visible in the client
@@ -1629,9 +1637,9 @@ namespace System.Windows.Controls.Primitives
             CommandManager.InvalidateRequerySuggested();
         }
 
-        #endregion Static Methods
+#endregion Static Methods
 
-        #endregion Private Methods
+#endregion Private Methods
 
         //-------------------------------------------------------------------
         //
@@ -1639,7 +1647,7 @@ namespace System.Windows.Controls.Primitives
         //
         //-------------------------------------------------------------------
 
-        #region Private Properties
+#region Private Properties
 
         /// <summary>
         /// ITextContainer associated with Document.
@@ -1660,7 +1668,7 @@ namespace System.Windows.Controls.Primitives
             }
         }
 
-        #endregion Private Properties
+#endregion Private Properties
 
         //-------------------------------------------------------------------
         //
@@ -1668,7 +1676,7 @@ namespace System.Windows.Controls.Primitives
         //
         //-------------------------------------------------------------------
 
-        #region Private Fields
+#region Private Fields
 
         private ReadOnlyCollection<DocumentPageView> _pageViews;    // Collection of DocumentPageViews presenting paginated Document.
         private FrameworkElement _textEditorRenderScope;            // RenderScope associated with the TextEditor.
@@ -1676,14 +1684,16 @@ namespace System.Windows.Controls.Primitives
         private TextEditor _textEditor;                             // TextEditor associated with DocumentViewer.
         private IDocumentPaginatorSource _document;                 // IDocumentPaginatorSource representing Document.
         private Flags _flags;                                       // Flags reflecting various aspects of object's state.
+#if ENABLE_PRINT
 #if !DONOTREFPRINTINGASMMETA
         private System.Windows.Xps.XpsDocumentWriter _documentWriter;                  // DocumentWriter used for printing.
 #endif // DONOTREFPRINTINGASMMETA
+#endif
 
         private static bool IsEditingEnabled = false;               // A flag enabling text editing within a document viewer
                                                                     // accessible only through reflection.
 
-        #endregion Private Fields
+#endregion Private Fields
 
         //-------------------------------------------------------------------
         //
@@ -1691,7 +1701,7 @@ namespace System.Windows.Controls.Primitives
         //
         //-------------------------------------------------------------------
 
-        #region Private Types
+#region Private Types
 
         /// <summary>
         /// Flags reflecting various aspects of viewer's state.
@@ -1722,7 +1732,7 @@ namespace System.Windows.Controls.Primitives
             internal Rect TargetRect;
         }
 
-        #endregion Private Types
+#endregion Private Types
 
         //-------------------------------------------------------------------
         //
@@ -1730,7 +1740,7 @@ namespace System.Windows.Controls.Primitives
         //
         //-------------------------------------------------------------------
 
-        #region IAddChild
+#region IAddChild
 
         /// <summary>
         /// Called to add the object as a Child.
@@ -1767,7 +1777,7 @@ namespace System.Windows.Controls.Primitives
             XamlSerializerUtil.ThrowIfNonWhiteSpaceInAddText(text, this);
         }
 
-        #endregion IAddChild
+#endregion IAddChild
 
         //-------------------------------------------------------------------
         //
@@ -1775,7 +1785,7 @@ namespace System.Windows.Controls.Primitives
         //
         //-------------------------------------------------------------------
 
-        #region IServiceProvider
+#region IServiceProvider
 
         /// <summary>
         /// Returns service objects associated with this control.
@@ -1803,7 +1813,7 @@ namespace System.Windows.Controls.Primitives
             return service;
         }
 
-        #endregion IServiceProvider
+#endregion IServiceProvider
     }
 }
 #pragma warning enable 1634, 1691

@@ -18,7 +18,9 @@ using System.Collections;
 using System.ComponentModel;            // DefaultValueAttribute
 using System.IO;
 using System.IO.Packaging;
+#if NEVER
 using System.Media;
+#endif
 using System.Net;
 using System.Windows;
 using System.Windows.Documents;
@@ -51,10 +53,12 @@ namespace System.Windows.Controls
        /// </summary>
        public void Dispose()
        {
-           if (m_player != null)
+#if NEVER
+            if (m_player != null)
            {
                m_player.Dispose();
            }
+#endif
        }
 
 
@@ -106,8 +110,10 @@ namespace System.Windows.Controls
                    BaseUriHelper.GetResolvedUri(BaseUriHelper.BaseUri, newValue);
            }
 
-           // Invalidate items that depend on the Source uri
-           m_player = null;
+            // Invalidate items that depend on the Source uri
+#if NEVER
+            m_player = null;
+#endif
            m_playRequested = false;  // Suppress earlier requests to Play the sound
            
            if (m_streamLoadInProgress)
@@ -152,13 +158,15 @@ namespace System.Windows.Controls
            {
                m_playRequested = true;
            }
-           else if (m_player != null)
+#if NEVER
+            else if (m_player != null)
            {
                // If the Player has not yet loaded, m_streamLoadInProgress must be true
                Debug.Assert(m_player.IsLoadCompleted);
 
                m_player.Play();
            }
+#endif
        }
 
 
@@ -218,7 +226,8 @@ namespace System.Windows.Controls
            }
            else if (newStream != null)  // We loaded the Stream, begin buffering it
            {
-               if (m_player == null)
+#if NEVER
+                if (m_player == null)
                {
                    m_player = new SoundPlayer((Stream)newStream);
                }
@@ -228,12 +237,14 @@ namespace System.Windows.Controls
                }
                m_player.LoadCompleted += new AsyncCompletedEventHandler(OnSoundPlayerLoadCompleted);
                m_player.LoadAsync();  // Begin preloading the stream into SoundPlayer's local buffer
+#endif
            }
            return null;
        }
 
         private void OnSoundPlayerLoadCompleted(Object sender, AsyncCompletedEventArgs e)
         {
+#if NEVER
             if (Object.ReferenceEquals(m_player, sender))
             {
                 Debug.Assert(m_player.IsLoadCompleted);
@@ -255,10 +266,12 @@ namespace System.Windows.Controls
                     }
                 }
             }
+#endif
         }
 
-
+#if NEVER
         private SoundPlayer m_player;
+#endif
         private Uri m_lastRequestedAbsoluteUri;
 
         private bool m_streamLoadInProgress;

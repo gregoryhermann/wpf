@@ -726,7 +726,9 @@ namespace System.Windows.Xps.Packaging
         public System.Windows.Xps.Packaging.IXpsFixedDocumentSequenceWriter AddFixedDocumentSequence() { throw null; }
         public System.Windows.Xps.Packaging.XpsThumbnail AddThumbnail(System.Windows.Xps.Packaging.XpsImageType imageType) { throw null; }
         public void Close() { }
+#if ENABLE_PRINT
         public static System.Windows.Xps.XpsDocumentWriter CreateXpsDocumentWriter(System.Windows.Xps.Packaging.XpsDocument xpsDocument) { throw null; }
+#endif
         protected virtual void Dispose(bool disposing) { }
         public System.Windows.Documents.FixedDocumentSequence GetFixedDocumentSequence() { throw null; }
         public void RemoveSignature(System.Windows.Xps.Packaging.XpsDigitalSignature signature) { }

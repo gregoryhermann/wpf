@@ -10,7 +10,9 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+#if NEVER
 using System.Runtime.InteropServices.WindowsRuntime;
+#endif
 using System.Security;
 using System.Windows;
 using System.Windows.Interop;
@@ -30,7 +32,7 @@ namespace MS.Internal.WindowsRuntime
         /// </summary>
         internal class InputPane : IDisposable
         {
-            #region Fields
+#region Fields
 
             /// <summary>
             /// The name of the InputPane WinRT runtime class
@@ -42,19 +44,21 @@ namespace MS.Internal.WindowsRuntime
             /// </summary>
             private static Type s_WinRTType;
 
+#if NEVER
             /// <summary>
             /// Activation factory to instantiate InputPane RCWs
             /// </summary>
             private static IActivationFactory _winRtActivationFactory;
+#endif
 
             /// <summary>
             /// The appropriate RCW for calling TryShow/Hide
             /// </summary>
             private InputPaneRcw.IInputPane2 _inputPane;
 
-            #endregion
+#endregion
 
-            #region Constructors
+#region Constructors
 
             /// <summary>
             /// Acquires the InputPane type from the winmd
@@ -69,7 +73,9 @@ namespace MS.Internal.WindowsRuntime
 
                     // If we cannot get a new activation factory, then we cannot support
                     // this platform.  As such, null out the type to guard instantiations.
+#if NEVER
                     if (GetWinRtActivationFactory(forceInitialization: true) == null)
+#endif
                     {
                         s_WinRTType = null;
                     }
@@ -95,7 +101,7 @@ namespace MS.Internal.WindowsRuntime
                 {
                     if (hwnd.HasValue)
                     {
-                        InputPaneRcw.IInputPaneInterop inputPaneInterop;
+                        InputPaneRcw.IInputPaneInterop inputPaneInterop = null;
 
                         try
                         {
@@ -105,14 +111,18 @@ namespace MS.Internal.WindowsRuntime
                             // the case of InputPane this is an interop class that contains an init function
                             // designed to take an HWND.  This interface is cloaked and not part of the WinRT
                             // projections and therefore cannot be seen by reflecting on the type.
+#if NEVER
                             inputPaneInterop = GetWinRtActivationFactory() as InputPaneRcw.IInputPaneInterop;
+#endif
                         }
                         catch (COMException)
                         {
                             // Do a fine grained catch here to detect the activation factory going stale.
                             // If this happens, we retry the cast querying a new factory.  If this retry fails
                             // something else is going wrong, allow the error to be handled by the outer block.
+#if NEVER
                             inputPaneInterop = GetWinRtActivationFactory(forceInitialization: true) as InputPaneRcw.IInputPaneInterop;
+#endif
                         }
 
                         _inputPane = inputPaneInterop?.GetForWindow(hwnd.Value, typeof(InputPaneRcw.IInputPane2).GUID);
@@ -132,9 +142,9 @@ namespace MS.Internal.WindowsRuntime
                 }
             }
 
-            #endregion
+#endregion
 
-            #region Member Functions
+#region Member Functions
 
             /// <summary>
             /// Wraps creation in a manner analagous to the WinRT interface to this class.
@@ -190,6 +200,7 @@ namespace MS.Internal.WindowsRuntime
                 return result;
             }
 
+#if NEVER
             /// <summary>
             /// Creates, caches, and returns a WinRT activation factory for use with the InputPane runtime type.
             /// </summary>
@@ -219,10 +230,11 @@ namespace MS.Internal.WindowsRuntime
 
                 return _winRtActivationFactory;
             }
+#endif
 
-            #endregion
+#endregion
 
-            #region IDisposable
+#region IDisposable
 
             bool _disposed = false;
 
@@ -264,7 +276,7 @@ namespace MS.Internal.WindowsRuntime
                 }
             }
 
-            #endregion
+#endregion
         }
     }
 }

@@ -6336,8 +6336,10 @@ namespace System.Windows.Controls
         public System.Windows.Controls.PageRangeSelection PageRangeSelection { get { throw null; } set { } }
         public double PrintableAreaHeight { get { throw null; } }
         public double PrintableAreaWidth { get { throw null; } }
+#if ENABLE_PRINT
         public System.Printing.PrintQueue PrintQueue { get { throw null; } set { } }
         public System.Printing.PrintTicket PrintTicket { get { throw null; } set { } }
+#endif
         public bool SelectedPagesEnabled { get { throw null; } set { } }
         public bool UserPageRangeEnabled { get { throw null; } set { } }
         public void PrintDocument(System.Windows.Documents.DocumentPaginator documentPaginator, string description) { }
@@ -11007,6 +11009,8 @@ namespace System.Windows.Documents.DocumentStructures
         void System.Windows.Markup.IAddChild.AddText(string text) { }
     }
 }
+#if ENABLE_PRINT
+
 namespace System.Windows.Documents.Serialization
 {
     public partial interface ISerializerFactory
@@ -11042,6 +11046,7 @@ namespace System.Windows.Documents.Serialization
         public static void RegisterSerializer(System.Windows.Documents.Serialization.SerializerDescriptor serializerDescriptor, bool overwrite) { }
         public static void UnregisterSerializer(System.Windows.Documents.Serialization.SerializerDescriptor serializerDescriptor) { }
     }
+
     public abstract partial class SerializerWriter
     {
         protected SerializerWriter() { }
@@ -11097,7 +11102,8 @@ namespace System.Windows.Documents.Serialization
         public abstract void WriteAsync(System.Windows.Media.Visual visual, System.Printing.PrintTicket printTicket);
         public abstract void WriteAsync(System.Windows.Media.Visual visual, System.Printing.PrintTicket printTicket, object userState);
     }
-    public partial class WritingCancelledEventArgs : System.EventArgs
+
+public partial class WritingCancelledEventArgs : System.EventArgs
     {
         public WritingCancelledEventArgs(System.Exception exception) { }
         public System.Exception Error { get { throw null; } }
@@ -11131,6 +11137,8 @@ namespace System.Windows.Documents.Serialization
         FixedPageWritingProgress = 3,
     }
 }
+#endif
+
 namespace System.Windows.Input
 {
     public sealed partial class CommandConverter : System.ComponentModel.TypeConverter

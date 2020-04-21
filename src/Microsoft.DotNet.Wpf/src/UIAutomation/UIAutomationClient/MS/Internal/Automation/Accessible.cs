@@ -13,6 +13,31 @@ using MS.Win32;
 
 // PRESHARP: In order to avoid generating warnings about unkown message numbers and unknown pragmas.
 #pragma warning disable 1634, 1691
+namespace Accessibility
+{
+    public interface IAccessible
+    {
+        IAccessible accParent { get; }
+        object accSelection { get; }
+        object accFocus { get; }
+        int accChildCount { get; }
+
+        int get_accState(object child);
+        string get_accValue(int idChild);
+        void set_accValue(int idChild, string value);
+        object get_accRole(int idChild);
+        string get_accHelp(int idChild);
+        object accHitTest(int x, int y);
+        void accDoDefaultAction(int idChild);
+        object get_accChild(int obj);
+        void accSelect(int selFlags, int idChild);
+        string get_accDescription(int idChild);
+        string get_accDefaultAction(int idChild);
+        string get_accKeyboardShortcut(int idChild);
+        string get_accName(int idChild);
+        void accLocation(out int left, out int top, out int right, out int bottom, int idChild);
+    }
+}
 
 namespace MS.Internal.Automation
 {

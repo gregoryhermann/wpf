@@ -137,11 +137,15 @@ namespace MS.Utility
 
         static bool IsClassicETWRegistryEnabled()
         {
+#if NEVER
             string regKey = @"HKEY_CURRENT_USER\Software\Microsoft\Avalon.Graphics\";                
             return int.Equals(1, Microsoft.Win32.Registry.GetValue(regKey, "ClassicETW", 0));
+#else
+            return false;
+#endif
         }
     }
 
-    #endregion Trace
+#endregion Trace
 }
-#endif 
+#endif
